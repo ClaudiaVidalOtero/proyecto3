@@ -11,8 +11,8 @@ from pycocotools.coco import COCO
 from pycocotools import mask as coco_mask
 
 # rutas de las imágenes y sus archivos de anotaciones
-ANNOTATIONS_FILE = "C:/Users/Usuario/Documents/adrispul/Universidad/INTELIGENCIA ARTIFICIAL/4º/1º SEMESTRE/Prácticas empresa/proyecto/dataset FashionPedia/instances_attributes_train2020.json"
-IMAGES_DIR = "C:/Users/Usuario/Documents/adrispul/Universidad/INTELIGENCIA ARTIFICIAL/4º/1º SEMESTRE/Prácticas empresa/proyecto/dataset FashionPedia/train"
+ANNOTATIONS_FILE = "dataset/instances_attributes_train2020.json"
+IMAGES_DIR = "dataset/train"
 
 coco = COCO(ANNOTATIONS_FILE)       # cargamos el archivo de anotaciones
 
@@ -71,5 +71,5 @@ axes[1].set_title("Máscara (cada color = una prenda)")
 axes[1].axis("off")
 
 plt.tight_layout()
-plt.savefig("prueba_mascara.png", dpi=150)
+plt.savefig("mask_example.png", dpi=150)
 plt.show()
