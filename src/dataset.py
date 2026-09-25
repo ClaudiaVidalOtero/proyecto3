@@ -28,8 +28,25 @@ class FashionpediaDataset(Dataset):
 
         self.coco = COCO(annotations_file)    # carga el JSON con las anotaciones
 
-        # lista de todos los image_id del dataset
-        self.image_ids = list(sorted(self.coco.imgs.keys()))
+        # lista de todos los image_id que aparecen en el JSON (46.000 más o menos)
+        all_images_ids = list(sorted(self.coco.imgs.keys()))
+
+        # Si "images_dir" no contiene todas las imágenes del JSON (train_no_humans solo tiene 500 de las 45000), 
+        # nos quedamos solo con los image_id cuyo archivo existe de verdad en esa carpeta.
+        self.image_ids = [
+            img_id for img_id in all_images_ids
+            if os.path.isfile(
+                os.path.join(self.images_dir, self.coco.loadImgs(img_id)[0]["file_name"])
+            )
+        ]
+
+        n_total = len(all_images_ids)
+        n_encontradas = len(self.image_ids)
+        if n_encontradas < n_total:
+            print(
+                f"Aviso: de {n_total} imágenes en el JSON, solo se encontraron "
+                f"{n_encontradas} en '{self.images_dir}'. Se usarán solo esas."
+            )
 
         # Fashionpedia tiene category_id que no son consecutivos (hay huecos). Para la red neuronal necesitamos 1, 2, 3... sin huecos
         category_ids = sorted(self.coco.getCatIds())
@@ -135,7 +152,7 @@ class FashionpediaDataset(Dataset):
 
 if __name__ == "__main__":
     ANNOTATIONS_FILE = "dataset/instances_attributes_train2020.json"
-    IMAGES_DIR = "dataset/train"
+    IMAGES_DIR = "dataset/train_no_humans"
 
     dataset = FashionpediaDataset(IMAGES_DIR, ANNOTATIONS_FILE)
     print(f"El dataset tiene {len(dataset)} imágenes")
