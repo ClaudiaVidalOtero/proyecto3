@@ -16,15 +16,12 @@ from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 NUM_CLASSES = 47
 
 
-def get_device():
-    """
-    Selecciona automáticamente GPU si está disponible.
-    Si no hay GPU, utiliza CPU.
-    """
+import torch
 
+def get_device():
     if torch.cuda.is_available():
-        device = torch.device("cuda")
-        print("Usando GPU:", torch.cuda.get_device_name(0))
+        device = torch.device("cuda:0")
+        print(f"Usando GPU: {torch.cuda.get_device_name(0)}")
     else:
         device = torch.device("cpu")
         print("No se ha detectado GPU. Usando CPU.")
