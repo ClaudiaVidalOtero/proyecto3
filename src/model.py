@@ -32,7 +32,7 @@ def get_device():
     return device
 
 
-def get_model(num_classes=NUM_CLASSES):
+def get_model(num_classes=NUM_CLASSES, pretrained=True):
     """
     Crea un modelo Mask R-CNN preentrenado y sustituye
     las cabezas de clasificación y segmentación para
@@ -40,7 +40,7 @@ def get_model(num_classes=NUM_CLASSES):
     """
 
     # Modelo preentrenado
-    weights = MaskRCNN_ResNet50_FPN_V2_Weights.DEFAULT
+    weights = MaskRCNN_ResNet50_FPN_V2_Weights.DEFAULT if pretrained else None
 
     model = maskrcnn_resnet50_fpn_v2(
         weights=weights

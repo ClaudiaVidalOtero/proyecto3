@@ -42,10 +42,9 @@ class FashionpediaDataset(Dataset):
         """
         return len(self.image_ids)
 
-
     def __getitem__(self, idx):
         """
-        A partir de una imagen, construye su máscara. Devuelve la imagen y su máscara ya convertidas ambas a tensores
+        Devuelve una imagen y el target con el formato esperado por Mask R-CNN.
         """
         image_id = self.image_ids[idx]
         img_info = self.coco.loadImgs(image_id)[0]
@@ -55,38 +54,50 @@ class FashionpediaDataset(Dataset):
         image = Image.open(img_path).convert("RGB")
         image_np = np.array(image)
 
-        # constuye la mascara
-        mask = self._build_mask(img_info, image_id)
+        # Construye una máscara independiente para cada instancia anotada.
+        target = self._build_target(img_info, image_id)
 
-        # redimensiona la imagen para que todas tengan el mismo tamaño (necesario para la entrada del modelo)
+        # redimensiona la imagen para que todas tengan el mismo tamaño
         image_np = np.array(Image.fromarray(image_np).resize((self.image_size, self.image_size), Image.BILINEAR))
-        mask = np.array(Image.fromarray(mask).resize((self.image_size, self.image_size), Image.NEAREST))
 
         # convertimos a tensores de PyTorch
         # la imagen pasa de (alto, ancho, 3canales) a (3canales, alto, ancho), y de valores 0-255 a 0.0-1.0
         image_tensor = torch.from_numpy(image_np).permute(2, 0, 1).float() / 255.0
-        mask_tensor = torch.from_numpy(mask).long()
+        scale_x = self.image_size / img_info["width"]
+        scale_y = self.image_size / img_info["height"]
+        target["boxes"][:, [0, 2]] *= scale_x
+        target["boxes"][:, [1, 3]] *= scale_y
+        target["masks"] = torch.stack([
+            torch.from_numpy(
+                np.array(
+                    Image.fromarray(instance_mask).resize(
+                        (self.image_size, self.image_size), Image.NEAREST
+                    )
+                )
+            )
+            for instance_mask in target.pop("_masks")
+        ]).to(torch.uint8) if target["boxes"].shape[0] else torch.zeros(
+            (0, self.image_size, self.image_size), dtype=torch.uint8
+        )
+        target["area"] = target["masks"].flatten(1).sum(dim=1).to(torch.float32)
 
-        return image_tensor, mask_tensor
+        return image_tensor, target
 
 
-    def _build_mask(self, img_info, image_id):
+    def _build_target(self, img_info, image_id):
         """
-        A partir de las anotaciones de segmentación, construimos la máscara de una imagen
+        Construye el target de Mask R-CNN a partir de las anotaciones COCO.
         """
-        # construimos la máscara sobre una "imagen de zeros"
         height, width = img_info["height"], img_info["width"]
-        mask = np.zeros((height, width), dtype=np.uint8)
-
-        # cogemos todas las anotaciones (prendas de ropa) que aparecen en la imagen
         annotation_ids = self.coco.getAnnIds(imgIds=image_id)
         annotations = self.coco.loadAnns(annotation_ids)
-        # ordenamos de prenda más grande a prenda más pequeña por, si se solapan varias, seleccionamos la más grande para la máscara
-        annotations = sorted(annotations, key=lambda a: a.get("area", 0), reverse=True)
+
+        masks = []
+        labels = []
+        boxes = []
+        areas = []
 
         for annotation in annotations:
-            class_index = self.categoryid_to_index[annotation["category_id"]]
-
             # la segmentación puede venir como polígono (lista) o como RLE (dict)
             segmentation = annotation["segmentation"]
             if isinstance(segmentation, list):
@@ -97,11 +108,28 @@ class FashionpediaDataset(Dataset):
             else:
                 rle = segmentation
 
-            instance = coco_mask.decode(rle).astype(bool)
-            # pintamos esa zona segmentada con el id de la categoría
-            mask[instance] = class_index
+            instance_mask = coco_mask.decode(rle)
+            if instance_mask.ndim == 3:
+                instance_mask = np.any(instance_mask, axis=2)
+            instance_mask = instance_mask.astype(np.uint8)
+            rows, columns = np.where(instance_mask)
+            if rows.size == 0:
+                continue
 
-        return mask
+            masks.append(instance_mask)
+            labels.append(self.categoryid_to_index[annotation["category_id"]])
+            boxes.append([columns.min(), rows.min(), columns.max() + 1, rows.max() + 1])
+            areas.append(float(instance_mask.sum()))
+
+        return {
+            "boxes": torch.tensor(boxes, dtype=torch.float32).reshape(-1, 4),
+            "labels": torch.tensor(labels, dtype=torch.int64),
+            "masks": torch.empty((0, height, width), dtype=torch.uint8),
+            "image_id": torch.tensor([image_id], dtype=torch.int64),
+            "area": torch.tensor(areas, dtype=torch.float32),
+            "iscrowd": torch.zeros((len(masks),), dtype=torch.int64),
+            "_masks": masks,
+        }
 
 
 
@@ -115,15 +143,15 @@ if __name__ == "__main__":
     # seleccionar una imagen aleatoria para mostrar por pantalla
     random_idx = random.randint(0, len(dataset) - 1)
     print(f"Mostrando imagen con índice aleatorio: {random_idx}")
-    image_tensor, mask_tensor = dataset[random_idx]
+    image_tensor, target = dataset[random_idx]
 
-    print("Clases de prendas presentes en esta máscara:", mask_tensor.unique().tolist())
+    print("Clases de prendas presentes:", target["labels"].tolist())
 
     fig, axes = plt.subplots(1, 2, figsize=(10, 5))
 
     # convertimos el tensor de (C, H, W) a (H, W, C) para matplotlib
     image_display = image_tensor.permute(1, 2, 0).numpy()
-    mask_display = mask_tensor.numpy()
+    mask_display = target["masks"].sum(dim=0).numpy()
 
     axes[0].imshow(image_display)
     axes[0].set_title(f"Imagen (Índice {random_idx})")
