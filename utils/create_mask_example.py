@@ -1,5 +1,4 @@
 """
-probar_mascara.py
 Script para leer una imagen de Fashionpedia y construir su máscara de segmentación.
 
 """
