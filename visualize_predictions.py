@@ -1,13 +1,28 @@
-import argparse
 import os
+import random
 
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 import numpy as np
 import torch
 
 from src.dataset import FashionpediaDataset
 from src.model import get_model, NUM_CLASSES
+
+
+CHECKPOINT = "checkpoints/best.pth"
+IMAGES_DIR = "dataset/test_no_humans"
+ANNOTATIONS_FILE = "dataset/instances_test_no_humans.json"
+IMAGE_SIZE = 256          # el mismo que usamos al entrenar
+THRESHOLD = 0.3           # score mínimo para mostrar una predicción
+OUTPUT = "checkpoints/prediction_example.png"
+
+
+# 60 colores distintos (tab20 + tab20b + tab20c) para poder dar un color
+# fijo a cada clase: así "camisa" tiene el mismo color en la anotación
+# real y en la predicción, y se pueden comparar a simple vista.
+CLASS_COLORS = np.array(
+    [plt.get_cmap(name)(i)[:3] for name in ("tab20", "tab20b", "tab20c") for i in range(20)]
+)
 
 
 def load_checkpoint(path):
@@ -19,100 +34,111 @@ def load_checkpoint(path):
     return model
 
 
-def draw_instances(axis, image, boxes, labels, scores, names, masks=None, threshold=0.0):
-    axis.imshow(image)
-    for index, (box, label, score) in enumerate(zip(boxes, labels, scores)):
-        if score < threshold:
+def draw_instances(axis, image, labels, scores, names, masks, threshold=0.0, alpha=0.5):
+    """
+    Dibuja las máscaras de segmentación píxel a píxel sobre la imagen
+    y añadde la etiqueta (clase + score) en el centro de cada máscara
+    """
+    overlay = image.astype(np.float32).copy()
+
+    # nos quedamos con las instancias que superan el umbral, ordenadas de
+    # menor a mayor score, para que las más seguras se pinten encima
+    kept = [i for i in range(len(labels)) if scores[i] >= threshold]
+    kept = sorted(kept, key=lambda i: scores[i])
+
+    binary_masks = {}
+    for i in kept:
+        binary = masks[i] >= 0.5          # máscara binaria: True = píxel de la prenda
+        if not binary.any():
             continue
-        if masks is not None:
-            mask = masks[index]
-            axis.imshow(
-                np.ma.masked_where(mask < 0.5, mask),
-                cmap="jet",
-                alpha=0.35,
-                vmin=0,
-                vmax=1,
-            )
-        x_min, y_min, x_max, y_max = box
-        axis.add_patch(
-            patches.Rectangle(
-                (x_min, y_min),
-                x_max - x_min,
-                y_max - y_min,
-                fill=False,
-                edgecolor="lime",
-                linewidth=1.5,
-            )
-        )
+        binary_masks[i] = binary
+        color = CLASS_COLORS[int(labels[i]) % len(CLASS_COLORS)]
+        # mezcla del color con la imagen solo en los píxeles de la máscara
+        overlay[binary] = (1 - alpha) * overlay[binary] + alpha * color
+
+    axis.imshow(np.clip(overlay, 0, 1))
+
+    for i, binary in binary_masks.items():
+        color = CLASS_COLORS[int(labels[i]) % len(CLASS_COLORS)]
+        # contorno de la máscara
+        axis.contour(binary.astype(float), levels=[0.5], colors=[color], linewidths=1.2)
+        # etiqueta en el centro de la máscara
+        ys, xs = np.nonzero(binary)
         axis.text(
-            x_min,
-            y_min,
-            f"{names.get(int(label), int(label))} ({score:.2f})",
+            xs.mean(),
+            ys.mean(),
+            f"{names.get(int(labels[i]), int(labels[i]))} ({scores[i]:.2f})",
             color="white",
-            backgroundcolor="green",
+            backgroundcolor="black",
             fontsize=6,
+            ha="center",
+            va="center",
         )
     axis.axis("off")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Visualiza una prediccion de Mask R-CNN.")
-    parser.add_argument("--checkpoint", default="checkpoints/best.pth")
-    parser.add_argument("--index", type=int, default=0)
-    parser.add_argument("--image-size", type=int, default=64)
-    parser.add_argument("--threshold", type=float, default=0.3)
-    parser.add_argument("--output", default="checkpoints/prediction_example.png")
-    args = parser.parse_args()
-
+    # cargamos imágenes del dataset
     dataset = FashionpediaDataset(
-        "dataset/test",
-        "dataset/instances_attributes_val2020.json",
-        image_size=args.image_size,
+        IMAGES_DIR,
+        ANNOTATIONS_FILE,
+        image_size=IMAGE_SIZE,
     )
-    if not 0 <= args.index < len(dataset):
-        raise IndexError(f"--index debe estar entre 0 y {len(dataset) - 1}")
+    if len(dataset) == 0:
+        raise RuntimeError(f"El dataset está vacío. Revisa IMAGES_DIR y ANNOTATIONS_FILE.")
 
-    image_tensor, target = dataset[args.index]
-    model = load_checkpoint(args.checkpoint)
+    # seleccionamos imagen aleatoria
+    index = random.randint(0, len(dataset) - 1)
+    print(f"Imagen elegida: índice {index} (de {len(dataset)})")
+    image_tensor, target = dataset[index]
+
+    # cargamos el checkpoint del modelo
+    model = load_checkpoint(CHECKPOINT)
     with torch.no_grad():
         prediction = model([image_tensor])[0]
 
+    # obtenemos nombres de categorías ("shirt". "pants"...) a partir de los números (23, 15...)
     names = {
-        index: dataset.coco.loadCats(category_id)[0]["name"]
-        for category_id, index in dataset.categoryid_to_index.items()
+        class_index: dataset.coco.loadCats(category_id)[0]["name"]
+        for category_id, class_index in dataset.categoryid_to_index.items()
     }
+
+    # adaptamos formato de tensores a numpy (CANALES, ALTO, ANCHO) -> (ALTO, ANCHO, CANALES)
     image = image_tensor.permute(1, 2, 0).numpy()
     figure, axes = plt.subplots(1, 2, figsize=(12, 6))
+
+    # dibuja máscara real
     draw_instances(
         axes[0],
         image,
-        target["boxes"].numpy(),
         target["labels"].numpy(),
         np.ones(len(target["labels"])),
         names,
         masks=target["masks"].numpy(),
     )
-    axes[0].set_title("Anotaciones reales")
+    axes[0].set_title(f"Anotaciones reales (índice {index})")
+
+    # dibuja máscar predicha por el modelo
     draw_instances(
         axes[1],
         image,
-        prediction["boxes"].numpy(),
         prediction["labels"].numpy(),
         prediction["scores"].numpy(),
         names,
         masks=prediction["masks"].squeeze(1).numpy(),
-        threshold=args.threshold,
+        threshold=THRESHOLD,
     )
-    axes[1].set_title(f"Prediccion (score >= {args.threshold})")
+    axes[1].set_title(f"Predicción (score >= {THRESHOLD})")
     figure.tight_layout()
 
-    output_dir = os.path.dirname(args.output)
+    # guarda la imagen de las máscaras en disco
+    output_dir = os.path.dirname(OUTPUT)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
-    figure.savefig(args.output, dpi=150)
-    print(f"Imagen guardada en: {args.output}")
+    figure.savefig(OUTPUT, dpi=150)
+    print(f"Imagen guardada en: {OUTPUT}")
     print(f"Detecciones totales: {len(prediction['scores'])}")
-    print(f"Detecciones mostradas: {(prediction['scores'] >= args.threshold).sum().item()}")
+    print(f"Detecciones mostradas: {(prediction['scores'] >= THRESHOLD).sum().item()}")
     plt.show()
 
 
