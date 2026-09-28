@@ -154,12 +154,12 @@ def main() -> None:
 
     train_dataset = FashionpediaDataset(
         "dataset/train",
-        "dataset/instances_attributes_train2020.json",
+        "dataset/instances_train_no_humans.json",
         image_size=args.image_size,
     )
     val_dataset = FashionpediaDataset(
-        "dataset/test",
-        "dataset/instances_attributes_val2020.json",
+        "dataset/test_no_humans",
+        "dataset/instances_test_no_humans.json",
         image_size=args.image_size,
     )
 
