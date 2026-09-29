@@ -13,6 +13,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+# Añadimos la raíz del proyecto (carpeta padre de utils/) 
+# al path para que funcionen los imports de src
+import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
+
 from src.dataset import FashionpediaDataset
 from src.model import get_model, NUM_CLASSES
 
