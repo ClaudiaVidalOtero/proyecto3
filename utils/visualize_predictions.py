@@ -1,3 +1,11 @@
+"""
+Muestra por pantalla la segmentación generada por el modelo 
+sobre una imagen aleatoria del dataset, al lado de
+la segmentación real (ground truth) de la misma imagen.
+
+"""
+
+
 import os
 import random
 

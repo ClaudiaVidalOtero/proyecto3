@@ -1,3 +1,12 @@
+"""
+Calcula y muestra por pantalla estadísticas sobre el dataset 
+(número de imágenes, de clases, de instancias por clase...)
+
+"""
+
+
+
+
 from pathlib import Path
 from collections import Counter
 

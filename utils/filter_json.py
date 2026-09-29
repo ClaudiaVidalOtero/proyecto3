@@ -1,6 +1,6 @@
 """
 Crea un JSON de anotaciones reducido, quedándose solo con las imágenes
-que existen en una carpeta (por ejemplo train_no_humans).
+que existen en una carpeta subset del dataset original (por ejemplo train_no_humans).
 
 El JSON original no se modifica, se escribe uno nuevo.
 """
