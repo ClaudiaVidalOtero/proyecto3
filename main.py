@@ -5,6 +5,9 @@ Pipeline principal que carga el dataset y el modelo e inicia el entrenamiento de
 
 
 
+import torch
+from torch.utils.data import Subset
+
 from src.dataset import FashionpediaDataset
 from src.model import NUM_CLASSES, get_device, get_model
 from src.train import parse_args, train_model
@@ -17,17 +20,20 @@ if __name__ == "__main__":
     args = parse_args()
     device = get_device()
 
-    # carga los datasets de train y val/test
-    train_dataset = FashionpediaDataset(
+    # cargamos el dataset completo
+    dataset = FashionpediaDataset(
         "dataset/train",
-        "dataset/instances_train_no_humans.json",
+        "dataset/instances_train_not_humans.json",
         image_size=args.image_size,
     )
-    val_dataset = FashionpediaDataset(
-        "dataset/test_no_humans",
-        "dataset/instances_test_no_humans.json",
-        image_size=args.image_size,
-    )
+
+    # el conjunto de validación es una partición de train
+    n_val = int(0.10 * len(dataset))
+    n_train = len(dataset) - n_val
+    shuffled_index = torch.randperm(len(dataset), generator=torch.Generator().manual_seed(42)).tolist()
+    train_dataset = Subset(dataset, shuffled_index[:n_train])
+    val_dataset = Subset(dataset, shuffled_index[n_train:])
+
 
     # carga el modelo preentrenado Mask R-CNN
     model = get_model(num_classes=NUM_CLASSES, pretrained=not args.no_pretrained)
