@@ -20,11 +20,18 @@ from src.dataset import FashionpediaDataset
 from src.model import get_model, NUM_CLASSES
 
 
-def recolor_hsv(image_rgb, binary_mask, new_hue_degrees):
+def recolor_hsv(image_rgb, binary_mask, new_hue_degrees, min_saturation=120, min_value=60):
     """
     image_rgb: array (H, W, 3), valores 0-255, en RGB
     binary_mask: array (H, W), True/1 donde está la prenda a recolorear
     new_hue_degrees: el tono nuevo deseado, en grados (0-360),(0=rojo, 120=verde, 240=azul...)
+    min_saturation: saturación mínima dentro de la máscara (0-255). Si
+                     la prenda es blanca/gris, S es casi 0 y el cambio
+                     de tono no se nota, así que forzamos un mínimo.
+    min_value: brillo mínimo dentro de la máscara (0-255). Si la prenda
+               es negra, V es casi 0, por lo que el píxel
+               se ve negro sea cual sea su tono o saturación.    
+    
     """
     image_hsv = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2HSV).astype(np.int32)
 
@@ -36,6 +43,22 @@ def recolor_hsv(image_rgb, binary_mask, new_hue_degrees):
     # S (saturación) y V (brillo) se quedan exactamente igual que en
     # la foto original para conservar pliegues y sombras.
     image_hsv[:, :, 0] = np.where(binary_mask, new_hue_opencv, image_hsv[:, :, 0])
+
+    # si la saturación ya es alta, se deja igual (np.maximum no la baja,
+    # solo la sube si estaba por debajo del mínimo). Esto conserva la
+    # variación de saturación original en prendas que ya tenían color,
+    # y solo "rescata" las zonas casi sin saturación (blancas/grises).
+    current_saturation = image_hsv[:, :, 1]
+    boosted_saturation = np.maximum(current_saturation, min_saturation)
+    image_hsv[:, :, 1] = np.where(binary_mask, boosted_saturation, current_saturation)
+
+    # para value (brillo) hacemos igual que con saturación, pero con 
+    # un mínimo más bajo. No queremos aclarar demasiado una prenda negra 
+    # (perderíamos los pliegues oscuros, que son justo la textura que queremos conservar)
+    current_value = image_hsv[:, :, 2]
+    boosted_value = np.maximum(current_value, min_value)
+    image_hsv[:, :, 2] = np.where(binary_mask, boosted_value, current_value)
+
 
     image_hsv = image_hsv.astype(np.uint8)
     image_recolored = cv2.cvtColor(image_hsv, cv2.COLOR_HSV2RGB)
@@ -59,7 +82,7 @@ if __name__ == "__main__":
     ANNOTATIONS_FILE = "dataset/instances_provisional_test_no_humans.json"
     IMAGE_SIZE = 256
     SCORE_THRESHOLD = 0.5
-    NEW_HUE = 240      # 0=rojo, 120=verde, 240=azul...
+    NEW_HUE = 120      # 0=rojo, 120=verde, 240=azul...
 
 
     dataset = FashionpediaDataset(IMAGES_DIR, ANNOTATIONS_FILE, image_size=IMAGE_SIZE)
@@ -88,11 +111,11 @@ if __name__ == "__main__":
     if n_detecciones == 0:
         print("Ninguna detección supera el umbral; prueba a bajar SCORE_THRESHOLD o cambiar INDEX.")
 
-    print("Píxeles marcados en la máscara combinada:", combined_mask.sum())
+    # print("Píxeles marcados en la máscara combinada:", combined_mask.sum())
 
-    image_hsv_check = cv2.cvtColor(image_np, cv2.COLOR_RGB2HSV)
-    saturacion_media = image_hsv_check[:, :, 1][combined_mask].mean()
-    print("Saturación media dentro de la máscara:", saturacion_media)
+    # image_hsv_check = cv2.cvtColor(image_np, cv2.COLOR_RGB2HSV)
+    # saturacion_media = image_hsv_check[:, :, 1][combined_mask].mean()
+    # print("Saturación media dentro de la máscara:", saturacion_media)
 
     image_recolored = recolor_hsv(image_np, combined_mask, NEW_HUE)
 
