@@ -6,8 +6,8 @@ Entrena el clasificador binario "human" vs "not_human".
 import torch
 import torch.nn as nn
 
-from dataset import get_dataloaders
-from model import get_device, get_model
+from data.dataset import get_dataloaders
+from model.model import get_device, get_model
 
 
 DATA_DIR = "dataset/dataset human_classificator"

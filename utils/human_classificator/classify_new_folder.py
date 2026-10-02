@@ -10,8 +10,8 @@ import shutil
 import torch
 from PIL import Image
 
-from dataset import get_transforms
-from model import get_device, get_model
+from data.dataset import get_transforms
+from model.model import get_device, get_model
 
 
 

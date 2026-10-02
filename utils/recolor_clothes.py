@@ -16,8 +16,8 @@ import random
 # al path para que funcionen los imports de src
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
-from src.dataset import FashionpediaDataset
-from src.model import get_model, NUM_CLASSES
+from data.dataset import FashionpediaDataset
+from model.model import get_model, NUM_CLASSES
 
 
 def recolor_hsv(image_rgb, binary_mask, new_hue_degrees):
