@@ -22,8 +22,8 @@ from src.model import get_model, NUM_CLASSES
 
 
 CHECKPOINT = "checkpoints/best.pth"
-IMAGES_DIR = "dataset/test_no_humans"
-ANNOTATIONS_FILE = "dataset/instances_test_no_humans.json"
+IMAGES_DIR = "dataset/provisional_test_no_humans"
+ANNOTATIONS_FILE = "dataset/instances_provisional_test_no_humans.json"
 IMAGE_SIZE = 256          # el mismo que usamos al entrenar
 THRESHOLD = 0.3           # score mínimo para mostrar una predicción
 OUTPUT = "checkpoints/prediction_example.png"
