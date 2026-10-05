@@ -1,136 +1,135 @@
 """
-Cambia el color de una prenda segmentada por el modelo Mask R-CNN
-ya entrenado, modificando solo el canal H (tono) en el espacio de color
-HSV, y dejando S y V intactos para conservar pliegues, sombras y brillos.
+Recolorea una prenda usando Stable Diffusion Inpainting. La máscara que se le pasa al modelo generativo 
+es la que produce nuestro pipeline Mask R-CNN + SAM2.
 
 """
 
-import cv2
 import numpy as np
 import torch
 from PIL import Image
 import matplotlib.pyplot as plt
-import random
-
-# añadimos la raíz del proyecto (carpeta padre de utils/) 
-# al path para que funcionen los imports de src
-import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
+from diffusers import StableDiffusionInpaintPipeline
 
 from src.dataset import FashionpediaDataset
 from src.model import get_model, NUM_CLASSES
+from refine_edges import refine_with_sam2
 
 
-def recolor_hsv(image_rgb, binary_mask, new_hue_degrees, target_saturation=200, target_value=220, min_value_floor=40):
-    """
-    image_rgb: array (H, W, 3), valores 0-255, en RGB
-    binary_mask: array (H, W), True/1 donde está la prenda a recolorear
-    new_hue_degrees: el tono nuevo deseado, en grados (0-360),(0=rojo, 120=verde, 240=azul...)  
-    target_saturation: saturación (0-255) del color elegido. Se aplica
-                        FIJA a toda la máscara: así el tono se ve
-                        consistente en toda la prenda, no solo "rescatado"
-                        en las zonas que ya tenían algo de saturación.
-    target_value: brillo (0-255) del color elegido. El píxel MÁS
-                   brillante de la prenda pasará a valer exactamente
-                   este valor -> ahí es donde verás el color "puro"
-                   que elegiste. El resto de píxeles se reescalan
-                   proporcionalmente por debajo, conservando pliegues
-                   y sombras relativas al nuevo color, en vez de a los
-                   originales.
-    min_value_floor: brillo mínimo absoluto, para que las sombras más
-                      profundas no lleguen a negro puro (donde no hay
-                      color que mostrar, como vimos con prendas oscuras).
-    
-    """
-    image_hsv = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2HSV).astype(np.int32)
+CHECKPOINT = "checkpoints/best.pth"
+IMAGES_DIR = "dataset/provisional_test_no_humans"
+ANNOTATIONS_FILE = "dataset/instances_provisional_test_no_humans.json"
+IMAGE_SIZE = 256
+INDEX = 45
 
-    # en OpenCV, el canal H va de 0 a 179 (no de 0 a 359 como en teoría),
-    # por eso hay que dividir entre 2 el valor en grados.
-    new_hue_opencv = int(new_hue_degrees / 2)
-
-    current_value = image_hsv[:, :, 2]
-
-    # el punto más brillante dentro de la máscara pasa a valer target_value; 
-    # el resto se reescala proporcionalmente respecto a ese máximo, 
-    # así que las sombras siguen siendo "más oscuras que el punto más iluminado", 
-    # pero ahora medidas sobre el color nuevo, no sobre el color original.
-    mask_values = current_value[binary_mask]
-    max_value = mask_values.max() if mask_values.size > 0 else 255
-    normalized_value = current_value / max_value          # 0.0 a 1.0, 1.0 = el más brillante
-    new_value = normalized_value * target_value
-    new_value = np.maximum(new_value, min_value_floor)     # evita sombras en negro absoluto
-
-    image_hsv[:, :, 0] = np.where(binary_mask, new_hue_opencv, image_hsv[:, :, 0])
-    image_hsv[:, :, 1] = np.where(binary_mask, target_saturation, image_hsv[:, :, 1])
-    image_hsv[:, :, 2] = np.where(binary_mask, new_value, current_value)
-
-    image_hsv = image_hsv.astype(np.uint8)
-    image_recolored = cv2.cvtColor(image_hsv, cv2.COLOR_HSV2RGB)
-
-    return image_recolored
+SD_MODEL_ID = "stable-diffusion-v1-5/stable-diffusion-inpainting"
+SD_SIZE = 512          # Stable Diffusion trabaja en múltiplos de 8. 512 es el tamaño estándar
+# el modelo entiende mejor en los prompts en inglés
+PROMPT_TEMPLATE = "a {color} {name}, photorealistic, same fabric texture, studio photo"
+NEGATIVE_PROMPT = "blurry, deformed, extra limbs, low quality, cartoon"
+COLOR_NAME = "red"     # el color que quieres pedirle al modelo
+NUM_INFERENCE_STEPS = 30
+GUIDANCE_SCALE = 7.5
 
 
-def load_checkpoint(path):
+def load_mask_rcnn(checkpoint_path):
     model = get_model(num_classes=NUM_CLASSES, pretrained=False)
-    checkpoint = torch.load(path, map_location="cpu", weights_only=True)
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     state_dict = checkpoint.get("model_state_dict", checkpoint)
     model.load_state_dict(state_dict)
     model.eval()
     return model
 
 
-if __name__ == "__main__":
+def mask_to_sd_input(binary_mask, target_size):
+    """
+    Convierte una máscara booleana (H, W) al formato que espera
+    Stable Diffusion. Una imagen en escala de grises,
+    blanco (255) = repintar aquí, negro (0) = conservar tal cual.
+    Se redimensiona a SD_SIZE con interpolación NEAREST, para no "difuminar" el
+    borde de la máscara al cambiar de tamaño.
+    """
+    mask_uint8 = (binary_mask.astype(np.uint8)) * 255
+    mask_img = Image.fromarray(mask_uint8).resize((target_size, target_size), Image.NEAREST)
+    return mask_img
 
-    CHECKPOINT = "checkpoints/best.pth"
-    IMAGES_DIR = "dataset/provisional_test_no_humans"
-    ANNOTATIONS_FILE = "dataset/instances_provisional_test_no_humans.json"
-    IMAGE_SIZE = 256
-    SCORE_THRESHOLD = 0.5
-    NEW_HUE = 120      # 0=rojo, 120=verde, 240=azul...
 
+def main():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Usando dispositivo: {device}")
 
+    # Mask R-CNN
     dataset = FashionpediaDataset(IMAGES_DIR, ANNOTATIONS_FILE, image_size=IMAGE_SIZE)
-    indx = random.randint(0, len(dataset)-1)      # escoge una imagen aleatoria del dataset
-    image_tensor, _ = dataset[indx]
-
-    model = load_checkpoint(CHECKPOINT)
-    with torch.no_grad():
-        prediction = model([image_tensor])[0]
-
-    scores = prediction["scores"].numpy()
-    masks = prediction["masks"].squeeze(1).numpy()  # (N, H, W), valores de probabilidad 0-1
-
-    # recoloreamos la imagen en la escala que usó el modelo (256x256)
+    image_tensor, _ = dataset[INDEX]
     image_np = (image_tensor.permute(1, 2, 0).numpy() * 255).astype(np.uint8)
 
-    # de momento recoloreamos todas las prendas detectadas
-    combined_mask = np.zeros(masks.shape[1:], dtype=bool)
-    n_detecciones = 0
-    for i in range(len(scores)):
-        if scores[i] >= SCORE_THRESHOLD:
-            combined_mask |= (masks[i] >= 0.5)
-            n_detecciones += 1
+    mask_rcnn = load_mask_rcnn(CHECKPOINT)
+    with torch.no_grad():
+        model_output = mask_rcnn([image_tensor])[0]
 
-    print(f"Prendas detectadas (score >= {SCORE_THRESHOLD}): {n_detecciones}")
-    if n_detecciones == 0:
-        print("Ninguna detección supera el umbral; prueba a bajar SCORE_THRESHOLD o cambiar INDEX.")
+    label2name = {
+        class_index: dataset.coco.loadCats(category_id)[0]["name"]
+        for category_id, class_index in dataset.categoryid_to_index.items()
+    }
 
-    image_recolored = recolor_hsv(image_np, combined_mask, NEW_HUE)
+    # refinar bordes con SAM 2 y agrupar (prenda + partes - cierres)
+    from sam2.sam2_image_predictor import SAM2ImagePredictor
+    sam2_predictor = SAM2ImagePredictor.from_pretrained("facebook/sam2-hiera-large")
 
-    # mostramos el resultado
+    _, prendas, _ = refine_with_sam2(model_output, image_np, sam2_predictor, label2name)
+
+    if len(prendas) == 0:
+        print("SAM2 + Mask R-CNN no encontraron ninguna prenda clara en esta imagen.")
+        print("Prueba a cambiar INDEX, o baja score_prenda en refinar_con_sam2.")
+        return
+
+    prenda = prendas[0]  # la de mayor score; cambia el índice si quieres otra
+    print(f"Prenda elegida: {prenda['name']} (score={prenda['score']:.2f}, "
+          f"partes={prenda['partes']}, cierres restados={prenda['cierres']})")
+
+    # transforma imagen y máscara al tamaño que espera Stable Diffusion
+    image_pil = Image.fromarray(image_np).resize((SD_SIZE, SD_SIZE), Image.BILINEAR)
+    mask_pil = mask_to_sd_input(prenda["mask"], SD_SIZE)
+
+    # cargar el pipeline de inpainting y generar
+    print("\nCargando Stable Diffusion Inpainting (puede tardar la primera vez)...")
+    dtype = torch.float16 if device.type == "cuda" else torch.float32
+    pipe = StableDiffusionInpaintPipeline.from_pretrained(SD_MODEL_ID, torch_dtype=dtype)
+    pipe = pipe.to(device)
+    pipe.enable_attention_slicing()  # reduce memoria, a costa de algo de velocidad
+
+    prompt = PROMPT_TEMPLATE.format(color=COLOR_NAME, name=prenda["name"])
+    print(f"Prompt: {prompt}")
+
+    generator = torch.Generator(device=device).manual_seed(42)
+    result = pipe(
+        prompt=prompt,
+        negative_prompt=NEGATIVE_PROMPT,
+        image=image_pil,
+        mask_image=mask_pil,
+        num_inference_steps=NUM_INFERENCE_STEPS,
+        guidance_scale=GUIDANCE_SCALE,
+        generator=generator,
+    ).images[0]
+
+    # mostramos resultado
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    axes[0].imshow(image_np)
-    axes[0].set_title(f"Original (índice {indx})")
+    axes[0].imshow(image_pil)
+    axes[0].set_title(f"Original (índice {INDEX})")
     axes[0].axis("off")
 
-    axes[1].imshow(combined_mask, cmap="gray")
-    axes[1].set_title("Máscara predicha por el modelo")
+    axes[1].imshow(mask_pil, cmap="gray")
+    axes[1].set_title(f"Máscara refinada ({prenda['name']})")
     axes[1].axis("off")
 
-    axes[2].imshow(image_recolored)
-    axes[2].set_title(f"Recoloreado (H={NEW_HUE}°)")
+    axes[2].imshow(result)
+    axes[2].set_title(f"Recoloreado: '{COLOR_NAME}'")
     axes[2].axis("off")
 
     plt.tight_layout()
-    plt.savefig("prueba_recoloreado.png", dpi=150)
-    print("Guardado en prueba_recoloreado.png")
+    plt.savefig("prueba_recoloreado_diffusion.png", dpi=150)
+    print("Guardado en prueba_recoloreado_diffusion.png")
     plt.show()
+
+
+if __name__ == "__main__":
+    main()
