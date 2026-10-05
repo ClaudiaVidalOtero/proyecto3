@@ -8,6 +8,7 @@ Punto de entrada único.
     python main.py segment --n 5 --no-sam
     python main.py segment --input foto.jpg      # una imagen concreta
     python main.py segment --input carpeta/ --no-sam
+    python main.py recolor --hue 240
 """
 # =====================================================================
 # CÓMO EJECUTAR (desde la raíz del proyecto, con el .venv activado)
@@ -50,7 +51,17 @@ Punto de entrada único.
 #   SAM 2 hay que instalarlo una vez:
 #     pip install git+https://github.com/facebookresearch/sam2.git
 #
-# 4) ENTRENAR (¡cuidado!: reanuda desde checkpoints/last.pth y sobrescribe
+# 4) RECOLOREAR PRENDAS (cambia solo el tono H en HSV; conserva sombras y pliegues)
+#   python main.py recolor                      # 3 imágenes aleatorias de test, verde
+#   python main.py recolor --hue 240 --n 5      # azul
+#   python main.py recolor --pick               # selector visual de color con vista previa en vivo
+#   python main.py recolor --prenda dress       # solo vestidos
+#   python main.py recolor --input foto.jpg --hue 0 --sat 220 --val 230
+#   (siempre usa Mask R-CNN + SAM 2)
+#   -> outputs/recolor/
+#      <nombre>_h<hue>.png y <nombre>_h<hue>_compare.png
+#
+# 5) ENTRENAR (¡cuidado!: reanuda desde checkpoints/last.pth y sobrescribe
 #    last.pth / best.pth. Haz copia de tus checkpoints antes)
 #   python main.py train
 #
@@ -256,6 +267,92 @@ def cmd_segment(args):
     print("Resultados en", out_dir)
 
 
+# ------------------------------------------------------------------ recolor
+def cmd_recolor(args):
+    """Segmenta las prendas (Mask R-CNN + SAM 2) y cambia su tono en HSV.
+
+    Sin --input: elige --n imágenes aleatorias del test (como segment).
+    """
+    import re
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from PIL import Image
+
+    if args.pick:   # main.py arranca con backend "Agg" (sin ventanas): cambiamos a uno interactivo
+        try:
+            plt.switch_backend("TkAgg")
+        except Exception as e:
+            raise SystemExit(f"ERROR: no se pudo abrir una ventana interactiva ({e}). "
+                             "Instala tkinter o usa --hue sin --pick.")
+
+    from src.dataset import load_label_map
+    from src.model import get_device, load_model
+    from src.pipeline import check_categories, load_sam, segmentar_prendas
+    from src.recolor import SelectorColor, recolor_hsv
+    from src.viz import overlay
+
+    label2name = load_label_map()
+    check_categories(label2name)
+
+    device = get_device()
+    model = load_model(args.checkpoint, device).eval()
+    predictor = load_sam(device.type)      # el recolor siempre usa SAM 2
+
+    modo_aleatorio = args.input is None
+    paths = _rutas_aleatorias_test(args.n) if modo_aleatorio else _rutas_desde_input(args.input)
+    comparar = args.compare or modo_aleatorio
+    print(f"{len(paths)} imagen(es) {'aleatorias del test' if modo_aleatorio else 'de la ruta indicada'}")
+
+    out_dir = os.path.join(C.OUTPUT_DIR, "recolor")
+    hue, sat, val = args.hue, args.sat, args.val     # con --pick se van recordando entre imágenes
+    os.makedirs(out_dir, exist_ok=True)
+
+    for path in paths:
+        stem = os.path.splitext(os.path.basename(path))[0]
+        img = np.array(Image.open(path).convert("RGB"))
+        prendas = segmentar_prendas(model, predictor, img, device, label2name, usar_sam=True)
+        if args.prenda:
+            prendas = [p for p in prendas if args.prenda.lower() in p["nombre"].lower()]
+
+        if not prendas:
+            print(f"{os.path.basename(path)}: ninguna prenda detectada"
+                  + (f" que coincida con '{args.prenda}'" if args.prenda else ""))
+            continue
+
+        if args.pick:
+            elegido = SelectorColor(img, prendas, hue, sat, val).mostrar()
+            if elegido is None:
+                print(f"{os.path.basename(path)}: saltada")
+                continue
+            hue, sat, val = elegido
+
+        # Cada prenda se recolorea con su propia máscara (su punto más brillante
+        # se calcula por separado) y se mezcla con la máscara suave (alpha).
+        resultado = img
+        for p in prendas:
+            resultado = recolor_hsv(resultado, p["mask_final"], hue,
+                                    target_saturation=sat, target_value=val,
+                                    alpha=p["alpha"])
+
+        Image.fromarray(resultado).save(f"{out_dir}/{stem}_h{hue}.png")
+
+        if comparar:
+            fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+            axes[0].imshow(img); axes[0].set_title("Original")
+            axes[1].imshow(overlay(img, [p["mask_final"] for p in prendas])); axes[1].set_title("Prendas segmentadas")
+            axes[2].imshow(resultado); axes[2].set_title(f"Recoloreado (H={hue}°)")
+            for ax in axes:
+                ax.axis("off")
+            fig.tight_layout()
+            fig.savefig(f"{out_dir}/{stem}_h{hue}_compare.png", dpi=110)
+            plt.close(fig)
+
+        print(f"{os.path.basename(path)}: recoloreadas {', '.join(p['nombre'] for p in prendas)}")
+
+    print("Resultados en", out_dir)
+
+
 # ------------------------------------------------------------------ CLI
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -282,6 +379,20 @@ def main():
     p.add_argument("--compare", action="store_true",
                    help="Guarda también original | Mask R-CNN | final (siempre activo sin --input)")
     p.set_defaults(func=cmd_segment)
+
+    p = sub.add_parser("recolor", help="Cambiar el color de las prendas (tono HSV)")
+    p.add_argument("--input", default=None,
+                   help="Imagen o carpeta. Si se omite, imágenes aleatorias del test")
+    p.add_argument("--n", type=int, default=3, help="Nº de imágenes aleatorias sin --input (por defecto 3)")
+    p.add_argument("--hue", type=int, default=120, help="Tono en grados: 0=rojo, 120=verde, 240=azul (por defecto 120)")
+    p.add_argument("--sat", type=int, default=200, help="Saturación 0-255 (por defecto 200)")
+    p.add_argument("--val", type=int, default=220, help="Brillo del punto más claro 0-255 (por defecto 220)")
+    p.add_argument("--pick", action="store_true",
+                   help="Abre un selector visual de color (barra de tonos + sliders + vista previa en vivo) por imagen")
+    p.add_argument("--prenda", default=None, help="Solo recolorear prendas cuyo nombre contenga este texto (p. ej. dress)")
+    p.add_argument("--checkpoint", default=DEFAULT_CKPT)
+    p.add_argument("--compare", action="store_true", help="Guarda también original | prendas | recoloreado (siempre sin --input)")
+    p.set_defaults(func=cmd_recolor)
 
     args = parser.parse_args()
     args.func(args)
