@@ -23,7 +23,7 @@ import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).parent.parent
 
 from src.dataset import FashionpediaDataset
 from src.model import get_model, NUM_CLASSES
-from utils.refine_edges import refinar_con_sam2
+from refine_edges import refine_with_sam2
 
 
 CHECKPOINT = "checkpoints/best.pth"
@@ -115,7 +115,7 @@ def main():
         model_output = model([tensor])[0]
 
     # SAM 2 refina y se agrupan las prendas (prenda + partes - cierres)
-    _, prendas, instancias = refinar_con_sam2(
+    _, prendas, instancias = refine_with_sam2(
         model_output, image, predictor, names,
         score_prenda=SCORE_PRENDA, score_otras=SCORE_OTRAS,
     )
