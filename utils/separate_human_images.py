@@ -1,3 +1,10 @@
+"""
+Clasificador sencillo que divide las imágenes del dataset en dos clases:
+imágenes en las que aparecen humanos e imágenes en las que no aparecen humanos.
+
+"""
+
+
 import argparse
 import csv
 import shutil

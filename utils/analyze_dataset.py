@@ -1,3 +1,12 @@
+"""
+Calcula y muestra por pantalla estadísticas sobre el dataset 
+(número de imágenes, de clases, de instancias por clase...)
+
+"""
+
+
+
+
 from pathlib import Path
 from collections import Counter
 
@@ -5,11 +14,8 @@ import json
 import matplotlib.pyplot as plt
 
 
-# path del directorio base y del dataset
-BASE_DIR = Path(__file__).resolve().parent
-DATASET_DIR = BASE_DIR / "dataset"
-
-ANNOTATIONS_FILE = DATASET_DIR / "instances_attributes_train2020.json"
+# path del dataset
+ANNOTATIONS_FILE = "dataset/instances_attributes_train2020.json"
 
 
 # Cargamos las anotaciones del dataset
