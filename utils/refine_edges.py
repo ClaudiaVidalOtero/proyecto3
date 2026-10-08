@@ -20,12 +20,12 @@ CIERRES = {"zipper", "buckle", "rivet", "bead", "sequin", "applique"}
 
 
 def contenido_en(a, b):
-    """Fracción de la máscara `a` que cae dentro de la máscara `b`."""
+    """Fracción de la máscara 'a' que cae dentro de la máscara 'b'."""
     return (a & b).sum() / max(a.sum(), 1)
 
 
 @torch.no_grad()
-def refinar_con_sam2(
+def refine_with_sam2(
     model_output,
     image,
     predictor,
@@ -104,4 +104,3 @@ def refinar_con_sam2(
         refined_image[m] = ((1 - alpha) * refined_image[m] + alpha * np.array(color)).astype(np.uint8)
 
     return refined_image, prendas, instancias
-
