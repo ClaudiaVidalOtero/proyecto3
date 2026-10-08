@@ -10,6 +10,10 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from diffusers import StableDiffusionInpaintPipeline
 
+# Añadimos la raíz del proyecto (carpeta padre de utils/)
+# al path para que funcionen los imports de src y utils
+import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
+
 from src.dataset import FashionpediaDataset
 from src.model import get_model, NUM_CLASSES
 from refine_edges import refine_with_sam2
@@ -27,8 +31,8 @@ SD_SIZE = 512          # Stable Diffusion trabaja en múltiplos de 8. 512 es el 
 PROMPT_TEMPLATE = "a {color} {name}, photorealistic, same fabric texture, studio photo"
 NEGATIVE_PROMPT = "blurry, deformed, extra limbs, low quality, cartoon"
 COLOR_NAME = "red"     # el color que quieres pedirle al modelo
-NUM_INFERENCE_STEPS = 30
-GUIDANCE_SCALE = 7.5
+NUM_INFERENCE_STEPS = 12
+GUIDANCE_SCALE = 15
 
 
 def load_mask_rcnn(checkpoint_path):
@@ -73,7 +77,10 @@ def main():
 
     # refinar bordes con SAM 2 y agrupar (prenda + partes - cierres)
     from sam2.sam2_image_predictor import SAM2ImagePredictor
-    sam2_predictor = SAM2ImagePredictor.from_pretrained("facebook/sam2-hiera-large")
+    sam2_predictor = SAM2ImagePredictor.from_pretrained(
+        "facebook/sam2-hiera-large",
+        device=device.type,
+    )
 
     _, prendas, _ = refine_with_sam2(model_output, image_np, sam2_predictor, label2name)
 
