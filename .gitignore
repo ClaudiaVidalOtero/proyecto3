@@ -221,3 +221,5 @@ dataset/
 resultado/
 checkpoints/
 outputs/
+
+src/config.py
