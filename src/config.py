@@ -7,7 +7,7 @@ DATA_DIR = REPO / "dataset"
 
 TRAIN_IMAGES_DIR = str(DATA_DIR / "train_classified" / "not_human")
 TRAIN_ANNOTATIONS = str(DATA_DIR / "instances_no_humans.json")
-TEST_IMAGES_DIR = str(DATA_DIR / "not_human_test")
+TEST_IMAGES_DIR = str(DATA_DIR / "train_classified" / "not_human_test")
 TEST_ANNOTATIONS = str(DATA_DIR / "instances_test_no_humans.json")
 
 CHECKPOINT_DIR = str(REPO / "checkpoints")   # best.pth y last.pth
@@ -42,3 +42,52 @@ SCORE_THRESHOLD = 0.5
 SAM2_MODEL_ID = "facebook/sam2.1-hiera-large"   # más ligero: facebook/sam2.1-hiera-base-plus
 SCORE_PRENDA = 0.5
 SCORE_OTRAS = 0.3
+
+# ---- Recoloreado con InstructPix2Pix ----
+PIX2PIX_CHECKPOINT = str(Path(CHECKPOINT_DIR) / "best.pth")
+PIX2PIX_IMAGES_DIR = str(DATA_DIR / "train_classified" / "not_human_test")
+PIX2PIX_ANNOTATIONS_FILE = str(DATA_DIR / "instances_test_no_humans.json")
+PIX2PIX_IMAGE_SIZE = 256
+PIX2PIX_OUTPUT_DIR = str(Path(OUTPUT_DIR) / "pix2pix")
+PIX2PIX_OUTPUT_PREFIX = "recoloreado_"
+PIX2PIX_TEXTURES_DIR = str(REPO / "textures")
+
+PIX2PIX_MODEL_ID = "timbrooks/instruct-pix2pix"
+PIX2PIX_SIZE = 512
+PIX2PIX_INSTRUCTION_COLOR = "make the {name} {color}"
+PIX2PIX_INSTRUCTION_TEXTURE = "change the texture into {texture}"
+PIX2PIX_NUM_INFERENCE_STEPS = 20
+PIX2PIX_GUIDANCE_SCALE = 7.5
+PIX2PIX_IMAGE_GUIDANCE_SCALE = 1.5
+PIX2PIX_MASK_CLOSE_SIZE = 21
+PIX2PIX_FEATHER_RADIUS = 3
+PIX2PIX_SEED = 42
+PIX2PIX_NO_TEXTURE = "none"
+
+PIX2PIX_IP_ADAPTER_REPO = "h94/IP-Adapter"
+PIX2PIX_IP_ADAPTER_WEIGHTS = "ip-adapter_sd15.bin"
+PIX2PIX_IP_ADAPTER_SCALE = 0.6
+
+PIX2PIX_NUM_CHOICES = 10
+PIX2PIX_THUMB_SIZE = 140
+PIX2PIX_NUM_TEXTURE_CHOICES = 10
+PIX2PIX_TEXTURE_THUMB_SIZE = 96
+PIX2PIX_FIGURE_SIZE = (20, 5)
+PIX2PIX_SAVE_DPI = 150
+PIX2PIX_DEFAULT_COLOR = "black"
+PIX2PIX_DEFAULT_TEXTURE = "leather"
+PIX2PIX_DEFAULT_EXTRA = ""
+PIX2PIX_COLOR_OPTIONS = [
+    "black", "white", "red", "blue", "navy blue", "green", "dark green",
+    "yellow", "pink", "purple", "orange", "brown", "gray", "beige",
+]
+PIX2PIX_TEXTURE_OPTIONS = [
+    PIX2PIX_NO_TEXTURE, "leather", "denim", "silk", "velvet", "wool",
+    "cotton", "lace", "satin", "corduroy",
+]
+PIX2PIX_TEXTURE_CATEGORY_HINTS = {
+    "denim": "fabric", "jeans": "fabric", "silk": "fabric", "satin": "fabric",
+    "velvet": "fabric", "cotton": "fabric", "linen": "fabric", "corduroy": "fabric",
+    "wool": "fabric", "fabric": "fabric", "lace": "net", "fishnet": "net",
+    "latex": "rubber", "rug": "carpet",
+}

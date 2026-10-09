@@ -22,7 +22,7 @@ from sam2.sam2_image_predictor import SAM2ImagePredictor
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 from src.dataset import FashionpediaDataset
-from src.model import get_model, NUM_CLASSES
+from src.model import get_model
 from refine_edges import refine_with_sam2
 
 
@@ -42,7 +42,7 @@ CLASS_COLORS = np.array(
 
 
 def load_checkpoint(path):
-    model = get_model(num_classes=NUM_CLASSES, pretrained=False)
+    model = get_model(pretrained=False)
     checkpoint = torch.load(path, map_location="cpu", weights_only=True)
     state_dict = checkpoint.get("model_state_dict", checkpoint)
     model.load_state_dict(state_dict)
@@ -87,7 +87,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # cargamos imágenes del dataset
-    dataset = FashionpediaDataset(IMAGES_DIR, ANNOTATIONS_FILE, image_size=IMAGE_SIZE)
+    dataset = FashionpediaDataset(IMAGES_DIR, ANNOTATIONS_FILE, max_side=IMAGE_SIZE)
     if len(dataset) == 0:
         raise RuntimeError("El dataset está vacío. Revisa IMAGES_DIR y ANNOTATIONS_FILE.")
 

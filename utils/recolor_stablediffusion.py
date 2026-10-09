@@ -15,7 +15,7 @@ from diffusers import StableDiffusionInpaintPipeline
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 from src.dataset import FashionpediaDataset
-from src.model import get_model, NUM_CLASSES
+from src.model import get_model
 from refine_edges import refine_with_sam2
 
 
@@ -36,7 +36,7 @@ GUIDANCE_SCALE = 15
 
 
 def load_mask_rcnn(checkpoint_path):
-    model = get_model(num_classes=NUM_CLASSES, pretrained=False)
+    model = get_model(pretrained=False)
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     state_dict = checkpoint.get("model_state_dict", checkpoint)
     model.load_state_dict(state_dict)
@@ -62,7 +62,7 @@ def main():
     print(f"Usando dispositivo: {device}")
 
     # Mask R-CNN
-    dataset = FashionpediaDataset(IMAGES_DIR, ANNOTATIONS_FILE, image_size=IMAGE_SIZE)
+    dataset = FashionpediaDataset(IMAGES_DIR, ANNOTATIONS_FILE, max_side=IMAGE_SIZE)
     image_tensor, _ = dataset[INDEX]
     image_np = (image_tensor.permute(1, 2, 0).numpy() * 255).astype(np.uint8)
 
