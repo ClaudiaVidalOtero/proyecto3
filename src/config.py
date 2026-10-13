@@ -7,8 +7,8 @@ DATA_DIR = REPO / "dataset"
 
 TRAIN_IMAGES_DIR = str(DATA_DIR / "train_classified" / "not_human")
 TRAIN_ANNOTATIONS = str(DATA_DIR / "instances_no_humans.json")
-TEST_IMAGES_DIR = str(DATA_DIR / "train_classified" / "not_human_test")
-TEST_ANNOTATIONS = str(DATA_DIR / "instances_test_no_humans.json")
+TEST_IMAGES_DIR = str(DATA_DIR / "provisional_test_no_human_test")
+TEST_ANNOTATIONS = str(DATA_DIR / "instances_provisional_test_no_humans.json")
 
 CHECKPOINT_DIR = str(REPO / "checkpoints")   # best.pth y last.pth
 OUTPUT_DIR = str(REPO / "outputs")           # gráficas y resultados
