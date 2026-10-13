@@ -379,7 +379,8 @@ def choose_options(dataset, textures, default_source=None,
                 "Sin prenda", "No se ha encontrado ninguna prenda clara en esta imagen.\n"
                               "Prueba con otra imagen.")
         else:
-            root.destroy()  # todo bien, así que cerramos y main() enseña el resultado
+            loading_bar.stop()
+            root.destroy()  # todo bien, así que cerramos todo y main() enseña el resultado
 
     def confirm():
         color = color_var.get().strip()
