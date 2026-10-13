@@ -4,12 +4,13 @@ y una instrucción de texto ("make the jacket red") y edita la imagen entera.
 Para que el cambio afecte solo a la prenda, el resultado se pega sobre
 la máscara que produce nuestro pipeline Mask R-CNN + SAM2.
 
-Al ejecutarlo se abre una ventana donde eliges:
+Al ejecutarlo se abre una ventana con interfaz donde eliges:
   1. una imagen del dataset (o un archivo tuyo),
   2. color, material y una petición extra libre,
   3. opcionalmente, una muestra de textura del dataset de ambientCG
-     (créalo antes con:  python download_textures.py).
+     (hay que crearlo antes con:  python download_textures.py).
 La muestra elegida se le pasa al modelo como imagen de referencia (IP-Adapter).
+Mientras se genera la imagen, la ventana se queda abierta con un mensaje de "Cargando".
 
 Uso:
     python recolor.py                                    # abre la interfaz
@@ -23,7 +24,9 @@ import json
 import os
 import random
 import re
-import tkinter as tk
+import threading          # para que la interfaz no se congele mientras se genera la imagen
+import traceback
+import tkinter as tk      # para la interfaz gráfica
 from tkinter import ttk, filedialog, messagebox
 
 import numpy as np
@@ -54,10 +57,11 @@ def parse_args():
     return parser.parse_args()
 
 
-# ---------------------------------------------------------------- texturas
+# TEXTURAS
 
 def load_texture_index(textures_dir):
-    """Lee textures/index.json. Devuelve una lista (vacía si todavía no se ha descargado nada)."""
+    """Lee textures/index.json con las texturas descargadas de AmbientCG
+    Devuelve una lista (vacía si todavía no se ha descargado nada)."""
     index_path = pathlib.Path(textures_dir) / "index.json"
     if not index_path.exists():
         return []
@@ -65,11 +69,12 @@ def load_texture_index(textures_dir):
     textures = []
     for entry in entries:
         path = index_path.parent / entry["file"]
+        # por si alguien borró algún archivo a mano, así no da error luego
         if path.exists():
             textures.append({
                 "id": entry["id"],
                 "category": entry.get("category", ""),
-                "tags": [t.lower() for t in entry.get("tags", [])],
+                "tags": [t.lower() for t in entry.get("tags", [])],  # todo en minúsculas para comparar fácil
                 "path": str(path),
             })
     return textures
@@ -78,7 +83,7 @@ def load_texture_index(textures_dir):
 def find_textures(word, textures):
     """
     Devuelve (muestras, nota) para el material escrito. Primero busca por etiquetas, id o
-    categoría; si no hay nada, usa la categoría más parecida; si tampoco, las enseña todas.
+    categoría. Si no hay nada, usa la categoría más parecida, si no, las enseña todas.
     """
     if not textures:
         return [], "Todavía no hay muestras: ejecuta  python download_textures.py"
@@ -86,17 +91,20 @@ def find_textures(word, textures):
     if not word or word == C.PIX2PIX_NO_TEXTURE:
         return textures, "Todas las muestras (escribe un material para filtrarlas)"
 
+    # búsqueda directa para ver si la palabra está en las tags, en el id o es la categoría
     matches = [t for t in textures
                if word in t["tags"] or word in t["id"].lower() or word == t["category"].lower()]
     if matches:
         return matches, f"{len(matches)} muestras para '{word}'"
 
+    # si no hay nada probamos con la categoría más parecida que hay en el config
     hint = C.PIX2PIX_TEXTURE_CATEGORY_HINTS.get(word)
     if hint:
         matches = [t for t in textures if t["category"].lower() == hint]
         if matches:
             return matches, f"'{word}' no tiene etiqueta propia en ambientCG: se muestra la categoría {hint}"
 
+    # último recurso: devolvemos todas
     return textures, f"Sin coincidencias para '{word}': se muestran todas las muestras"
 
 
@@ -106,6 +114,7 @@ def resolve_texture_path(value, textures):
         return None
     if os.path.isfile(value):
         return value
+    # si no es un archivo, miramos si coincide con algún id de las muestras
     for texture in textures:
         if texture["id"].lower() == value.lower():
             return texture["path"]
@@ -113,9 +122,10 @@ def resolve_texture_path(value, textures):
     return None
 
 
-# ---------------------------------------------------------------- interfaz
+# INTERFAZ
 
 def tensor_to_thumbnail(image_tensor):
+    # el tensor viene como (C, H, W) en [0,1] y hay que pasarlo a (H, W, C) en [0,255] para PIL
     array = (image_tensor.permute(1, 2, 0).numpy() * 255).astype(np.uint8)
     img = Image.fromarray(array)
     img.thumbnail((C.PIX2PIX_THUMB_SIZE, C.PIX2PIX_THUMB_SIZE))
@@ -125,20 +135,32 @@ def tensor_to_thumbnail(image_tensor):
 def choose_options(dataset, textures, default_source=None,
                    default_color=C.PIX2PIX_DEFAULT_COLOR,
                    default_texture=C.PIX2PIX_DEFAULT_TEXTURE,
-                   default_extra=C.PIX2PIX_DEFAULT_EXTRA, default_texture_path=None):
+                   default_extra=C.PIX2PIX_DEFAULT_EXTRA, default_texture_path=None,
+                   worker=None):
     """
-    Abre una ventana con dos pestañas:
+    Abre una ventana con dos pestañas seleccionables:
       1. imágenes del dataset para elegir una (clic) o un archivo propio.
       2. Color, material, muestra de textura (clic en una miniatura) y petición extra.
-    Devuelve (source, color, texture, extra, texture_path) o None si se cierra sin confirmar.
+
+    Si se pasa 'worker', al pulsar "Recolorear" la ventana NO se cierra: se tapa con un
+    mensaje de "Cargando" y worker(choice, progress) se ejecuta en un hilo aparte
+    (choice = (source, color, texture, extra, texture_path), progress(texto) actualiza el mensaje).
+    Cuando el worker termina, la ventana se cierra y se devuelve lo que devolvió el worker.
+    Si el worker devuelve None o falla, se avisa y se vuelve al formulario.
+
+    Sin 'worker' devuelve (source, color, texture, extra, texture_path) al confirmar.
+    En los dos casos devuelve None si se cierra la ventana sin confirmar.
     """
     root = tk.Tk()
     root.title("Recolorear prenda")
 
-    BLUE, GREY = "#2a7de1", "#cccccc"
-    state = {"source": None, "texture": None, "result": None}
-    photos, texture_photos = [], []       # referencias a las miniaturas (si no, Tk las borra)
-    cells, texture_cells = {}, {}         # clave -> Label de la miniatura
+    BLUE, GREY = "#175DB3", "#cccccc"
+    # "busy" = hay un hilo trabajando, "done" = ya terminó, "output"/"error" = lo que salió de él
+    state = {"source": None, "texture": None, "result": None,
+             "busy": False, "done": False, "output": None, "error": None}
+    status = {"msg": ""}                  # texto que escribe el hilo y que lee la interfaz
+    photos, texture_photos = [], []       # referencias a las miniaturas (si no, Tkinter las borra)
+    cells, texture_cells = {}, {}         # la clave es la label de la miniatura
     pool = []                             # muestras que encajan con el material escrito
 
     summary = tk.StringVar()
@@ -146,6 +168,8 @@ def choose_options(dataset, textures, default_source=None,
     color_var = tk.StringVar(value=default_color)
     texture_var = tk.StringVar(value=default_texture)
     extra_var = tk.StringVar(value=default_extra)
+    loading_title = tk.StringVar(value="Cargando")
+    loading_detail = tk.StringVar()
 
     notebook = ttk.Notebook(root)
     notebook.grid(row=0, column=0, padx=10, pady=(10, 0), sticky="nsew")
@@ -188,7 +212,7 @@ def choose_options(dataset, textures, default_source=None,
               font=("TkDefaultFont", 11, "bold")).grid(row=6, column=0, sticky="w", pady=(12, 0))
     ttk.Entry(tab_style, textvariable=extra_var, width=70).grid(row=7, column=0, sticky="w", pady=5)
 
-    # ---------- lógica ----------
+    # ---------- lógica de la interfaz ----------
     def update_summary():
         image = state["source"] or "ninguna"
         texture = pathlib.Path(state["texture"]).stem if state["texture"] else "ninguna"
@@ -196,6 +220,7 @@ def choose_options(dataset, textures, default_source=None,
 
     def select(source):
         state["source"] = source
+        # resaltamos en azul la miniatura elegida y el resto en gris
         for key, label in cells.items():
             label.config(highlightbackground=BLUE if key == source else GREY)
         update_summary()
@@ -207,6 +232,7 @@ def choose_options(dataset, textures, default_source=None,
         update_summary()
 
     def fill_gallery(indices):
+        # primero borramos lo que hubiera de antes
         for widget in gallery.winfo_children():
             widget.destroy()
         photos.clear()
@@ -217,12 +243,14 @@ def choose_options(dataset, textures, default_source=None,
             photos.append(photo)
             label = tk.Label(gallery, image=photo, text=f"#{idx}", compound="top",
                              highlightthickness=4, highlightbackground=GREY, cursor="hand2")
-            label.grid(row=k // 5, column=k % 5, padx=4, pady=4)
+            label.grid(row=k // 5, column=k % 5, padx=4, pady=4)  # 5 columnas
+            # el s=str(idx) del lambda es para que cada botón se quede con SU índice
             label.bind("<Button-1>", lambda event, s=str(idx): select(s))
             cells[str(idx)] = label
 
     def new_random_set(force_index=None):
         indices = random.sample(range(len(dataset)), min(C.PIX2PIX_NUM_CHOICES, len(dataset)))
+        # si nos pasan una imagen concreta, la metemos sí o sí en la primera posición
         if force_index is not None and force_index not in indices:
             indices[0] = force_index
         fill_gallery(indices)
@@ -244,7 +272,7 @@ def choose_options(dataset, textures, default_source=None,
             try:
                 img = Image.open(entry["path"]).convert("RGB")
             except Exception:
-                continue
+                continue  # si una imagen está corrupta nos la saltamos y ya
             img.thumbnail((C.PIX2PIX_TEXTURE_THUMB_SIZE, C.PIX2PIX_TEXTURE_THUMB_SIZE))
             photo = ImageTk.PhotoImage(img)
             texture_photos.append(photo)
@@ -252,7 +280,7 @@ def choose_options(dataset, textures, default_source=None,
                              font=("TkDefaultFont", 8), highlightthickness=4,
                              highlightbackground=GREY, cursor="hand2")
             label.grid(row=k // 5, column=k % 5, padx=3, pady=3)
-            # clic = elegir; clic otra vez sobre la misma = quitarla
+            # 1 click sobre una imagen la elige. 2 clicks sobre la misma la elimina
             label.bind("<Button-1>", lambda event, p=entry["path"]:
                        set_texture(None if state["texture"] == p else p))
             texture_cells[entry["path"]] = label
@@ -260,6 +288,7 @@ def choose_options(dataset, textures, default_source=None,
     def show_texture_page(forced_path=None):
         chosen = random.sample(pool, min(C.PIX2PIX_NUM_TEXTURE_CHOICES, len(pool)))
         forced = next((t for t in textures if t["path"] == forced_path), None) if forced_path else None
+        # si venía una muestra por argumento la colamos en la lista aunque no saliera al azar
         if forced and forced not in chosen:
             if chosen:
                 chosen[0] = forced
@@ -271,7 +300,7 @@ def choose_options(dataset, textures, default_source=None,
     def refresh_textures(event=None, forced_path=None):
         matches, note = find_textures(texture_var.get(), textures)
         texture_note.set(note)
-        pool[:] = matches
+        pool[:] = matches  # [:] para modificar la lista en el sitio y no crear otra nueva
         show_texture_page(forced_path)
 
     ttk.Button(options, text="Ver muestras", command=refresh_textures).grid(row=0, column=4, padx=4)
@@ -288,6 +317,70 @@ def choose_options(dataset, textures, default_source=None,
     ttk.Button(texture_buttons, text="Sin muestra", command=lambda: set_texture(None)).pack(
         side="left", padx=6)
 
+    # ---------- pantalla de "Cargando" ----------
+    # es un frame que se coloca encima de toda la ventana (con place) para tapar el
+    # formulario y que no se pueda tocar nada mientras el modelo trabaja
+    loading = ttk.Frame(root)
+    loading_inner = ttk.Frame(loading)
+    loading_inner.place(relx=0.5, rely=0.5, anchor="center")  # centrado en la ventana
+    ttk.Label(loading_inner, textvariable=loading_title,
+              font=("TkDefaultFont", 18, "bold")).pack(pady=(0, 8))
+    ttk.Label(loading_inner, textvariable=loading_detail, wraplength=380,
+              justify="center").pack(pady=(0, 12))
+    # barra "indeterminate" va de un lado a otro porque no sabemos cuánto falta
+    loading_bar = ttk.Progressbar(loading_inner, mode="indeterminate", length=320)
+    loading_bar.pack()
+    ttk.Label(loading_inner, text="Puede tardar un rato, no cierres la ventana.",
+              foreground="#666666").pack(pady=(12, 0))
+
+    def show_loading():
+        loading.place(relx=0, rely=0, relwidth=1, relheight=1)
+        loading.lift()  # por si algún widget se quedara por encima
+        loading_bar.start(12)
+
+    def hide_loading():
+        loading_bar.stop()
+        loading.place_forget()
+
+    def progress(text):
+        # esto lo llama el hilo. No toca widgets (Tkinter no lo aguanta bien desde otro hilo),
+        # solo guarda el texto y ya lo lee poll() desde el hilo principal
+        status["msg"] = text
+        print(text)
+
+    def run_worker(choice):
+        # esto corre en el hilo aparte
+        # si falla, guardamos el error para enseñarlo luego
+        try:
+            state["output"] = worker(choice, progress)
+        except Exception as exc:
+            traceback.print_exc()
+            state["error"] = exc
+        finally:
+            state["done"] = True
+
+    def poll(tick=0):
+        # se llama cada 300 ms desde el hilo principal para ver cómo va el otro hilo
+        if not state["done"]:
+            dots = "." * (tick % 4)  # animación de Cargando, Cargando., Cargando.., Cargando...
+            loading_title.set("Cargando" + dots)
+            loading_detail.set(status["msg"])
+            root.after(300, poll, tick + 1)
+            return
+
+        # ya terminó el hilo
+        state["busy"] = False
+        if state["error"] is not None:
+            hide_loading()
+            messagebox.showerror("Error", f"Algo ha fallado generando la imagen:\n\n{state['error']}")
+        elif state["output"] is None:
+            hide_loading()
+            messagebox.showinfo(
+                "Sin prenda", "No se ha encontrado ninguna prenda clara en esta imagen.\n"
+                              "Prueba con otra imagen.")
+        else:
+            root.destroy()  # todo bien, así que cerramos y main() enseña el resultado
+
     def confirm():
         color = color_var.get().strip()
         texture = texture_var.get().strip()
@@ -295,22 +388,48 @@ def choose_options(dataset, textures, default_source=None,
         if not state["source"]:
             messagebox.showwarning("Falta la imagen", "Elige una imagen.")
             return
+        # comprobamos que haya algo que cambiar (color, textura, muestra o extra)
         nothing_to_change = (not color and (not texture or texture.lower() == C.PIX2PIX_NO_TEXTURE)
                              and not extra and not state["texture"])
         if nothing_to_change:
             messagebox.showwarning("Falta algo que cambiar",
                                    "Indica un color, una textura, una muestra o una petición extra.")
             return
-        state["result"] = (
+        choice = (
             state["source"], color, texture or C.PIX2PIX_NO_TEXTURE, extra, state["texture"])
+        state["result"] = choice
+
+        # modo sin "Cargando". Mo sale la pantalla de carga mientras se genera la imagen
+        if worker is None:
+            root.destroy()
+            return
+
+        # modo con "Cargando". Reseteamos las flags, tapamos la ventana y lanzamos el hilo
+        state.update(busy=True, done=False, output=None, error=None)
+        status["msg"] = "Preparando..."
+        loading_title.set("Cargando")
+        loading_detail.set(status["msg"])
+        show_loading()
+        # daemon=True para que el hilo no impida cerrar el programa si algo sale mal
+        threading.Thread(target=run_worker, args=(choice,), daemon=True).start()
+        poll()
+
+    def on_close():
+        # si se cierra la ventana en pleno proceso se quedaría el hilo colgado, mejor avisar
+        if state["busy"]:
+            messagebox.showinfo("Espera", "Todavía se está generando la imagen, espera un momento.")
+            return
+        state["result"] = None
         root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", on_close)
 
     bottom = ttk.Frame(root)
     bottom.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
     ttk.Label(bottom, textvariable=summary).pack(side="left")
     ttk.Button(bottom, text="Recolorear", command=confirm).pack(side="right")
 
-    # ---------- arranque ----------
+    # ARRANQUE DE LA INTERFAZ
     # si venía una imagen por argumento y es del dataset, la incluimos
     forced = int(default_source) if (default_source or "").isdigit() and int(default_source) < len(dataset) else None
     new_random_set(force_index=forced)
@@ -319,13 +438,16 @@ def choose_options(dataset, textures, default_source=None,
     refresh_textures(forced_path=default_texture_path)
 
     root.mainloop()
+    # con worker devolvemos lo que sacó el hilo. Si se cerró la ventana sin confirmar, None
+    if worker is not None:
+        return state["output"]
     return state["result"]
 
 
-# ---------------------------------------------------------------- pipeline
+# PIPELINE
 
 def load_image_tensor(source, dataset):
-    """Si source es un número, usa esa imagen del dataset; si no, lo trata como ruta a un archivo."""
+    """Si source es un número, usa esa imagen del dataset, si no, lo trata como ruta a un archivo."""
     if source.isdigit():
         image_tensor, _ = dataset[int(source)]
         return image_tensor
@@ -339,6 +461,7 @@ def load_image_tensor(source, dataset):
 def load_mask_rcnn(checkpoint_path):
     model = get_model(pretrained=False)
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+    # según cómo se guardara el checkpoint, los pesos pueden venir dentro de una clave o sueltos
     state_dict = checkpoint.get("model_state_dict", checkpoint)
     model.load_state_dict(state_dict)
     model.eval()
@@ -356,8 +479,9 @@ def mask_to_pil(binary_mask, target_size, feather_radius, close_size=0):
     mask_uint8 = binary_mask.astype(np.uint8) * 255
     mask_img = Image.fromarray(mask_uint8)
     if close_size > 1:
-        # cierre morfológico: rellena huecos más estrechos que close_size píxeles
+        # cierre morfológico. rellena huecos más estrechos que close_size píxeles
         # (a la resolución de trabajo de Mask R-CNN) sin tocar los más anchos, como el escote
+        # (primero dilata con MaxFilter y luego erosiona con MinFilter)
         mask_img = mask_img.filter(ImageFilter.MaxFilter(close_size)).filter(ImageFilter.MinFilter(close_size))
     mask_img = mask_img.resize((target_size, target_size), Image.NEAREST)
     if feather_radius > 0:
@@ -365,40 +489,15 @@ def mask_to_pil(binary_mask, target_size, feather_radius, close_size=0):
     return mask_img
 
 
-def main():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Usando dispositivo: {device}")
-
-    dataset = FashionpediaDataset(
-        C.PIX2PIX_IMAGES_DIR, C.PIX2PIX_ANNOTATIONS_FILE, max_side=C.PIX2PIX_IMAGE_SIZE)
-    textures = load_texture_index(C.PIX2PIX_TEXTURES_DIR)
-    print(f"Muestras de textura disponibles: {len(textures)}")
-
-    # Datos elegidos por el usuario: por argumentos (sin interfaz) o con la ventana
-    args = parse_args()
-    texture_path_arg = resolve_texture_path(args.texture_sample, textures)
-    if args.image and (args.color or args.texture or args.extra or args.texture_sample):
-        source = args.image
-        color = args.color or ""
-        texture = args.texture or C.PIX2PIX_NO_TEXTURE
-        extra = args.extra or ""
-        texture_path = texture_path_arg
-    else:
-        choice = choose_options(
-            dataset,
-            textures,
-            default_source=args.image,
-            default_color=args.color or C.PIX2PIX_DEFAULT_COLOR,
-            default_texture=args.texture or C.PIX2PIX_DEFAULT_TEXTURE,
-            default_extra=args.extra or C.PIX2PIX_DEFAULT_EXTRA,
-            default_texture_path=texture_path_arg,
-        )
-        if choice is None:
-            print("Cancelado.")
-            return
-        source, color, texture, extra, texture_path = choice
-
+def generate(source, color, texture, extra, texture_path, dataset, device, progress=print):
+    """
+    Ejecuta lo correspondiente a Mask R-CNN, SAM2 e InstructPix2Pix.
+    No ejecuta nada de la interfaz (matplotlip, tkinter), así que se puede ejecutar 
+    en un hilo aparte. Devuelve un diccionario con lo que hace falta para dibujar 
+    el resultado, o None si no se encontró ninguna prenda.
+    """
     # Mask R-CNN
+    progress("Detectando la prenda (Mask R-CNN)...")
     image_tensor = load_image_tensor(source, dataset)
     image_np = (image_tensor.permute(1, 2, 0).numpy() * 255).astype(np.uint8)
 
@@ -406,12 +505,14 @@ def main():
     with torch.no_grad():
         model_output = mask_rcnn([image_tensor.to(device)])[0]
 
+    # diccionario para pasar de índice de clase a nombre ("shirt, blouse", etc.)
     label2name = {
         class_index: dataset.coco.loadCats(category_id)[0]["name"]
         for category_id, class_index in dataset.categoryid_to_index.items()
     }
 
     # refinar bordes con SAM 2 y agrupar (prenda + partes - cierres)
+    progress("Refinando los bordes con SAM 2...")
     from sam2.sam2_image_predictor import SAM2ImagePredictor
     sam2_predictor = SAM2ImagePredictor.from_pretrained(
         C.SAM2_MODEL_ID,
@@ -423,7 +524,7 @@ def main():
     if len(prendas) == 0:
         print("SAM2 + Mask R-CNN no encontraron ninguna prenda clara en esta imagen.")
         print("Prueba con otra imagen, o baja score_prenda en refine_with_sam2.")
-        return
+        return None
 
     prenda = prendas[0]  # la de mayor score
     print(f"Prenda elegida: {prenda['name']} (score={prenda['score']:.2f}, "
@@ -437,7 +538,8 @@ def main():
         C.PIX2PIX_MASK_CLOSE_SIZE)
 
     # cargar InstructPix2Pix
-    print("\nCargando InstructPix2Pix (puede tardar la primera vez)...")
+    progress("Cargando InstructPix2Pix (puede tardar la primera vez)...")
+    # float16 en GPU va mejor, mientras que en CPU hace falta float32 porque float16 va muy lento
     dtype = torch.float16 if device.type == "cuda" else torch.float32
     pipe = StableDiffusionInstructPix2PixPipeline.from_pretrained(
         C.PIX2PIX_MODEL_ID, torch_dtype=dtype, safety_checker=None
@@ -450,7 +552,7 @@ def main():
     texture_image = None
     if texture_path:
         try:
-            print("Cargando IP-Adapter (la primera vez descarga un codificador de imagen grande)...")
+            progress("Cargando IP-Adapter (la primera vez descarga un codificador de imagen grande)...")
             pipe.load_ip_adapter(
                 C.PIX2PIX_IP_ADAPTER_REPO, subfolder="models",
                 weight_name=C.PIX2PIX_IP_ADAPTER_WEIGHTS)
@@ -465,6 +567,7 @@ def main():
     # nos quedamos con el primero para que la instrucción sea natural
     garment_name = prenda["name"].split(",")[0].strip()
     use_texture = bool(texture) and texture.lower() != C.PIX2PIX_NO_TEXTURE
+    # vamos montando la instrucción por trozos y luego los unimos con comas
     parts = []
     if color:
         parts.append(C.PIX2PIX_INSTRUCTION_COLOR.format(name=garment_name, color=color))
@@ -476,44 +579,102 @@ def main():
     print(f"Instrucción: {instruction}")
 
     call_kwargs = dict(
+        # si no hay instrucción ponemos una de relleno para que de error
         prompt=instruction or "keep the image as it is",
         image=image_pil,
         num_inference_steps=C.PIX2PIX_NUM_INFERENCE_STEPS,
         guidance_scale=C.PIX2PIX_GUIDANCE_SCALE,
         image_guidance_scale=C.PIX2PIX_IMAGE_GUIDANCE_SCALE,
-        generator=torch.Generator(device=device).manual_seed(C.PIX2PIX_SEED),
+        generator=torch.Generator(device=device).manual_seed(C.PIX2PIX_SEED),  # semilla fija
     )
     if texture_image is not None:
         call_kwargs["ip_adapter_image"] = texture_image
+
+    # esta es la parte que más tarda
+    progress("Generando la imagen con InstructPix2Pix...")
     edited = pipe(**call_kwargs).images[0]
 
     # el modelo ha editado la imagen entera, pero nos quedamos con su resultado
     # solo dentro de la máscara y con la imagen original fuera de ella
     final = Image.composite(edited, image_pil, mask_pil)
 
-    # mostramos resultado
+    # etiqueta para el título y el nombre del archivo
     sample_id = pathlib.Path(texture_path).stem if texture_image is not None else ""
     label = ", ".join(p for p in [color, texture if use_texture else "", extra, sample_id] if p)
+
+    return {
+        "source": source, "prenda_name": prenda["name"], "label": label,
+        "image": image_pil, "mask": mask_pil, "edited": edited, "final": final,
+    }
+
+
+def show_result(result):
+    """Dibuja las 4 imágenes, guarda la figura y la enseña. Esto va siempre en el hilo principal."""
     fig, axes = plt.subplots(1, 4, figsize=C.PIX2PIX_FIGURE_SIZE)
-    axes[0].imshow(image_pil)
-    axes[0].set_title(f"Original ({source})")
-    axes[1].imshow(mask_pil, cmap="gray")
-    axes[1].set_title(f"Máscara refinada ({prenda['name']})")
-    axes[2].imshow(edited)
+    axes[0].imshow(result["image"])
+    axes[0].set_title(f"Original ({result['source']})")
+    axes[1].imshow(result["mask"], cmap="gray")
+    axes[1].set_title(f"Máscara refinada ({result['prenda_name']})")
+    axes[2].imshow(result["edited"])
     axes[2].set_title("Salida del modelo (imagen entera)")
-    axes[3].imshow(final)
-    axes[3].set_title(f"Resultado final: '{label}'")
+    axes[3].imshow(result["final"])
+    axes[3].set_title(f"Resultado final: '{result['label']}'")
     for ax in axes:
         ax.axis("off")
 
     plt.tight_layout()
     out_dir = pathlib.Path(C.PIX2PIX_OUTPUT_DIR)
     out_dir.mkdir(parents=True, exist_ok=True)
-    safe_label = re.sub(r"\W+", "_", label).strip("_")[:60]  # nombre de archivo seguro y corto
+    # limpiamos el label para que sirva de nombre de archivo (sin espacios ni símbolos raros)
+    safe_label = re.sub(r"\W+", "_", result["label"]).strip("_")[:60]
     out_path = out_dir / f"{C.PIX2PIX_OUTPUT_PREFIX}{safe_label}.png"
     plt.savefig(out_path, dpi=C.PIX2PIX_SAVE_DPI)
     print(f"Guardado en {out_path}")
     plt.show()
+
+
+def main():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Usando dispositivo: {device}")
+
+    dataset = FashionpediaDataset(
+        C.PIX2PIX_IMAGES_DIR, C.PIX2PIX_ANNOTATIONS_FILE, max_side=C.PIX2PIX_IMAGE_SIZE)
+    textures = load_texture_index(C.PIX2PIX_TEXTURES_DIR)
+    print(f"Muestras de textura disponibles: {len(textures)}")
+
+    # Datos elegidos por el usuario, bien por argumentos (sin interfaz) o bien con la ventana
+    args = parse_args()
+    texture_path_arg = resolve_texture_path(args.texture_sample, textures)
+    if args.image and (args.color or args.texture or args.extra or args.texture_sample):
+        # modo sin interfaz, todo viene de la línea de comandos
+        result = generate(
+            args.image, args.color or "", args.texture or C.PIX2PIX_NO_TEXTURE,
+            args.extra or "", texture_path_arg, dataset, device)
+    else:
+        # modo con interfaz, le pasamos a la ventana una función que hace todo el trabajo
+        # para que lo ejecute en un hilo mientras enseña el "Cargando"
+        def worker(choice, progress):
+            source, color, texture, extra, texture_path = choice
+            return generate(source, color, texture, extra, texture_path,
+                            dataset, device, progress)
+
+        result = choose_options(
+            dataset,
+            textures,
+            default_source=args.image,
+            default_color=args.color or C.PIX2PIX_DEFAULT_COLOR,
+            default_texture=args.texture or C.PIX2PIX_DEFAULT_TEXTURE,
+            default_extra=args.extra or C.PIX2PIX_DEFAULT_EXTRA,
+            default_texture_path=texture_path_arg,
+            worker=worker,
+        )
+
+    if result is None:
+        print("Cancelado o sin resultado.")
+        return
+
+    # mostramos resultado (la ventana de Tkinter ya se cerró en este punto)
+    show_result(result)
 
 
 if __name__ == "__main__":
