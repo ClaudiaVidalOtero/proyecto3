@@ -32,6 +32,7 @@ import torchvision.transforms.functional as TF
 from PIL import Image, ImageFilter, ImageTk
 import matplotlib.pyplot as plt
 from diffusers import StableDiffusionInstructPix2PixPipeline, EulerAncestralDiscreteScheduler
+from winotify import Notification
 
 # Añadimos la raíz del proyecto (carpeta padre de utils/)
 # al path para que funcionen los imports de src y utils
@@ -40,7 +41,7 @@ import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).parent.parent
 from src.dataset import FashionpediaDataset
 from src.model import get_model
 from src import config as C
-from refine_edges import refine_with_sam2
+from utils.refine_edges import refine_with_sam2
 
 
 def parse_args():
@@ -513,6 +514,12 @@ def main():
     out_path = out_dir / f"{C.PIX2PIX_OUTPUT_PREFIX}{safe_label}.png"
     plt.savefig(out_path, dpi=C.PIX2PIX_SAVE_DPI)
     print(f"Guardado en {out_path}")
+    Notification(
+        app_id="Recolor de prendas",
+        title="Prenda creada",
+        msg=f"El resultado se guardó en:\n{out_path.resolve()}",
+        duration="long",
+    ).show()
     plt.show()
 
 

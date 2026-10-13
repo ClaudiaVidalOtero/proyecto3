@@ -20,3 +20,4 @@ opencv-python-headless
 # sam2 @ git+https://github.com/facebookresearch/sam2.git
 
 diffusers==0.40.0
+winotify==1.1.0
