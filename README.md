@@ -1,5 +1,27 @@
 # proyecto3
 
+## Interfaz web de recoloreado
+
+Desde la raíz del proyecto, activa el entorno e inicia la interfaz:
+
+```bash
+.venv/Scripts/python.exe interfaz.py
+```
+
+El script abre Atelier en el navegador predeterminado de Windows, fuera de VS Code.
+Mantén abierta la ventana de la terminal mientras uses la aplicación; al detener el
+servidor, el navegador ya no podrá conectar con el modelo. También puedes abrir
+[http://127.0.0.1:8000](http://127.0.0.1:8000) manualmente. Permite
+elegir imágenes del catálogo o subir una propia, seleccionar color y textura (o
+**none** para conservar el color o material original),
+añadir una instrucción, consultar el historial de diseños y descargar el resultado
+con un nombre PNG personalizado. Usa **Detectar prendas** para superponer las
+máscaras del modelo sobre la foto; pasa el cursor para identificar las prendas,
+haz clic para seleccionar una o varias y genera con el color y la textura elegidos.
+La generación reutiliza los modelos Mask R-CNN, SAM 2 e InstructPix2Pix del
+proyecto; también se puede seguir usando la interfaz de escritorio con
+`python src/recolor.py`.
+
 ## Entrenamiento de segmentacion
 
 El pipeline conecta `src/dataset.py` con `src/model.py`. El dataset devuelve
