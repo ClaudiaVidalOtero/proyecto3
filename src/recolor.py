@@ -491,15 +491,9 @@ def mask_to_pil(binary_mask, target_size, feather_radius, close_size=0):
     return mask_img
 
 
-def generate(source, color, texture, extra, texture_path, dataset, device, progress=print):
-    """
-    Ejecuta lo correspondiente a Mask R-CNN, SAM2 e InstructPix2Pix.
-    No ejecuta nada de la interfaz (matplotlip, tkinter), así que se puede ejecutar 
-    en un hilo aparte. Devuelve un diccionario con lo que hace falta para dibujar 
-    el resultado, o None si no se encontró ninguna prenda.
-    """
-    # Mask R-CNN
-    progress("Detectando la prenda (Mask R-CNN)...")
+def detect_garments(source, dataset, device, progress=print):
+    """Detecta y refina todas las prendas de una imagen para previsualizarlas o recolorearlas."""
+    progress("Detectando prendas (Mask R-CNN)...")
     image_tensor = load_image_tensor(source, dataset)
     image_np = (image_tensor.permute(1, 2, 0).numpy() * 255).astype(np.uint8)
 
@@ -507,36 +501,54 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
     with torch.no_grad():
         model_output = mask_rcnn([image_tensor.to(device)])[0]
 
-    # diccionario para pasar de índice de clase a nombre ("shirt, blouse", etc.)
     label2name = {
         class_index: dataset.coco.loadCats(category_id)[0]["name"]
         for category_id, class_index in dataset.categoryid_to_index.items()
     }
 
-    # refinar bordes con SAM 2 y agrupar (prenda + partes - cierres)
-    progress("Refinando los bordes con SAM 2...")
+    progress("Refinando las prendas con SAM 2...")
     from sam2.sam2_image_predictor import SAM2ImagePredictor
-    sam2_predictor = SAM2ImagePredictor.from_pretrained(
-        C.SAM2_MODEL_ID,
-        device=device.type,
-    )
 
-    _, prendas, _ = refine_with_sam2(model_output, image_np, sam2_predictor, label2name)
+    sam2_predictor = SAM2ImagePredictor.from_pretrained(C.SAM2_MODEL_ID, device=device.type)
+    _, garments, _ = refine_with_sam2(model_output, image_np, sam2_predictor, label2name)
+    return {"image": image_np, "garments": garments}
 
-    if len(prendas) == 0:
+
+def generate(source, color, texture, extra, texture_path, dataset, device, progress=print,
+             segmentation=None, garment_indices=None):
+    """
+    Ejecuta lo correspondiente a Mask R-CNN, SAM2 e InstructPix2Pix.
+    No ejecuta nada de la interfaz (matplotlip, tkinter), así que se puede ejecutar 
+    en un hilo aparte. Devuelve un diccionario con lo que hace falta para dibujar 
+    el resultado, o None si no se encontró ninguna prenda.
+    """
+    color = color.strip()
+    if color.lower() == C.PIX2PIX_NO_TEXTURE:
+        color = ""
+    segmentation = segmentation or detect_garments(source, dataset, device, progress)
+    image_np = segmentation["image"]
+    prendas = segmentation["garments"]
+    if not prendas:
         print("SAM2 + Mask R-CNN no encontraron ninguna prenda clara en esta imagen.")
         print("Prueba con otra imagen, o baja score_prenda en refine_with_sam2.")
         return None
 
-    prenda = prendas[0]  # la de mayor score
-    print(f"Prenda elegida: {prenda['name']} (score={prenda['score']:.2f}, "
-          f"partes={prenda['partes']}, cierres restados={prenda['cierres']})")
+    indices = garment_indices if garment_indices is not None else [0]
+    if not indices or any(index < 0 or index >= len(prendas) for index in indices):
+        raise ValueError("Selecciona prendas detectadas válidas antes de generar.")
+    selected_garments = [prendas[index] for index in indices]
+    garment_names = list(dict.fromkeys(garment["name"] for garment in selected_garments))
+    garment_name = " y ".join(name.split(",")[0].strip() for name in garment_names)
+    binary_mask = np.logical_or.reduce([garment["mask"] for garment in selected_garments])
+    print("Prendas elegidas: " + ", ".join(
+        f"{garment['name']} (score={garment['score']:.2f})" for garment in selected_garments
+    ))
 
     # imagen y máscara al tamaño de trabajo del modelo
     image_pil = Image.fromarray(image_np).resize(
         (C.PIX2PIX_SIZE, C.PIX2PIX_SIZE), Image.BICUBIC)
     mask_pil = mask_to_pil(
-        prenda["mask"], C.PIX2PIX_SIZE, C.PIX2PIX_FEATHER_RADIUS,
+        binary_mask, C.PIX2PIX_SIZE, C.PIX2PIX_FEATHER_RADIUS,
         C.PIX2PIX_MASK_CLOSE_SIZE)
 
     # cargar InstructPix2Pix
@@ -565,9 +577,6 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
             print(f"No se pudo usar la muestra de textura ({exc}).")
             print("Se sigue solo con el texto. Comprueba que diffusers sea >= 0.27.")
 
-    # los nombres de Fashionpedia pueden ser largos ("top, t-shirt, sweatshirt"),
-    # nos quedamos con el primero para que la instrucción sea natural
-    garment_name = prenda["name"].split(",")[0].strip()
     use_texture = bool(texture) and texture.lower() != C.PIX2PIX_NO_TEXTURE
     # vamos montando la instrucción por trozos y luego los unimos con comas
     parts = []
@@ -605,7 +614,7 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
     label = ", ".join(p for p in [color, texture if use_texture else "", extra, sample_id] if p)
 
     return {
-        "source": source, "prenda_name": prenda["name"], "label": label,
+        "source": source, "prenda_name": ", ".join(garment_names), "label": label,
         "image": image_pil, "mask": mask_pil, "edited": edited, "final": final,
     }
 
