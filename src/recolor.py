@@ -35,6 +35,7 @@ import torchvision.transforms.functional as TF
 from PIL import Image, ImageFilter, ImageTk
 import matplotlib.pyplot as plt
 from diffusers import StableDiffusionInstructPix2PixPipeline, EulerAncestralDiscreteScheduler
+from winotify import Notification
 
 # Añadimos la raíz del proyecto (carpeta padre de utils/)
 # al path para que funcionen los imports de src y utils
@@ -43,7 +44,7 @@ import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).parent.parent
 from src.dataset import FashionpediaDataset
 from src.model import get_model
 from src import config as C
-from refine_edges import refine_with_sam2
+from utils.refine_edges import refine_with_sam2
 
 
 def parse_args():
@@ -527,19 +528,17 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
         print("Prueba con otra imagen, o baja score_prenda en refine_with_sam2.")
         return None
 
-    prenda = prendas[0]  # la de mayor score
-    print(f"Prenda elegida: {prenda['name']} (score={prenda['score']:.2f}, "
-          f"partes={prenda['partes']}, cierres restados={prenda['cierres']})")
 
-    # imagen y máscara al tamaño de trabajo del modelo
-    image_pil = Image.fromarray(image_np).resize(
-        (C.PIX2PIX_SIZE, C.PIX2PIX_SIZE), Image.BICUBIC)
-    mask_pil = mask_to_pil(
-        prenda["mask"], C.PIX2PIX_SIZE, C.PIX2PIX_FEATHER_RADIUS,
-        C.PIX2PIX_MASK_CLOSE_SIZE)
 
-    # cargar InstructPix2Pix
-    progress("Cargando InstructPix2Pix (puede tardar la primera vez)...")
+    _, prendas, _ = refine_with_sam2(model_output, image_np, sam2_predictor, label2name)
+
+    if len(prendas) == 0:
+        print("SAM2 + Mask R-CNN no encontraron ninguna prenda clara en esta imagen.")
+        print("Prueba con otra imagen, o baja score_prenda en refine_with_sam2.")
+        return None
+
+    # Cargar InstructPix2Pix e IP-Adapter una sola vez fuera del bucle
+    progress("Cargando InstructPix2Pix...")
     # float16 en GPU va mejor, mientras que en CPU hace falta float32 porque float16 va muy lento
     dtype = torch.float16 if device.type == "cuda" else torch.float32
     pipe = StableDiffusionInstructPix2PixPipeline.from_pretrained(
@@ -547,7 +546,7 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
     )
     pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
     pipe = pipe.to(device)
-    pipe.enable_attention_slicing()  # reduce memoria, a costa de algo de velocidad
+    pipe.enable_attention_slicing()
 
     # muestra de textura como imagen de referencia (IP-Adapter). Si falla, se sigue solo con el texto.
     texture_image = None
@@ -564,74 +563,136 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
             print(f"No se pudo usar la muestra de textura ({exc}).")
             print("Se sigue solo con el texto. Comprueba que diffusers sea >= 0.27.")
 
-    # los nombres de Fashionpedia pueden ser largos ("top, t-shirt, sweatshirt"),
-    # nos quedamos con el primero para que la instrucción sea natural
-    garment_name = prenda["name"].split(",")[0].strip()
-    use_texture = bool(texture) and texture.lower() != C.PIX2PIX_NO_TEXTURE
-    # vamos montando la instrucción por trozos y luego los unimos con comas
-    parts = []
-    if color:
-        parts.append(C.PIX2PIX_INSTRUCTION_COLOR.format(name=garment_name, color=color))
-    if use_texture:
-        parts.append(C.PIX2PIX_INSTRUCTION_TEXTURE.format(texture=texture))
-    if extra:
-        parts.append(extra)
-    instruction = ", ".join(parts)
-    print(f"Instrucción: {instruction}")
+    # imagen y máscara al tamaño de trabajo del modelo
+    image_pil = Image.fromarray(image_np).resize(
+        (C.PIX2PIX_SIZE, C.PIX2PIX_SIZE), Image.BICUBIC)
 
-    call_kwargs = dict(
-        # si no hay instrucción ponemos una de relleno para que de error
-        prompt=instruction or "keep the image as it is",
-        image=image_pil,
-        num_inference_steps=C.PIX2PIX_NUM_INFERENCE_STEPS,
-        guidance_scale=C.PIX2PIX_GUIDANCE_SCALE,
-        image_guidance_scale=C.PIX2PIX_IMAGE_GUIDANCE_SCALE,
-        generator=torch.Generator(device=device).manual_seed(C.PIX2PIX_SEED),  # semilla fija
-    )
-    if texture_image is not None:
-        call_kwargs["ip_adapter_image"] = texture_image
+    resultados = []
 
-    # esta es la parte que más tarda
-    progress("Generando la imagen con InstructPix2Pix...")
-    edited = pipe(**call_kwargs).images[0]
+    # recorremos cada prenda detectada de forma independiente
+    for i, prenda in enumerate(prendas):
+        # usamos su propia máscara ya refinada por SAM2
+        mask_pil = mask_to_pil(
+            prenda["mask"], C.PIX2PIX_SIZE, C.PIX2PIX_FEATHER_RADIUS,
+            C.PIX2PIX_MASK_CLOSE_SIZE
+        )
 
-    # el modelo ha editado la imagen entera, pero nos quedamos con su resultado
-    # solo dentro de la máscara y con la imagen original fuera de ella
-    final = Image.composite(edited, image_pil, mask_pil)
+        # los nombres de Fashionpedia pueden ser largos ("top, t-shirt, sweatshirt"),
+        # nos quedamos con el primero para que la instrucción sea natural
+        garment_name = prenda["name"].split(",")[0].strip()
+        use_texture = bool(texture) and texture.lower() != C.PIX2PIX_NO_TEXTURE
 
-    # etiqueta para el título y el nombre del archivo
-    sample_id = pathlib.Path(texture_path).stem if texture_image is not None else ""
-    label = ", ".join(p for p in [color, texture if use_texture else "", extra, sample_id] if p)
+        # vamos montando la instrucción por trozos y luego los unimos con comas
+        parts = []
+        if color:
+            parts.append(C.PIX2PIX_INSTRUCTION_COLOR.format(name=garment_name, color=color))
+        if use_texture:
+            parts.append(C.PIX2PIX_INSTRUCTION_TEXTURE.format(texture=texture))
+        if extra:
+            parts.append(extra)
+        instruction = ", ".join(parts)
+        print(f"Instrucción: {instruction}")
 
-    return {
-        "source": source, "prenda_name": prenda["name"], "label": label,
-        "image": image_pil, "mask": mask_pil, "edited": edited, "final": final,
-    }
+        call_kwargs = dict(
+            # si no hay instrucción ponemos una de relleno para que de error
+            prompt=instruction or "keep the image as it is",
+            image=image_pil,
+            num_inference_steps=C.PIX2PIX_NUM_INFERENCE_STEPS,
+            guidance_scale=C.PIX2PIX_GUIDANCE_SCALE,
+            image_guidance_scale=C.PIX2PIX_IMAGE_GUIDANCE_SCALE,
+            generator=torch.Generator(device=device).manual_seed(C.PIX2PIX_SEED + i),
+        )
+        if texture_image is not None:
+            call_kwargs["ip_adapter_image"] = texture_image
+
+        # esta es la parte que más tarda
+        progress("Generando la imagen con InstructPix2Pix...")
+        edited = pipe(**call_kwargs).images[0]
+
+        # el modelo ha editado la imagen entera, pero nos quedamos con su resultado
+        # solo dentro de la máscara y con la imagen original fuera de ella
+        final = Image.composite(edited, image_pil, mask_pil)
+
+        # etiqueta para el título y el nombre del archivo
+        sample_id = pathlib.Path(texture_path).stem if texture_image is not None else ""
+        label = ", ".join(p for p in [color, texture if use_texture else "", extra, sample_id] if p)
+
+        resultados.append({
+            "source": source, 
+            "prenda_name": prenda["name"], 
+            "label": label,
+            "image": image_pil, 
+            "mask": mask_pil, 
+            "edited": edited, 
+            "final": final,
+        })
+
+    return resultados
 
 
-def show_result(result):
-    """Dibuja las 4 imágenes, guarda la figura y la enseña. Esto va siempre en el hilo principal."""
-    fig, axes = plt.subplots(1, 4, figsize=C.PIX2PIX_FIGURE_SIZE)
-    axes[0].imshow(result["image"])
-    axes[0].set_title(f"Original ({result['source']})")
-    axes[1].imshow(result["mask"], cmap="gray")
-    axes[1].set_title(f"Máscara refinada ({result['prenda_name']})")
-    axes[2].imshow(result["edited"])
-    axes[2].set_title("Salida del modelo (imagen entera)")
-    axes[3].imshow(result["final"])
-    axes[3].set_title(f"Resultado final: '{result['label']}'")
-    for ax in axes:
-        ax.axis("off")
+# def show_result(result):
+#     """Dibuja las 4 imágenes, guarda la figura y la enseña. Esto va siempre en el hilo principal."""
+#     fig, axes = plt.subplots(1, 4, figsize=C.PIX2PIX_FIGURE_SIZE)
+#     axes[0].imshow(result["image"])
+#     axes[0].set_title(f"Original ({result['source']})")
+#     axes[1].imshow(result["mask"], cmap="gray")
+#     axes[1].set_title(f"Máscara refinada ({result['prenda_name']})")
+#     axes[2].imshow(result["edited"])
+#     axes[2].set_title("Salida del modelo (imagen entera)")
+#     axes[3].imshow(result["final"])
+#     axes[3].set_title(f"Resultado final: '{result['label']}'")
+#     for ax in axes:
+#         ax.axis("off")
 
-    plt.tight_layout()
+#     plt.tight_layout()
+#     out_dir = pathlib.Path(C.PIX2PIX_OUTPUT_DIR)
+#     out_dir.mkdir(parents=True, exist_ok=True)
+#     # limpiamos el label para que sirva de nombre de archivo (sin espacios ni símbolos raros)
+#     safe_label = re.sub(r"\W+", "_", result["label"]).strip("_")[:60]
+#     out_path = out_dir / f"{C.PIX2PIX_OUTPUT_PREFIX}{safe_label}.png"
+#     plt.savefig(out_path, dpi=C.PIX2PIX_SAVE_DPI)
+#     print(f"Guardado en {out_path}")
+#     Notification(
+#         app_id="Recolor de prendas",
+#         title="Prenda creada",
+#         msg=f"El resultado se guardó en:\n{out_path.resolve()}",
+#         duration="long",
+#     ).show()
+#     plt.show()
+
+def show_result(resultados):
+    """Muestra y guarda los resultados para cada prenda detectada por separado."""
     out_dir = pathlib.Path(C.PIX2PIX_OUTPUT_DIR)
     out_dir.mkdir(parents=True, exist_ok=True)
-    # limpiamos el label para que sirva de nombre de archivo (sin espacios ni símbolos raros)
-    safe_label = re.sub(r"\W+", "_", result["label"]).strip("_")[:60]
-    out_path = out_dir / f"{C.PIX2PIX_OUTPUT_PREFIX}{safe_label}.png"
-    plt.savefig(out_path, dpi=C.PIX2PIX_SAVE_DPI)
-    print(f"Guardado en {out_path}")
-    plt.show()
+
+    for i, result in enumerate(resultados):
+        fig, axes = plt.subplots(1, 4, figsize=C.PIX2PIX_FIGURE_SIZE)
+        axes[0].imshow(result["image"])
+        axes[0].set_title(f"Original")
+        axes[1].imshow(result["mask"], cmap="gray")
+        axes[1].set_title(f"Máscara SAM2\n({result['prenda_name']})")
+        axes[2].imshow(result["edited"])
+        axes[2].set_title("Salida InstructPix2Pix")
+        axes[3].imshow(result["final"])
+        axes[3].set_title(f"Final: {result['prenda_name']}")
+        
+        for ax in axes:
+            ax.axis("off")
+
+        plt.tight_layout()
+        # limpiamos el label para que sirva de nombre de archivo (sin espacios ni símbolos raros)
+        safe_label = re.sub(r"\W+", "_", f"{result['prenda_name']}_{result['label']}").strip("_")[:60]
+        out_path = out_dir / f"{C.PIX2PIX_OUTPUT_PREFIX}_{i}_{safe_label}.png"
+        plt.savefig(out_path, dpi=C.PIX2PIX_SAVE_DPI)
+        print(f"Guardado resultado de {result['prenda_name']} en {out_path}")
+        plt.show()
+
+    Notification(
+        app_id="Recolor de prendas",
+        title="Prenda creada",
+        msg=f"El resultado se guardó en:\n{out_path.resolve()}",
+        duration="long",
+    ).show()
 
 
 def main():
