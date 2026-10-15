@@ -18,6 +18,11 @@ añadir una instrucción, consultar el historial de diseños y descargar el resu
 con un nombre PNG personalizado. Usa **Detectar prendas** para superponer las
 máscaras del modelo sobre la foto; pasa el cursor para identificar las prendas,
 haz clic para seleccionar una o varias y genera con el color y la textura elegidos.
+La instrucción adicional se envía junto con esos cambios. Si eliges una muestra
+visual, se usa como referencia de textura; si no se puede cargar, la generación
+se detiene y muestra un error en vez de omitir la muestra silenciosamente.
+El montaje final amplía ligeramente la máscara para cubrir bordes sin teñir y
+recupera parte del contraste de pliegues y costuras desde la imagen original.
 La generación reutiliza los modelos Mask R-CNN, SAM 2 e InstructPix2Pix del
 proyecto; también se puede seguir usando la interfaz de escritorio con
 `python src/recolor.py`.

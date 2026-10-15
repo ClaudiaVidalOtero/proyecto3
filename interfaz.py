@@ -365,7 +365,7 @@ HTML = r"""<!doctype html>
                 <input class="input" id="material" value="leather" maxlength="80" autocomplete="off" placeholder="Ej. denim, silk, leather">
                 <button class="button small" id="refreshTextures" type="button">Ver muestras</button>
               </div>
-              <p class="hint">Elige un material o none para conservar la textura original. Se aplicará junto con el color a las prendas seleccionadas.</p>
+              <p class="hint">Elige un material o una muestra visual. Atelier intentará reproducir su grano, costuras y patrón sobre la prenda, manteniendo el color elegido.</p>
             </div>
             <div class="material-options" id="materialOptions" role="group" aria-label="Materiales sugeridos"></div>
             <div class="texture-grid" id="textureGallery"></div>
@@ -379,7 +379,7 @@ HTML = r"""<!doctype html>
             <div class="field">
               <label class="field-label" for="extra">Instrucción adicional <span style="color:#999;font-weight:400">(opcional)</span></label>
               <textarea class="input" id="extra" maxlength="500" placeholder="Ej. make the buttons gold"></textarea>
-              <p class="hint">Escribe la instrucción en inglés para obtener mejores resultados.</p>
+              <p class="hint">Escribe la instrucción en inglés para obtener mejores resultados; se combinará con los cambios de color y material.</p>
             </div>
             <button class="generate" id="generateButton" type="button">✦ &nbsp; Crear mi diseño</button>
             <div class="progress-card" id="progressCard" aria-live="polite">
