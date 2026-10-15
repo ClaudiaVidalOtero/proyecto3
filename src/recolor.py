@@ -485,10 +485,38 @@ def mask_to_pil(binary_mask, target_size, feather_radius, close_size=0):
         # (a la resolución de trabajo de Mask R-CNN) sin tocar los más anchos, como el escote
         # (primero dilata con MaxFilter y luego erosiona con MinFilter)
         mask_img = mask_img.filter(ImageFilter.MaxFilter(close_size)).filter(ImageFilter.MinFilter(close_size))
+    dilate_size = C.PIX2PIX_MASK_DILATE_SIZE
+    if dilate_size > 1:
+        mask_img = mask_img.filter(ImageFilter.MaxFilter(dilate_size))
     mask_img = mask_img.resize((target_size, target_size), Image.NEAREST)
     if feather_radius > 0:
         mask_img = mask_img.filter(ImageFilter.GaussianBlur(feather_radius))
     return mask_img
+
+
+def preserve_garment_folds(original, edited, strength=None, radius=None):
+    """Transfers source luminance detail (folds and seams) onto the edited garment."""
+    strength = (
+        C.PIX2PIX_FOLD_PRESERVATION_STRENGTH if strength is None else strength
+    )
+    radius = C.PIX2PIX_FOLD_PRESERVATION_RADIUS if radius is None else radius
+    edited_rgb = np.asarray(edited.convert("RGB"), dtype=np.float32)
+    original_luma_image = original.convert("L")
+    original_luma = np.asarray(original_luma_image, dtype=np.float32)
+    smooth_luma = np.asarray(
+        original_luma_image.filter(ImageFilter.GaussianBlur(radius)),
+        dtype=np.float32,
+    )
+    fold_detail = (original_luma - smooth_luma) * strength
+    edited_luma = (
+        edited_rgb[..., 0] * 0.299
+        + edited_rgb[..., 1] * 0.587
+        + edited_rgb[..., 2] * 0.114
+    )
+    target_luma = np.clip(edited_luma + fold_detail, 0, 255)
+    scale = target_luma / np.maximum(edited_luma, 1)
+    result = np.clip(edited_rgb * scale[..., None], 0, 255).astype(np.uint8)
+    return Image.fromarray(result)
 
 
 def detect_garments(source, dataset, device, progress=print):
@@ -512,6 +540,31 @@ def detect_garments(source, dataset, device, progress=print):
     sam2_predictor = SAM2ImagePredictor.from_pretrained(C.SAM2_MODEL_ID, device=device.type)
     _, garments, _ = refine_with_sam2(model_output, image_np, sam2_predictor, label2name)
     return {"image": image_np, "garments": garments}
+
+
+def build_edit_instruction(garment_name, color, texture, extra, has_texture_reference):
+    """Construye una instrucción explícita para la prenda y la referencia visual."""
+    parts = []
+    if color:
+        parts.append(C.PIX2PIX_INSTRUCTION_COLOR.format(name=garment_name, color=color))
+    if texture:
+        parts.append(C.PIX2PIX_INSTRUCTION_TEXTURE.format(name=garment_name, texture=texture))
+    if has_texture_reference:
+        parts.append(
+            "Faithfully reproduce the distinctive surface texture, stitching, and "
+            "repeating pattern visible in the supplied reference image across the "
+            "selected garment. Treat the reference as a texture swatch and tile its "
+            "pattern naturally over the garment. Do not copy the swatch background "
+            "or its shape. Keep the garment color specified above."
+        )
+    if extra:
+        parts.append(f"Additional instruction: {extra}")
+    if parts:
+        parts.append(
+            "Preserve the selected garment's shape and all details not explicitly "
+            "mentioned in these instructions."
+        )
+    return "\n".join(parts)
 
 
 def generate(source, color, texture, extra, texture_path, dataset, device, progress=print,
@@ -560,33 +613,39 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
     )
     pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
     pipe = pipe.to(device)
-    pipe.enable_attention_slicing()  # reduce memoria, a costa de algo de velocidad
+    if not texture_path:
+        pipe.enable_attention_slicing()
 
-    # muestra de textura como imagen de referencia (IP-Adapter). Si falla, se sigue solo con el texto.
+    # La muestra se aplica como referencia visual; no continuar en silencio si falla.
     texture_image = None
     if texture_path:
+        texture_stage = "cargar IP-Adapter"
         try:
             progress("Cargando IP-Adapter (la primera vez descarga un codificador de imagen grande)...")
             pipe.load_ip_adapter(
                 C.PIX2PIX_IP_ADAPTER_REPO, subfolder="models",
                 weight_name=C.PIX2PIX_IP_ADAPTER_WEIGHTS)
+            texture_stage = "configurar la escala de referencia"
             pipe.set_ip_adapter_scale(C.PIX2PIX_IP_ADAPTER_SCALE)
-            texture_image = Image.open(texture_path).convert("RGB")
+            texture_stage = "abrir la muestra seleccionada"
+            with Image.open(texture_path) as reference:
+                texture_image = reference.convert("RGB")
             print(f"Muestra de textura: {texture_path} (escala {C.PIX2PIX_IP_ADAPTER_SCALE})")
         except Exception as exc:
-            print(f"No se pudo usar la muestra de textura ({exc}).")
-            print("Se sigue solo con el texto. Comprueba que diffusers sea >= 0.27.")
+            raise RuntimeError(
+                f"Falló el paso «{texture_stage}» "
+                f"({type(exc).__name__}): {exc}. "
+                "La generación se ha detenido para no ignorar la muestra seleccionada."
+            ) from exc
 
     use_texture = bool(texture) and texture.lower() != C.PIX2PIX_NO_TEXTURE
-    # vamos montando la instrucción por trozos y luego los unimos con comas
-    parts = []
-    if color:
-        parts.append(C.PIX2PIX_INSTRUCTION_COLOR.format(name=garment_name, color=color))
-    if use_texture:
-        parts.append(C.PIX2PIX_INSTRUCTION_TEXTURE.format(texture=texture))
-    if extra:
-        parts.append(extra)
-    instruction = ", ".join(parts)
+    instruction = build_edit_instruction(
+        garment_name,
+        color,
+        texture if use_texture else "",
+        extra,
+        has_texture_reference=texture_image is not None,
+    )
     print(f"Instrucción: {instruction}")
 
     call_kwargs = dict(
@@ -603,7 +662,8 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
 
     # esta es la parte que más tarda
     progress("Generando la imagen con InstructPix2Pix...")
-    edited = pipe(**call_kwargs).images[0]
+    edited = pipe(**call_kwargs).images[0].convert("RGB")
+    edited = preserve_garment_folds(image_pil, edited)
 
     # el modelo ha editado la imagen entera, pero nos quedamos con su resultado
     # solo dentro de la máscara y con la imagen original fuera de ella
