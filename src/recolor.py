@@ -568,7 +568,7 @@ def build_edit_instruction(garment_name, color, texture, extra, has_texture_refe
 
 
 def generate(source, color, texture, extra, texture_path, dataset, device, progress=print,
-             segmentation=None, garment_indices=None):
+             segmentation=None, garment_indices=None, garment_edits=None):
     """
     Ejecuta lo correspondiente a Mask R-CNN, SAM2 e InstructPix2Pix.
     No ejecuta nada de la interfaz (matplotlip, tkinter), así que se puede ejecutar 
@@ -587,7 +587,8 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
         return None
 
     indices = garment_indices if garment_indices is not None else [0]
-    if not indices or any(index < 0 or index >= len(prendas) for index in indices):
+    if (not indices or len(indices) != len(set(indices))
+            or any(index < 0 or index >= len(prendas) for index in indices)):
         raise ValueError("Selecciona prendas detectadas válidas antes de generar.")
     selected_garments = [prendas[index] for index in indices]
     garment_names = list(dict.fromkeys(garment["name"] for garment in selected_garments))
@@ -613,12 +614,17 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
     )
     pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
     pipe = pipe.to(device)
-    if not texture_path:
+    edit_texture_paths = [
+        edit.get("texture_path")
+        for edit in (garment_edits or {}).values()
+    ]
+    needs_ip_adapter = bool(texture_path or any(edit_texture_paths))
+    if not needs_ip_adapter:
         pipe.enable_attention_slicing()
 
-    # La muestra se aplica como referencia visual; no continuar en silencio si falla.
+    # Carga el adaptador una vez; cada prenda puede recibir una referencia diferente.
     texture_image = None
-    if texture_path:
+    if needs_ip_adapter:
         texture_stage = "cargar IP-Adapter"
         try:
             progress("Cargando IP-Adapter (la primera vez descarga un codificador de imagen grande)...")
@@ -627,10 +633,11 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
                 weight_name=C.PIX2PIX_IP_ADAPTER_WEIGHTS)
             texture_stage = "configurar la escala de referencia"
             pipe.set_ip_adapter_scale(C.PIX2PIX_IP_ADAPTER_SCALE)
-            texture_stage = "abrir la muestra seleccionada"
-            with Image.open(texture_path) as reference:
-                texture_image = reference.convert("RGB")
-            print(f"Muestra de textura: {texture_path} (escala {C.PIX2PIX_IP_ADAPTER_SCALE})")
+            if texture_path:
+                texture_stage = "abrir la muestra seleccionada"
+                with Image.open(texture_path) as reference:
+                    texture_image = reference.convert("RGB")
+                print(f"Muestra de textura: {texture_path} (escala {C.PIX2PIX_IP_ADAPTER_SCALE})")
         except Exception as exc:
             raise RuntimeError(
                 f"Falló el paso «{texture_stage}» "
@@ -646,32 +653,95 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
         extra,
         has_texture_reference=texture_image is not None,
     )
-    print(f"Instrucción: {instruction}")
+    if garment_edits is None:
+        print(f"Instrucción: {instruction}")
 
-    call_kwargs = dict(
-        # si no hay instrucción ponemos una de relleno para que de error
-        prompt=instruction or "keep the image as it is",
-        image=image_pil,
-        num_inference_steps=C.PIX2PIX_NUM_INFERENCE_STEPS,
-        guidance_scale=C.PIX2PIX_GUIDANCE_SCALE,
-        image_guidance_scale=C.PIX2PIX_IMAGE_GUIDANCE_SCALE,
-        generator=torch.Generator(device=device).manual_seed(C.PIX2PIX_SEED),  # semilla fija
-    )
-    if texture_image is not None:
-        call_kwargs["ip_adapter_image"] = texture_image
+    if garment_edits is not None:
+        if set(garment_edits) != set(indices):
+            raise ValueError("Cada prenda incluida debe tener su propia configuración.")
+        final = image_pil.copy()
+        edited_composite = image_pil.copy()
+        selected_mask = np.zeros_like(binary_mask, dtype=bool)
+        edit_labels = []
+        for position, index in enumerate(indices, start=1):
+            garment = prendas[index]
+            edit = garment_edits[index]
+            edit_color = edit["color"].strip()
+            if edit_color.lower() == C.PIX2PIX_NO_TEXTURE:
+                edit_color = ""
+            edit_texture = edit["texture"].strip()
+            use_garment_texture = bool(edit_texture) and edit_texture.lower() != C.PIX2PIX_NO_TEXTURE
+            edit_texture_path = edit.get("texture_path")
+            reference_image = None
+            if edit_texture_path:
+                try:
+                    with Image.open(edit_texture_path) as reference:
+                        reference_image = reference.convert("RGB")
+                except Exception as exc:
+                    raise RuntimeError(
+                        f"No se pudo abrir la muestra seleccionada para "
+                        f"{garment['name']}: {exc}"
+                    ) from exc
+            garment_prompt = build_edit_instruction(
+                garment["name"].split(",")[0].strip(),
+                edit_color,
+                edit_texture if use_garment_texture else "",
+                edit["extra"].strip(),
+                has_texture_reference=reference_image is not None,
+            )
+            print(f"Instrucción para {garment['name']}: {garment_prompt}")
+            call_kwargs = dict(
+                prompt=garment_prompt or "keep the image as it is",
+                image=image_pil,
+                num_inference_steps=C.PIX2PIX_NUM_INFERENCE_STEPS,
+                guidance_scale=C.PIX2PIX_GUIDANCE_SCALE,
+                image_guidance_scale=C.PIX2PIX_IMAGE_GUIDANCE_SCALE,
+                generator=torch.Generator(device=device).manual_seed(C.PIX2PIX_SEED + index),
+            )
+            if reference_image is not None:
+                call_kwargs["ip_adapter_image"] = reference_image
+            progress(f"Generando {garment['name']} ({position}/{len(indices)})...")
+            garment_result = pipe(**call_kwargs).images[0].convert("RGB")
+            garment_result = preserve_garment_folds(image_pil, garment_result)
+            garment_mask = mask_to_pil(
+                garment["mask"], C.PIX2PIX_SIZE, C.PIX2PIX_FEATHER_RADIUS,
+                C.PIX2PIX_MASK_CLOSE_SIZE,
+            )
+            final = Image.composite(garment_result, final, garment_mask)
+            edited_composite = Image.composite(garment_result, edited_composite, garment_mask)
+            selected_mask = np.logical_or(selected_mask, garment["mask"])
+            sample_id = pathlib.Path(edit_texture_path).stem if reference_image is not None else ""
+            edit_labels.append(", ".join(
+                part for part in [edit_color, edit_texture if use_garment_texture else "",
+                                  edit["extra"].strip(), sample_id] if part
+            ))
+        mask_pil = mask_to_pil(
+            selected_mask, C.PIX2PIX_SIZE, C.PIX2PIX_FEATHER_RADIUS,
+            C.PIX2PIX_MASK_CLOSE_SIZE,
+        )
+        edited = edited_composite
+        label = " | ".join(
+            f"{prendas[index]['name']}: {edit_labels[position]}"
+            for position, index in enumerate(indices)
+        )
+    else:
+        call_kwargs = dict(
+            prompt=instruction or "keep the image as it is",
+            image=image_pil,
+            num_inference_steps=C.PIX2PIX_NUM_INFERENCE_STEPS,
+            guidance_scale=C.PIX2PIX_GUIDANCE_SCALE,
+            image_guidance_scale=C.PIX2PIX_IMAGE_GUIDANCE_SCALE,
+            generator=torch.Generator(device=device).manual_seed(C.PIX2PIX_SEED),
+        )
+        if texture_image is not None:
+            call_kwargs["ip_adapter_image"] = texture_image
 
-    # esta es la parte que más tarda
-    progress("Generando la imagen con InstructPix2Pix...")
-    edited = pipe(**call_kwargs).images[0].convert("RGB")
-    edited = preserve_garment_folds(image_pil, edited)
-
-    # el modelo ha editado la imagen entera, pero nos quedamos con su resultado
-    # solo dentro de la máscara y con la imagen original fuera de ella
-    final = Image.composite(edited, image_pil, mask_pil)
-
-    # etiqueta para el título y el nombre del archivo
-    sample_id = pathlib.Path(texture_path).stem if texture_image is not None else ""
-    label = ", ".join(p for p in [color, texture if use_texture else "", extra, sample_id] if p)
+        progress("Generando la imagen con InstructPix2Pix...")
+        edited = pipe(**call_kwargs).images[0].convert("RGB")
+        edited = preserve_garment_folds(image_pil, edited)
+        final = Image.composite(edited, image_pil, mask_pil)
+        sample_id = pathlib.Path(texture_path).stem if texture_image is not None else ""
+        label = ", ".join(p for p in [color, texture if use_texture else "", extra, sample_id] if p)
 
     return {
         "source": source, "prenda_name": ", ".join(garment_names), "label": label,

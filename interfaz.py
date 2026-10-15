@@ -51,6 +51,14 @@ async def lifespan(app):
 app = FastAPI(title="Atelier — recolore prendas", lifespan=lifespan)
 
 
+class GarmentEditRequest(BaseModel):
+    index: int = Field(ge=0)
+    color: str = Field(default="", max_length=80)
+    texture: str = Field(default=C.PIX2PIX_NO_TEXTURE, max_length=80)
+    extra: str = Field(default="", max_length=500)
+    texture_id: str | None = Field(default=None, max_length=100)
+
+
 class GenerationRequest(BaseModel):
     source_id: str = Field(min_length=1, max_length=100)
     color: str = Field(default="", max_length=80)
@@ -59,6 +67,7 @@ class GenerationRequest(BaseModel):
     texture_id: str | None = Field(default=None, max_length=100)
     segmentation_id: str | None = Field(default=None, max_length=100)
     garment_indices: list[int] | None = None
+    garment_edits: list[GarmentEditRequest] | None = None
 
 
 class SegmentationRequest(BaseModel):
@@ -186,6 +195,20 @@ HTML = r"""<!doctype html>
       color: #62645d; font-size: 9px; }
     .material-choice:hover { border-color: #d5b6aa; color: var(--accent-dark); }
     .material-choice.selected { border-color: var(--accent); background: #fbf0eb; color: var(--accent-dark); font-weight: 650; }
+    .garment-style-editor { display: none; margin-bottom: 14px; }
+    .garment-style-editor.visible { display: block; }
+    .garment-tabs { display: flex; gap: 6px; margin: 0 0 12px; overflow-x: auto; padding: 2px 1px 5px; }
+    .garment-tab { flex: 0 0 auto; max-width: 180px; padding: 7px 10px; border: 1px solid var(--line);
+      border-radius: 9px; background: white; color: #565851; font-size: 10px; }
+    .garment-tab.selected { border-color: var(--accent); background: #fbf0eb; color: var(--accent-dark); font-weight: 650; }
+    .garment-tab:not(.included)::after { content: " · omitida"; color: var(--muted); font-weight: 400; }
+    .garment-tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .garment-editor-pane { display: none; }
+    .garment-editor-pane.active { display: block; }
+    .garment-editor-pane .garment-toggle { display: flex; align-items: center; gap: 7px; margin: 0 0 10px;
+      color: #62645d; font-size: 10px; }
+    .garment-editor-pane .garment-toggle input { accent-color: var(--accent); }
+    .garment-editor-pane .texture-grid { margin-top: 8px; }
     .texture-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; min-height: 67px; }
     .texture-tile { min-width: 0; padding: 0 0 5px; overflow: hidden; border: 2px solid transparent; border-radius: 9px;
       background: #f4f3ef; color: #565851; font-size: 9px; }
@@ -352,6 +375,7 @@ HTML = r"""<!doctype html>
               <div><h2>Define el nuevo estilo</h2><p>Combina un color con el material que prefieras.</p></div>
               <span class="step">3</span>
             </div>
+            <div id="defaultStyle">
             <div class="field">
               <label class="field-label" for="color">Color</label>
               <input class="input" id="color" list="colors" value="black" maxlength="80" placeholder="Escribe un color en inglés">
@@ -380,6 +404,12 @@ HTML = r"""<!doctype html>
               <label class="field-label" for="extra">Instrucción adicional <span style="color:#999;font-weight:400">(opcional)</span></label>
               <textarea class="input" id="extra" maxlength="500" placeholder="Ej. make the buttons gold"></textarea>
               <p class="hint">Escribe la instrucción en inglés para obtener mejores resultados; se combinará con los cambios de color y material.</p>
+            </div>
+            </div>
+            <div class="garment-style-editor" id="garmentStyleEditor" aria-live="polite">
+              <div class="garment-tabs" id="garmentTabs" role="tablist" aria-label="Configurar cada prenda"></div>
+              <div id="garmentEditorPanes"></div>
+              <p class="hint">Cada pestaña tiene sus propios cambios. Solo se enviarán las prendas marcadas para aplicar.</p>
             </div>
             <button class="generate" id="generateButton" type="button">✦ &nbsp; Crear mi diseño</button>
             <div class="progress-card" id="progressCard" aria-live="polite">
@@ -414,7 +444,7 @@ HTML = r"""<!doctype html>
   </div>
   <script>
     const $ = (selector) => document.querySelector(selector);
-    const state = { source: null, textureId: null, activeJob: null, textureTimer: null, segmentation: null };
+    const state = { source: null, textureId: null, activeJob: null, textureTimer: null, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null };
     const colorHex = {
       black:"#252525", white:"#f7f5ef", red:"#c94843", blue:"#466ca5", "navy blue":"#293650",
       green:"#66866a", "dark green":"#345343", yellow:"#e9c44e", pink:"#dc91a4",
@@ -451,6 +481,10 @@ HTML = r"""<!doctype html>
     }
     function clearSegmentation(message = "") {
       state.segmentation = null;
+      state.garmentEdits.clear();
+      state.activeGarmentTab = null;
+      $("#defaultStyle").hidden = false;
+      $("#garmentStyleEditor").classList.remove("visible");
       const canvas = $("#segmentationOverlay");
       canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
       $("#sourcePreview").classList.remove("has-segmentation");
@@ -486,6 +520,233 @@ HTML = r"""<!doctype html>
         button.addEventListener("click", () => toggleGarment(index));
         list.append(button);
       });
+      $("#garmentEditorPanes").querySelectorAll(".garment-editor-pane").forEach((pane, index) => {
+        const toggle = pane.querySelector(".garment-toggle input");
+        if (toggle) toggle.checked = segmentation.selected.has(index);
+      });
+      updateGarmentTabs();
+    }
+    function createGarmentEditor(index, item, config) {
+      const edit = state.garmentEdits.get(index);
+      const pane = document.createElement("section");
+      pane.className = "garment-editor-pane";
+      pane.id = `garment-pane-${index}`;
+      pane.setAttribute("role", "tabpanel");
+      const toggleLabel = document.createElement("label");
+      toggleLabel.className = "garment-toggle";
+      const toggle = document.createElement("input");
+      toggle.type = "checkbox";
+      toggle.checked = state.segmentation.selected.has(index);
+      toggle.addEventListener("change", () => toggleGarment(index));
+      toggleLabel.append(toggle, document.createTextNode("Incluir esta prenda en la generación"));
+      pane.append(toggleLabel);
+
+      const colorField = document.createElement("div");
+      colorField.className = "field";
+      const colorLabel = document.createElement("label");
+      colorLabel.className = "field-label";
+      colorLabel.textContent = "Color";
+      const color = document.createElement("input");
+      color.className = "input garment-color";
+      color.value = edit.color;
+      color.maxLength = 80;
+      color.placeholder = "Color en inglés o none";
+      color.addEventListener("input", () => {
+        edit.color = color.value;
+        colorField.querySelectorAll(".swatch").forEach((swatch) =>
+          swatch.classList.toggle("selected", swatch.title === color.value.trim().toLowerCase()));
+      });
+      colorField.append(colorLabel, color);
+      const swatches = document.createElement("div");
+      swatches.className = "swatches";
+      swatches.setAttribute("aria-label", `Colores para ${item.name}`);
+      for (const [name, hex] of Object.entries(colorHex)) {
+        const swatch = document.createElement("button");
+        swatch.type = "button";
+        swatch.className = "swatch";
+        swatch.title = name;
+        swatch.setAttribute("aria-label", name);
+        swatch.style.background = hex;
+        swatch.classList.toggle("selected", edit.color.trim().toLowerCase() === name);
+        swatch.addEventListener("click", () => {
+          edit.color = name;
+          color.value = name;
+          colorField.querySelectorAll(".swatch").forEach((button) => button.classList.toggle("selected", button === swatch));
+        });
+        swatches.append(swatch);
+      }
+      const noColor = document.createElement("button");
+      noColor.type = "button";
+      noColor.className = "swatch swatch-none";
+      noColor.title = "none";
+      noColor.textContent = "none";
+      noColor.setAttribute("aria-label", "Sin cambio de color");
+      noColor.classList.toggle("selected", edit.color.trim().toLowerCase() === "none");
+      noColor.addEventListener("click", () => {
+        edit.color = "none";
+        color.value = "none";
+        colorField.querySelectorAll(".swatch").forEach((button) => button.classList.toggle("selected", button === noColor));
+      });
+      swatches.append(noColor);
+      colorField.append(swatches);
+      pane.append(colorField);
+
+      const materialField = document.createElement("div");
+      materialField.className = "field";
+      const materialLabel = document.createElement("label");
+      materialLabel.className = "field-label";
+      materialLabel.textContent = "Material o textura";
+      const materialLine = document.createElement("div");
+      materialLine.className = "material-line";
+      const material = document.createElement("input");
+      material.className = "input garment-material";
+      material.value = edit.texture;
+      material.maxLength = 80;
+      material.placeholder = "Ej. denim, silk o none";
+      const refresh = document.createElement("button");
+      refresh.className = "button small";
+      refresh.type = "button";
+      refresh.textContent = "Ver muestras";
+      const textureNote = document.createElement("p");
+      textureNote.className = "hint";
+      textureNote.textContent = "Selecciona una muestra para usarla como referencia de textura.";
+      const textureGrid = document.createElement("div");
+      textureGrid.className = "texture-grid";
+      materialLine.append(material, refresh);
+      materialField.append(materialLabel, materialLine, textureNote, textureGrid);
+      const materialOptions = document.createElement("div");
+      materialOptions.className = "material-options";
+      for (const value of ["none", ...config.textures.filter((texture) => texture !== "none")]) {
+        const option = document.createElement("button");
+        option.type = "button";
+        option.className = "material-choice";
+        option.textContent = value;
+        option.classList.toggle("selected", edit.texture.toLowerCase() === value);
+        option.addEventListener("click", () => {
+          edit.texture = value;
+          edit.texture_id = null;
+          material.value = value;
+          materialOptions.querySelectorAll(".material-choice").forEach((button) => button.classList.toggle("selected", button === option));
+          loadGarmentTextures(index, pane);
+        });
+        materialOptions.append(option);
+      }
+      refresh.addEventListener("click", () => loadGarmentTextures(index, pane));
+      material.addEventListener("input", () => {
+        edit.texture = material.value;
+        edit.texture_id = null;
+        materialOptions.querySelectorAll(".material-choice").forEach((button) =>
+          button.classList.toggle("selected", button.textContent.toLowerCase() === material.value.trim().toLowerCase()));
+      });
+      material.addEventListener("change", () => loadGarmentTextures(index, pane));
+      pane.append(materialOptions, materialField);
+
+      const extraField = document.createElement("div");
+      extraField.className = "field";
+      const extraLabel = document.createElement("label");
+      extraLabel.className = "field-label";
+      extraLabel.textContent = "Instrucción adicional";
+      const extra = document.createElement("textarea");
+      extra.className = "input";
+      extra.maxLength = 500;
+      extra.placeholder = "Ej. make the buttons gold";
+      extra.value = edit.extra;
+      extra.addEventListener("input", () => { edit.extra = extra.value; });
+      extraField.append(extraLabel, extra);
+      pane.append(extraField);
+      return pane;
+    }
+    async function loadGarmentTextures(index, pane) {
+      const edit = state.garmentEdits.get(index);
+      if (!edit) return;
+      const gallery = pane.querySelector(".texture-grid");
+      const note = pane.querySelector(".hint");
+      if (edit.texture.trim().toLowerCase() === "none") {
+        edit.texture_id = null;
+        gallery.replaceChildren();
+        note.textContent = "Textura desactivada para esta prenda.";
+        return;
+      }
+      gallery.innerHTML = '<div class="empty-text">Buscando muestras…</div>';
+      try {
+        const query = new URLSearchParams({material: edit.texture});
+        const data = await request(`/api/textures?${query}`);
+        note.textContent = data.note;
+        gallery.replaceChildren();
+        for (const item of data.items) {
+          const tile = document.createElement("button");
+          tile.type = "button";
+          tile.className = "texture-tile";
+          tile.classList.toggle("selected", edit.texture_id === item.id);
+          tile.dataset.id = item.id;
+          const image = document.createElement("img");
+          image.loading = "lazy";
+          image.alt = item.id;
+          image.src = item.preview_url;
+          const label = document.createElement("span");
+          label.textContent = item.id;
+          tile.append(image, label);
+          tile.addEventListener("click", () => {
+            edit.texture_id = edit.texture_id === item.id ? null : item.id;
+            gallery.querySelectorAll(".texture-tile").forEach((button) =>
+              button.classList.toggle("selected", button.dataset.id === edit.texture_id));
+          });
+          gallery.append(tile);
+        }
+        if (edit.texture_id && !data.items.some((item) => item.id === edit.texture_id)) edit.texture_id = null;
+      } catch (error) {
+        gallery.replaceChildren();
+        note.textContent = `No se pudieron cargar las muestras: ${error.message}`;
+      }
+    }
+    function updateGarmentTabs() {
+      const segmentation = state.segmentation;
+      const tabList = $("#garmentTabs");
+      tabList.replaceChildren();
+      if (!segmentation) return;
+      segmentation.items.forEach((item, index) => {
+        const tab = document.createElement("button");
+        tab.type = "button";
+        tab.className = "garment-tab";
+        tab.classList.toggle("selected", state.activeGarmentTab === index);
+        tab.classList.toggle("included", segmentation.selected.has(index));
+        tab.id = `garment-tab-${index}`;
+        tab.setAttribute("role", "tab");
+        tab.setAttribute("aria-selected", String(state.activeGarmentTab === index));
+        tab.setAttribute("aria-controls", `garment-pane-${index}`);
+        const label = document.createElement("span");
+        label.className = "garment-tab-label";
+        label.textContent = item.name;
+        tab.append(label);
+        tab.addEventListener("click", () => setActiveGarmentTab(index));
+        tabList.append(tab);
+      });
+    }
+    function setActiveGarmentTab(index) {
+      state.activeGarmentTab = index;
+      updateGarmentTabs();
+      $("#garmentEditorPanes").querySelectorAll(".garment-editor-pane").forEach((pane, paneIndex) =>
+        pane.classList.toggle("active", paneIndex === index));
+    }
+    function buildGarmentEditors(config) {
+      const segmentation = state.segmentation;
+      if (!segmentation) return;
+      const panes = $("#garmentEditorPanes");
+      panes.replaceChildren();
+      state.garmentEdits.clear();
+      segmentation.items.forEach((item, index) => {
+        state.garmentEdits.set(index, {
+          color: $("#color").value.trim() || "black",
+          texture: $("#material").value.trim() || "none",
+          extra: $("#extra").value.trim(),
+          texture_id: state.textureId,
+        });
+        panes.append(createGarmentEditor(index, item, config));
+      });
+      $("#defaultStyle").hidden = true;
+      $("#garmentStyleEditor").classList.add("visible");
+      setActiveGarmentTab(0);
+      segmentation.items.forEach((_, index) => loadGarmentTextures(index, panes.children[index]));
     }
     function toggleGarment(index) {
       if (!state.segmentation) return;
@@ -494,7 +755,7 @@ HTML = r"""<!doctype html>
       drawSegmentationOverlay();
       updateGarmentOptions();
       $("#segmentationStatus").textContent = state.segmentation.selected.size
-        ? `${state.segmentation.selected.size} prenda(s) seleccionada(s). El color y material elegidos se aplicarán a todas.`
+        ? `${state.segmentation.selected.size} prenda(s) incluida(s). Configura cada una en su pestaña.`
         : "Pasa el cursor sobre una prenda de la imagen o elige una abajo.";
     }
     function garmentAt(clientX, clientY) {
@@ -540,7 +801,9 @@ HTML = r"""<!doctype html>
         canvas.width = data.width;
         canvas.height = data.height;
         state.segmentation = {id:data.id, sourceId, items, selected:new Set(), hovered:-1};
+        items.forEach((_, index) => state.segmentation.selected.add(index));
         $("#sourcePreview").classList.add("has-segmentation");
+        buildGarmentEditors(window.atelierConfig || {textures:["none"]});
         updateGarmentOptions();
         drawSegmentationOverlay();
         const status = $("#segmentationStatus");
@@ -634,6 +897,7 @@ HTML = r"""<!doctype html>
       }
     }
     function populateOptions(config) {
+      window.atelierConfig = config;
       $("#colors").innerHTML = config.colors.map((color) => `<option value="${color}">`).join("");
       $("#materialOptions").replaceChildren();
       ["none", ...config.textures.filter((texture) => texture !== "none")].forEach((texture) => {
@@ -772,7 +1036,25 @@ HTML = r"""<!doctype html>
         showError("Selecciona al menos una de las prendas detectadas.");
         return;
       }
-      if (!color && (!material || material.toLowerCase() === "none") && !extra && !state.textureId) {
+      const garmentEdits = state.segmentation
+        ? [...state.segmentation.selected].map((index) => {
+            const edit = state.garmentEdits.get(index);
+            const editColor = edit.color.trim();
+            return {
+              index,
+              color: editColor.toLowerCase() === "none" ? "" : editColor,
+              texture: edit.texture.trim() || "none",
+              extra: edit.extra.trim(),
+              texture_id: edit.texture.toLowerCase() === "none" ? null : edit.texture_id,
+            };
+          })
+        : null;
+      if (garmentEdits && garmentEdits.some((edit) =>
+        !edit.color && edit.texture.toLowerCase() === "none" && !edit.extra && !edit.texture_id)) {
+        showError("Cada prenda incluida necesita al menos un cambio de color, material, muestra o instrucción.");
+        return;
+      }
+      if (!state.segmentation && !color && (!material || material.toLowerCase() === "none") && !extra && !state.textureId) {
         showError("Indica un color, material, muestra de textura o instrucción antes de generar.");
         return;
       }
@@ -790,7 +1072,8 @@ HTML = r"""<!doctype html>
             extra,
             texture_id: material.toLowerCase() === "none" ? null : state.textureId,
             segmentation_id: state.segmentation?.id || null,
-            garment_indices: state.segmentation ? [...state.segmentation.selected] : null
+            garment_indices: state.segmentation ? [...state.segmentation.selected] : null,
+            garment_edits: garmentEdits
           })
         });
         state.activeJob = job.id;
@@ -1120,7 +1403,7 @@ async def texture_preview(texture_id: str, request: Request):
 
 
 def run_generation(app_state, job_id, source, color, texture, extra, texture_path,
-                  segmentation, garment_indices):
+                  segmentation, garment_indices, garment_edits=None):
     with job_lock:
         jobs[job_id]["status"] = "running"
 
@@ -1137,6 +1420,7 @@ def run_generation(app_state, job_id, source, color, texture, extra, texture_pat
         result = generate_recolor(
             source, color, texture, extra, texture_path, dataset, device, progress,
             segmentation=segmentation, garment_indices=garment_indices,
+            garment_edits=garment_edits,
         )
         if result is None:
             raise RuntimeError("No se detectó ninguna prenda clara. Prueba con otra imagen.")
@@ -1195,14 +1479,15 @@ async def generate(request: Request, options: GenerationRequest):
         else None
     )
     extra = options.extra.strip()
-    if (not color and texture_name.lower() == C.PIX2PIX_NO_TEXTURE
+    if (options.garment_edits is None
+            and not color and texture_name.lower() == C.PIX2PIX_NO_TEXTURE
             and not extra and not texture_id):
         raise HTTPException(
             status_code=400,
             detail="Indica un color, material, muestra de textura o instrucción antes de generar.",
         )
     texture_path = None
-    if texture_id:
+    if texture_id and options.garment_edits is None:
         texture = next((entry for entry in get_textures(request.app.state)
                         if entry["id"] == texture_id), None)
         if texture is None:
@@ -1211,6 +1496,7 @@ async def generate(request: Request, options: GenerationRequest):
 
     segmentation = None
     garment_indices = None
+    garment_edits = None
     if options.segmentation_id:
         segmentation = request.app.state.segmentations.get(options.segmentation_id)
         if segmentation is None or segmentation["source_id"] != options.source_id:
@@ -1220,7 +1506,55 @@ async def generate(request: Request, options: GenerationRequest):
             raise HTTPException(status_code=400, detail="Selecciona al menos una prenda detectada.")
         if any(index < 0 or index >= len(segmentation["garments"]) for index in garment_indices):
             raise HTTPException(status_code=400, detail="Una de las prendas seleccionadas ya no está disponible.")
+        if len(garment_indices) != len(set(garment_indices)):
+            raise HTTPException(status_code=400, detail="La lista de prendas incluidas contiene duplicados.")
+        if options.garment_edits is not None:
+            edit_indices = [edit.index for edit in options.garment_edits]
+            if len(edit_indices) != len(set(edit_indices)) or set(edit_indices) != set(garment_indices):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Debe haber una configuración distinta para cada prenda incluida.",
+                )
+            garment_edits = {}
+            for edit in options.garment_edits:
+                edit_color = edit.color.strip()
+                if edit_color.lower() == C.PIX2PIX_NO_TEXTURE:
+                    edit_color = ""
+                edit_texture = edit.texture.strip() or C.PIX2PIX_NO_TEXTURE
+                edit_texture_id = (
+                    edit.texture_id
+                    if edit_texture.lower() != C.PIX2PIX_NO_TEXTURE
+                    else None
+                )
+                edit_extra = edit.extra.strip()
+                if (not edit_color and edit_texture.lower() == C.PIX2PIX_NO_TEXTURE
+                        and not edit_extra and not edit_texture_id):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Indica un cambio para la prenda {segmentation['garments'][edit.index]['name']}.",
+                    )
+                edit_texture_path = None
+                if edit_texture_id:
+                    texture_entry = next(
+                        (entry for entry in get_textures(request.app.state)
+                         if entry["id"] == edit_texture_id),
+                        None,
+                    )
+                    if texture_entry is None:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"La muestra de textura de {segmentation['garments'][edit.index]['name']} ya no existe.",
+                        )
+                    edit_texture_path = texture_entry["path"]
+                garment_edits[edit.index] = {
+                    "color": edit_color,
+                    "texture": edit_texture,
+                    "extra": edit_extra,
+                    "texture_path": edit_texture_path,
+                }
     elif options.garment_indices is not None:
+        raise HTTPException(status_code=400, detail="Primero detecta las prendas de la imagen.")
+    elif options.garment_edits is not None:
         raise HTTPException(status_code=400, detail="Primero detecta las prendas de la imagen.")
 
     with job_lock:
@@ -1249,6 +1583,7 @@ async def generate(request: Request, options: GenerationRequest):
             texture_path,
             segmentation,
             garment_indices,
+            garment_edits,
         )
     return {"id": job_id, "status": "queued"}
 
