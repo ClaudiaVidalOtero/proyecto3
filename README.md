@@ -18,6 +18,9 @@ añadir una instrucción, consultar el historial de diseños y descargar el resu
 con un nombre PNG personalizado. Usa **Detectar prendas** para superponer las
 máscaras del modelo sobre la foto; pasa el cursor para identificar las prendas,
 haz clic para seleccionar una o varias y genera con el color y la textura elegidos.
+Al detectar varias prendas, aparece una pestaña de configuración por cada una;
+puedes asignarles colores, materiales, muestras e instrucciones independientes y
+generarlas juntas en una sola imagen.
 La instrucción adicional se envía junto con esos cambios. Si eliges una muestra
 visual, se usa como referencia de textura; si no se puede cargar, la generación
 se detiene y muestra un error en vez de omitir la muestra silenciosamente.
@@ -26,6 +29,21 @@ recupera parte del contraste de pliegues y costuras desde la imagen original.
 La generación reutiliza los modelos Mask R-CNN, SAM 2 e InstructPix2Pix del
 proyecto; también se puede seguir usando la interfaz de escritorio con
 `python src/recolor.py`.
+
+### PyTorch con CUDA (Windows, NVIDIA)
+
+Para usar la GPU NVIDIA en lugar de CPU, instala las ruedas CUDA fijadas en
+`requirements.txt` desde el índice oficial de PyTorch:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu130
+```
+
+Verifica que PyTorch detecta la GPU:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
+```
 
 ## Entrenamiento de segmentacion
 
