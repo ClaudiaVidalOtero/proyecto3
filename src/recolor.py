@@ -519,6 +519,55 @@ def preserve_garment_folds(original, edited, strength=None, radius=None):
     return Image.fromarray(result)
 
 
+_PIPELINE_CACHE = {}
+_PIPELINE_LOCK = threading.Lock()
+
+
+def get_pipeline(device):
+    """
+    Carga InstructPix2Pix una sola vez y lo deja cacheado para reutilizarlo en las
+    siguientes generaciones. Antes se recargaba entero desde disco en cada llamada,
+    lo que añadía una espera grande (y descarga el modelo la primera vez).
+    """
+    # float16 en GPU va mejor, mientras que en CPU hace falta float32 porque float16 va muy lento
+    dtype = torch.float16 if device.type == "cuda" else torch.float32
+    key = (C.PIX2PIX_MODEL_ID, str(device), str(dtype))
+    with _PIPELINE_LOCK:
+        pipe = _PIPELINE_CACHE.get(key)
+        if pipe is not None:
+            return pipe
+        pipe = StableDiffusionInstructPix2PixPipeline.from_pretrained(
+            C.PIX2PIX_MODEL_ID, torch_dtype=dtype, safety_checker=None
+        )
+        pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
+        pipe = pipe.to(device)
+        if C.PIX2PIX_ATTENTION_SLICING:
+            pipe.enable_attention_slicing()
+        _PIPELINE_CACHE[key] = pipe
+        return pipe
+
+
+def prepare_ip_adapter(pipe, progress=print):
+    """Carga el IP-Adapter sobre el pipeline cacheado. Solo la primera vez."""
+    if getattr(pipe, "_atelier_ip_adapter_loaded", False):
+        return
+    texture_stage = "cargar IP-Adapter"
+    try:
+        progress("Cargando IP-Adapter (la primera vez descarga un codificador de imagen grande)...")
+        pipe.load_ip_adapter(
+            C.PIX2PIX_IP_ADAPTER_REPO, subfolder="models",
+            weight_name=C.PIX2PIX_IP_ADAPTER_WEIGHTS)
+        texture_stage = "configurar la escala de referencia"
+        pipe.set_ip_adapter_scale(C.PIX2PIX_IP_ADAPTER_SCALE)
+        pipe._atelier_ip_adapter_loaded = True
+    except Exception as exc:
+        raise RuntimeError(
+            f"Falló el paso «{texture_stage}» "
+            f"({type(exc).__name__}): {exc}. "
+            "La generación se ha detenido para no ignorar la muestra seleccionada."
+        ) from exc
+
+
 def detect_garments(source, dataset, device, progress=print):
     """Detecta y refina todas las prendas de una imagen para previsualizarlas o recolorearlas."""
     progress("Detectando prendas (Mask R-CNN)...")
@@ -605,45 +654,30 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
         binary_mask, C.PIX2PIX_SIZE, C.PIX2PIX_FEATHER_RADIUS,
         C.PIX2PIX_MASK_CLOSE_SIZE)
 
-    # cargar InstructPix2Pix
+    # cargar InstructPix2Pix (se reutiliza entre generaciones, ver get_pipeline)
     progress("Cargando InstructPix2Pix (puede tardar la primera vez)...")
-    # float16 en GPU va mejor, mientras que en CPU hace falta float32 porque float16 va muy lento
-    dtype = torch.float16 if device.type == "cuda" else torch.float32
-    pipe = StableDiffusionInstructPix2PixPipeline.from_pretrained(
-        C.PIX2PIX_MODEL_ID, torch_dtype=dtype, safety_checker=None
-    )
-    pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
-    pipe = pipe.to(device)
+    pipe = get_pipeline(device)
     edit_texture_paths = [
         edit.get("texture_path")
         for edit in (garment_edits or {}).values()
     ]
     needs_ip_adapter = bool(texture_path or any(edit_texture_paths))
-    if not needs_ip_adapter:
-        pipe.enable_attention_slicing()
 
-    # Carga el adaptador una vez; cada prenda puede recibir una referencia diferente.
+    # Carga el adaptador (solo la primera vez); cada prenda puede recibir una referencia diferente.
     texture_image = None
     if needs_ip_adapter:
-        texture_stage = "cargar IP-Adapter"
-        try:
-            progress("Cargando IP-Adapter (la primera vez descarga un codificador de imagen grande)...")
-            pipe.load_ip_adapter(
-                C.PIX2PIX_IP_ADAPTER_REPO, subfolder="models",
-                weight_name=C.PIX2PIX_IP_ADAPTER_WEIGHTS)
-            texture_stage = "configurar la escala de referencia"
-            pipe.set_ip_adapter_scale(C.PIX2PIX_IP_ADAPTER_SCALE)
-            if texture_path:
-                texture_stage = "abrir la muestra seleccionada"
+        prepare_ip_adapter(pipe, progress)
+        if texture_path:
+            try:
                 with Image.open(texture_path) as reference:
                     texture_image = reference.convert("RGB")
                 print(f"Muestra de textura: {texture_path} (escala {C.PIX2PIX_IP_ADAPTER_SCALE})")
-        except Exception as exc:
-            raise RuntimeError(
-                f"Falló el paso «{texture_stage}» "
-                f"({type(exc).__name__}): {exc}. "
-                "La generación se ha detenido para no ignorar la muestra seleccionada."
-            ) from exc
+            except Exception as exc:
+                raise RuntimeError(
+                    f"Falló el paso «abrir la muestra seleccionada» "
+                    f"({type(exc).__name__}): {exc}. "
+                    "La generación se ha detenido para no ignorar la muestra seleccionada."
+                ) from exc
 
     use_texture = bool(texture) and texture.lower() != C.PIX2PIX_NO_TEXTURE
     instruction = build_edit_instruction(
