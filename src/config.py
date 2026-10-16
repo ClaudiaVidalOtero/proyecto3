@@ -59,6 +59,9 @@ PIX2PIX_INSTRUCTION_TEXTURE = "Change the material and surface texture of the se
 PIX2PIX_NUM_INFERENCE_STEPS = 30
 PIX2PIX_GUIDANCE_SCALE = 7.5
 PIX2PIX_IMAGE_GUIDANCE_SCALE = 2.5
+# El pipeline se carga una sola vez y se reutiliza entre generaciones (ver src/recolor.py).
+# Activa el "attention slicing" solo si te quedas sin memoria en la GPU (frena la difusión).
+PIX2PIX_ATTENTION_SLICING = False
 PIX2PIX_MASK_CLOSE_SIZE = 7
 PIX2PIX_MASK_DILATE_SIZE = 7
 PIX2PIX_FEATHER_RADIUS = 2
