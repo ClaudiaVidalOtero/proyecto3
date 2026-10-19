@@ -115,14 +115,11 @@ HTML = r"""<!doctype html>
       border-radius: 8px; background: white; color: #666860; font-size: 12px; }
     .history-refresh:hover { border-color: #d5b6aa; color: var(--accent-dark); }
     .history-list { display: grid; gap: 7px; max-height: min(46vh, 430px); overflow-y: auto; padding: 1px 4px 2px 0; }
-    .history-item { display: flex; align-items: center; gap: 4px; width: 100%; min-height: 39px;
-      border: 1px solid var(--line); border-radius: 9px; background: #fff; color: #454741; }
-    .history-item:hover, .history-item:focus-within { border-color: #d5b6aa; background: #fdf9f6; color: var(--accent-dark); }
-    .history-open-button { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 1;
-      min-width: 0; padding: 9px 4px 9px 10px; border: 0; background: transparent; color: inherit; text-align: left; }
-    .history-delete { display: grid; place-items: center; flex: 0 0 27px; width: 27px; height: 27px; margin-right: 6px;
-      border: 1px solid transparent; border-radius: 7px; background: transparent; color: #85877f; font-size: 14px; }
-    .history-delete:hover { border-color: #e6b6a8; background: #fbf0eb; color: var(--accent-dark); }
+    .history-item { width: 100%; }
+    .history-open-button { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+      min-width: 0; padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px;
+      background: #fff; color: #454741; text-align: left; }
+    .history-open-button:hover { border-color: #d5b6aa; background: #fdf9f6; color: var(--accent-dark); }
     .history-item-name { display: block; min-width: 0; overflow: hidden; font-size: 11px; font-weight: 600;
       text-overflow: ellipsis; white-space: nowrap; }
     .history-open { flex: 0 0 auto; color: var(--accent); font-size: 14px; }
@@ -130,17 +127,14 @@ HTML = r"""<!doctype html>
     .side-note strong { display: block; margin-bottom: 6px; font-size: 12px; }
     .side-note p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
     main { min-width: 0; max-width: 1500px; width: 100%; margin: 0 auto; padding: 20px clamp(20px, 4vw, 58px) 60px; }
-    .topline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .topline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .breadcrumb { color: var(--muted); font-size: 12px; }
     .device-pill { display: flex; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid var(--line);
       border-radius: 99px; background: #fff; color: #5e6159; font-size: 11px; }
     .dot { width: 7px; height: 7px; border-radius: 50%; background: #82a179; }
-    .hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 25px; margin-bottom: 18px; }
+    .hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 25px; margin-bottom: 12px; }
     .eyebrow { margin-bottom: 10px; color: var(--accent); font-size: 10px; font-weight: 750; letter-spacing: 1.8px; text-transform: uppercase; }
     h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(34px, 3.5vw, 44px); font-weight: 500; letter-spacing: -1.8px; }
-    .hero p { margin: 11px 0 0; color: var(--muted); font-size: 13px; }
-    .step-chip { flex: 0 0 auto; margin-bottom: 3px; color: #81837c; font-size: 11px; }
-    .step-chip b { color: var(--ink); }
     .layout { display: grid; grid-template-columns: minmax(0, 1.42fr) minmax(300px, .86fr); gap: 19px; align-items: start; }
     .stack { display: grid; gap: 18px; }
     .card { min-width: 0; padding: 19px; border: 1px solid var(--line); border-radius: 17px; background: var(--white); box-shadow: var(--shadow); }
@@ -231,10 +225,18 @@ HTML = r"""<!doctype html>
       color: white; font-size: 12px; font-weight: 700; transition: background .2s, transform .2s; }
     .generate:hover:not(:disabled) { transform: translateY(-1px); background: var(--accent-dark); }
     .generate:disabled { cursor: wait; opacity: .65; }
+    .generate.is-loading { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 13px; text-align: left; }
+    .generate-progress[hidden] { display: none; }
+    .generate-progress { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .generate-progress-leading { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .generate-spinner { flex: 0 0 auto; font-size: 16px; line-height: 1; animation: generate-spin .9s linear infinite; }
+    @keyframes generate-spin { to { transform: rotate(360deg); } }
+    .generate-progress-message { overflow: hidden; font-size: 10px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+    .generate-progress-state { font-size: 9px; font-weight: 700; }
     @media (min-width: 1021px) and (max-height: 900px) {
       main { padding-top: 10px; }
-      .topline { margin-bottom: 12px; }
-      .hero { margin-bottom: 12px; }
+      .topline { margin-bottom: 8px; }
+      .hero { margin-bottom: 8px; }
       h1 { font-size: 40px; }
       .card { padding: 15px; }
       .preview { height: 160px; }
@@ -246,14 +248,6 @@ HTML = r"""<!doctype html>
       textarea.input { min-height: 58px; }
       .hint { margin-top: 5px; }
     }
-    .progress-card { display: none; margin-top: 14px; padding: 13px; border: 1px solid #e7e5dc; border-radius: 10px; background: #fbfbf7; }
-    .progress-card.visible { display: block; }
-    .progress-top { display: flex; justify-content: space-between; gap: 12px; font-size: 10px; }
-    .progress-message { overflow: hidden; color: #53554e; text-overflow: ellipsis; white-space: nowrap; }
-    .progress-state { color: var(--green); font-weight: 700; }
-    .progress-track { height: 4px; margin-top: 10px; overflow: hidden; border-radius: 9px; background: #eaeae4; }
-    .progress-bar { width: 30%; height: 100%; border-radius: inherit; background: var(--accent); animation: progress 1.8s ease-in-out infinite; }
-    @keyframes progress { from { transform: translateX(-110%); } to { transform: translateX(430%); } }
     .error { display: none; margin-top: 12px; padding: 11px; border-radius: 9px; background: #fff0ed; color: #a33d29; font-size: 11px; line-height: 1.5; }
     .error.visible { display: block; }
     .result-dialog { width: min(1000px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 32px); padding: 0;
@@ -272,6 +266,9 @@ HTML = r"""<!doctype html>
     .result-actions { display: flex; flex: 0 0 auto; gap: 8px; }
     .result-download { border-color: var(--accent); background: var(--accent); color: white; }
     .result-download:hover { border-color: var(--accent-dark); background: var(--accent-dark); color: white; }
+    .result-footer { display: flex; justify-content: flex-end; padding: 0 22px 18px; }
+    .result-delete { border-color: #e6b6a8; background: #fbf0eb; color: var(--accent-dark); }
+    .result-delete:hover { border-color: #d99b85; background: #f8e4dc; }
     .result-showcase { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(170px, .7fr); gap: 14px;
       min-height: 0; padding: 18px 22px 22px; }
     .result-image { min-width: 0; margin: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #f6f6f2; }
@@ -297,8 +294,8 @@ HTML = r"""<!doctype html>
       aside { position: static; height: auto; padding: 13px 18px; border-right: 0; border-bottom: 1px solid var(--line); }
       .brand { padding: 0; } .nav-label, .nav-item, .history-nav, .side-note { display: none; }
       main { padding: 23px 15px 40px; }
-      .topline { margin-bottom: 22px; } .device-pill { font-size: 9px; }
-      .hero { align-items: flex-start; } .step-chip { padding-top: 6px; white-space: nowrap; }
+      .topline { margin-bottom: 12px; } .device-pill { font-size: 9px; }
+      .hero { align-items: flex-start; }
       .card { padding: 17px; } .gallery { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
       .preview { height: 150px; }
       .result-dialog { width: calc(100vw - 20px); max-height: calc(100dvh - 20px); border-radius: 15px; }
@@ -346,9 +343,7 @@ HTML = r"""<!doctype html>
       <header class="hero">
         <div>
           <h1>Un nuevo tono. La misma esencia.</h1>
-          <p>Elige una imagen y explora una nueva versión de tu prenda.</p>
         </div>
-        <div class="step-chip"><b>01</b> — Preparar diseño</div>
       </header>
       <div class="layout">
         <div class="stack">
@@ -380,7 +375,6 @@ HTML = r"""<!doctype html>
           <section class="card">
             <div class="card-head">
               <div><h2>Define el nuevo estilo</h2><p>Combina un color con el material que prefieras.</p></div>
-              <span class="step">3</span>
             </div>
             <div id="defaultStyle">
             <div class="field">
@@ -409,11 +403,16 @@ HTML = r"""<!doctype html>
               <div id="garmentEditorPanes"></div>
               <p class="hint" id="garmentEditorHint">Cada pestaña tiene sus propios cambios. Solo se enviarán las prendas marcadas para aplicar.</p>
             </div>
-            <button class="generate" id="generateButton" type="button">✦ &nbsp; Crear mi diseño</button>
-            <div class="progress-card" id="progressCard" aria-live="polite">
-              <div class="progress-top"><span class="progress-message" id="progressMessage">Preparando…</span><span class="progress-state" id="progressState">EN CURSO</span></div>
-              <div class="progress-track"><div class="progress-bar"></div></div>
-            </div>
+            <button class="generate" id="generateButton" type="button" aria-live="polite">
+              <span id="generateLabel">✦ &nbsp; Crear mi diseño</span>
+              <span class="generate-progress" id="generateProgress" hidden>
+                <span class="generate-progress-leading">
+                  <span class="generate-spinner" aria-hidden="true">↻</span>
+                  <span class="generate-progress-message" id="generateProgressMessage">Preparando el modelo…</span>
+                </span>
+                <span class="generate-progress-state">EN CURSO</span>
+              </span>
+            </button>
             <div class="error" id="errorMessage" role="alert"></div>
           </section>
           <dialog class="result-dialog" id="resultsCard" aria-labelledby="resultHeading">
@@ -433,6 +432,9 @@ HTML = r"""<!doctype html>
                 <figure class="result-image"><img id="resultEdited" alt="Edición del modelo"><figcaption>Edición del modelo</figcaption></figure>
               </div>
             </div>
+            <div class="result-footer">
+              <button class="button small result-delete" id="deleteHistoryButton" type="button" hidden>Eliminar diseño</button>
+            </div>
             <div class="result-error" id="resultError" role="alert"></div>
           </dialog>
         </div>
@@ -442,7 +444,7 @@ HTML = r"""<!doctype html>
   </div>
   <script>
     const $ = (selector) => document.querySelector(selector);
-    const state = { source: null, activeJob: null, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null };
+    const state = { source: null, activeJob: null, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null, historyItem: null };
     const colorHex = {
       black:"#252525", white:"#f7f5ef", red:"#c94843", blue:"#466ca5", "navy blue":"#293650",
       green:"#66866a", "dark green":"#345343", yellow:"#e9c44e", pink:"#dc91a4",
@@ -781,11 +783,9 @@ HTML = r"""<!doctype html>
           return;
         }
         items.forEach((item) => {
-          const entry = document.createElement("div");
-          entry.className = "history-item";
           const openButton = document.createElement("button");
           openButton.type = "button";
-          openButton.className = "history-open-button";
+          openButton.className = "history-open-button history-item";
           openButton.title = `Ver ${item.label}`;
           const name = document.createElement("span");
           name.className = "history-item-name";
@@ -795,15 +795,7 @@ HTML = r"""<!doctype html>
           arrow.textContent = "↗";
           openButton.append(name, arrow);
           openButton.addEventListener("click", () => displayHistoryResult(item));
-          const deleteButton = document.createElement("button");
-          deleteButton.type = "button";
-          deleteButton.className = "history-delete";
-          deleteButton.textContent = "×";
-          deleteButton.title = `Eliminar ${item.label}`;
-          deleteButton.setAttribute("aria-label", `Eliminar diseño ${item.label}`);
-          deleteButton.addEventListener("click", () => deleteHistoryItem(item, deleteButton));
-          entry.append(openButton, deleteButton);
-          list.append(entry);
+          list.append(openButton);
         });
       } catch (error) {
         list.innerHTML = "";
@@ -818,10 +810,13 @@ HTML = r"""<!doctype html>
       button.disabled = true;
       try {
         await request(`/api/history/${encodeURIComponent(item.filename)}`, {method:"DELETE"});
+        $("#resultsCard").close();
+        $("#deleteHistoryButton").hidden = true;
         await loadHistory();
       } catch (error) {
         button.disabled = false;
-        showError(`No se pudo eliminar el diseño: ${error.message}`);
+        $("#resultError").textContent = `No se pudo eliminar el diseño: ${error.message}`;
+        $("#resultError").classList.add("visible");
       }
     }
     function populateOptions(config) {
@@ -882,6 +877,8 @@ HTML = r"""<!doctype html>
     }
     function displayResult(job, jobId) {
       const cacheBust = `?v=${Date.now()}`;
+      state.historyItem = null;
+      $("#deleteHistoryButton").hidden = true;
       $("#resultHeading").textContent = "Tu resultado";
       document.querySelector(".result-showcase").classList.remove("history-showcase");
       document.querySelectorAll(".result-alternates .result-image").forEach((figure) => figure.classList.remove("hidden"));
@@ -903,6 +900,9 @@ HTML = r"""<!doctype html>
     function displayHistoryResult(item) {
       const cacheBust = `?v=${Date.now()}`;
       const imageUrl = `/api/history/${encodeURIComponent(item.filename)}`;
+      state.historyItem = item;
+      $("#deleteHistoryButton").hidden = false;
+      $("#deleteHistoryButton").disabled = false;
       $("#resultHeading").textContent = "Diseño anterior";
       document.querySelector(".result-showcase").classList.add("history-showcase");
       document.querySelectorAll(".result-alternates .result-image").forEach((figure) => figure.classList.add("hidden"));
@@ -927,22 +927,27 @@ HTML = r"""<!doctype html>
     $("#resultFilename").addEventListener("input", () => {
       setDownloadFilename();
     });
+    function setGenerateProgress(active, message = "Preparando el modelo…") {
+      const button = $("#generateButton");
+      button.disabled = active;
+      button.classList.toggle("is-loading", active);
+      $("#generateLabel").hidden = active;
+      $("#generateProgress").hidden = !active;
+      $("#generateProgressMessage").textContent = message;
+    }
     async function pollJob(jobId) {
       while (state.activeJob === jobId) {
         const job = await request(`/api/jobs/${jobId}`);
-        $("#progressMessage").textContent = job.message || "Preparando…";
+        $("#generateProgressMessage").textContent = job.message || "Preparando…";
         if (job.status === "completed") {
-          $("#progressState").textContent = "LISTO";
-          $("#progressCard").classList.remove("visible");
-          $("#generateButton").disabled = false;
+          setGenerateProgress(false);
           state.activeJob = null;
           loadHistory();
           displayResult(job, jobId);
           return;
         }
         if (job.status === "failed") {
-          $("#progressCard").classList.remove("visible");
-          $("#generateButton").disabled = false;
+          setGenerateProgress(false);
           state.activeJob = null;
           showError(job.error || "No se pudo generar el diseño.");
           return;
@@ -982,10 +987,7 @@ HTML = r"""<!doctype html>
         showError("Indica un color, material o instrucción antes de generar.");
         return;
       }
-      $("#generateButton").disabled = true;
-      $("#progressCard").classList.add("visible");
-      $("#progressMessage").textContent = "Preparando el modelo…";
-      $("#progressState").textContent = "EN CURSO";
+      setGenerateProgress(true);
       try {
         const job = await request("/api/generate", {
           method: "POST", headers: {"Content-Type":"application/json"},
@@ -1003,8 +1005,7 @@ HTML = r"""<!doctype html>
         await pollJob(job.id);
       } catch (error) {
         state.activeJob = null;
-        $("#progressCard").classList.remove("visible");
-        $("#generateButton").disabled = false;
+        setGenerateProgress(false);
         showError(error.message);
       }
     }
@@ -1037,6 +1038,9 @@ HTML = r"""<!doctype html>
     $("#color").addEventListener("input", updateSwatches);
     $("#generateButton").addEventListener("click", generate);
     $("#closeResults").addEventListener("click", () => $("#resultsCard").close());
+    $("#deleteHistoryButton").addEventListener("click", () => {
+      if (state.historyItem) deleteHistoryItem(state.historyItem, $("#deleteHistoryButton"));
+    });
     $("#resultsCard").addEventListener("click", (event) => {
       if (event.target === $("#resultsCard")) $("#resultsCard").close();
     });
