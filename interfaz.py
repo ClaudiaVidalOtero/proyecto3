@@ -41,7 +41,6 @@ async def lifespan(app):
         app.state.segmentations = {}
         app.state.segmenting = False
         app.state.dataset = None
-        app.state.textures = None
         yield
         if worker is not None:
             await run_in_threadpool(worker.shutdown, wait=True)
@@ -56,7 +55,6 @@ class GarmentEditRequest(BaseModel):
     color: str = Field(default="", max_length=80)
     texture: str = Field(default=C.PIX2PIX_NO_TEXTURE, max_length=80)
     extra: str = Field(default="", max_length=500)
-    texture_id: str | None = Field(default=None, max_length=100)
 
 
 class GenerationRequest(BaseModel):
@@ -64,7 +62,6 @@ class GenerationRequest(BaseModel):
     color: str = Field(default="", max_length=80)
     texture: str = Field(default=C.PIX2PIX_NO_TEXTURE, max_length=80)
     extra: str = Field(default="", max_length=500)
-    texture_id: str | None = Field(default=None, max_length=100)
     segmentation_id: str | None = Field(default=None, max_length=100)
     garment_indices: list[int] | None = None
     garment_edits: list[GarmentEditRequest] | None = None
@@ -208,13 +205,6 @@ HTML = r"""<!doctype html>
     .garment-editor-pane .garment-toggle { display: flex; align-items: center; gap: 7px; margin: 0 0 10px;
       color: #62645d; font-size: 10px; }
     .garment-editor-pane .garment-toggle input { accent-color: var(--accent); }
-    .garment-editor-pane .texture-grid { margin-top: 8px; }
-    .texture-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; min-height: 67px; }
-    .texture-tile { min-width: 0; padding: 0 0 5px; overflow: hidden; border: 2px solid transparent; border-radius: 9px;
-      background: #f4f3ef; color: #565851; font-size: 9px; }
-    .texture-tile img { display: block; width: 100%; height: 36px; object-fit: cover; margin-bottom: 4px; }
-    .texture-tile span { display: block; overflow: hidden; padding: 0 3px; text-overflow: ellipsis; white-space: nowrap; }
-    .texture-tile.selected { border-color: var(--accent); }
     .hint { margin: 8px 0 0; color: #94968f; font-size: 10px; line-height: 1.5; }
     textarea.input { resize: vertical; min-height: 74px; line-height: 1.5; }
     .generate { width: 100%; min-height: 46px; margin-top: 1px; border: 0; border-radius: 11px; background: var(--accent);
@@ -233,8 +223,6 @@ HTML = r"""<!doctype html>
       .field { margin-bottom: 8px; }
       .swatches { gap: 6px; margin-top: 6px; }
       .swatch { width: 20px; height: 20px; }
-      .texture-tile img { height: 36px; }
-      .texture-tile { padding-bottom: 3px; font-size: 8px; }
       textarea.input { min-height: 58px; }
       .hint { margin-top: 5px; }
     }
@@ -387,19 +375,10 @@ HTML = r"""<!doctype html>
               <label class="field-label" for="material">Material o textura</label>
               <div class="material-line">
                 <input class="input" id="material" value="leather" maxlength="80" autocomplete="off" placeholder="Ej. denim, silk, leather">
-                <button class="button small" id="refreshTextures" type="button">Ver muestras</button>
               </div>
-              <p class="hint">Elige un material o una muestra visual. Atelier intentará reproducir su grano, costuras y patrón sobre la prenda, manteniendo el color elegido.</p>
+              <p class="hint">Elige o escribe un material. Atelier intentará reproducir su grano, costuras y patrón sobre la prenda, manteniendo el color elegido.</p>
             </div>
             <div class="material-options" id="materialOptions" role="group" aria-label="Materiales sugeridos"></div>
-            <div class="texture-grid" id="textureGallery"></div>
-            <div class="source-toolbar" style="margin:10px 0 17px">
-              <span class="source-name" id="textureNote">Cargando muestras…</span>
-              <div style="display:flex;gap:7px">
-                <button class="button small" id="moreTextures" type="button">↻ Otras muestras</button>
-                <button class="button small" id="noTexture" type="button">Sin muestra</button>
-              </div>
-            </div>
             <div class="field">
               <label class="field-label" for="extra">Instrucción adicional <span style="color:#999;font-weight:400">(opcional)</span></label>
               <textarea class="input" id="extra" maxlength="500" placeholder="Ej. make the buttons gold"></textarea>
@@ -444,7 +423,7 @@ HTML = r"""<!doctype html>
   </div>
   <script>
     const $ = (selector) => document.querySelector(selector);
-    const state = { source: null, textureId: null, activeJob: null, textureTimer: null, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null };
+    const state = { source: null, activeJob: null, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null };
     const colorHex = {
       black:"#252525", white:"#f7f5ef", red:"#c94843", blue:"#466ca5", "navy blue":"#293650",
       green:"#66866a", "dark green":"#345343", yellow:"#e9c44e", pink:"#dc91a4",
@@ -603,17 +582,8 @@ HTML = r"""<!doctype html>
       material.value = edit.texture;
       material.maxLength = 80;
       material.placeholder = "Ej. denim, silk o none";
-      const refresh = document.createElement("button");
-      refresh.className = "button small";
-      refresh.type = "button";
-      refresh.textContent = "Ver muestras";
-      const textureNote = document.createElement("p");
-      textureNote.className = "hint";
-      textureNote.textContent = "Selecciona una muestra para usarla como referencia de textura.";
-      const textureGrid = document.createElement("div");
-      textureGrid.className = "texture-grid";
-      materialLine.append(material, refresh);
-      materialField.append(materialLabel, materialLine, textureNote, textureGrid);
+      materialLine.append(material);
+      materialField.append(materialLabel, materialLine);
       const materialOptions = document.createElement("div");
       materialOptions.className = "material-options";
       for (const value of ["none", ...config.textures.filter((texture) => texture !== "none")]) {
@@ -624,21 +594,16 @@ HTML = r"""<!doctype html>
         option.classList.toggle("selected", edit.texture.toLowerCase() === value);
         option.addEventListener("click", () => {
           edit.texture = value;
-          edit.texture_id = null;
           material.value = value;
           materialOptions.querySelectorAll(".material-choice").forEach((button) => button.classList.toggle("selected", button === option));
-          loadGarmentTextures(index, pane);
         });
         materialOptions.append(option);
       }
-      refresh.addEventListener("click", () => loadGarmentTextures(index, pane));
       material.addEventListener("input", () => {
         edit.texture = material.value;
-        edit.texture_id = null;
         materialOptions.querySelectorAll(".material-choice").forEach((button) =>
           button.classList.toggle("selected", button.textContent.toLowerCase() === material.value.trim().toLowerCase()));
       });
-      material.addEventListener("change", () => loadGarmentTextures(index, pane));
       pane.append(materialOptions, materialField);
 
       const extraField = document.createElement("div");
@@ -655,49 +620,6 @@ HTML = r"""<!doctype html>
       extraField.append(extraLabel, extra);
       pane.append(extraField);
       return pane;
-    }
-    async function loadGarmentTextures(index, pane) {
-      const edit = state.garmentEdits.get(index);
-      if (!edit) return;
-      const gallery = pane.querySelector(".texture-grid");
-      const note = pane.querySelector(".hint");
-      if (edit.texture.trim().toLowerCase() === "none") {
-        edit.texture_id = null;
-        gallery.replaceChildren();
-        note.textContent = "Textura desactivada para esta prenda.";
-        return;
-      }
-      gallery.innerHTML = '<div class="empty-text">Buscando muestras…</div>';
-      try {
-        const query = new URLSearchParams({material: edit.texture});
-        const data = await request(`/api/textures?${query}`);
-        note.textContent = data.note;
-        gallery.replaceChildren();
-        for (const item of data.items) {
-          const tile = document.createElement("button");
-          tile.type = "button";
-          tile.className = "texture-tile";
-          tile.classList.toggle("selected", edit.texture_id === item.id);
-          tile.dataset.id = item.id;
-          const image = document.createElement("img");
-          image.loading = "lazy";
-          image.alt = item.id;
-          image.src = item.preview_url;
-          const label = document.createElement("span");
-          label.textContent = item.id;
-          tile.append(image, label);
-          tile.addEventListener("click", () => {
-            edit.texture_id = edit.texture_id === item.id ? null : item.id;
-            gallery.querySelectorAll(".texture-tile").forEach((button) =>
-              button.classList.toggle("selected", button.dataset.id === edit.texture_id));
-          });
-          gallery.append(tile);
-        }
-        if (edit.texture_id && !data.items.some((item) => item.id === edit.texture_id)) edit.texture_id = null;
-      } catch (error) {
-        gallery.replaceChildren();
-        note.textContent = `No se pudieron cargar las muestras: ${error.message}`;
-      }
     }
     function updateGarmentTabs() {
       const segmentation = state.segmentation;
@@ -739,14 +661,12 @@ HTML = r"""<!doctype html>
           color: $("#color").value.trim() || "black",
           texture: $("#material").value.trim() || "none",
           extra: $("#extra").value.trim(),
-          texture_id: state.textureId,
         });
         panes.append(createGarmentEditor(index, item, config));
       });
       $("#defaultStyle").hidden = true;
       $("#garmentStyleEditor").classList.add("visible");
       setActiveGarmentTab(0);
-      segmentation.items.forEach((_, index) => loadGarmentTextures(index, panes.children[index]));
     }
     function toggleGarment(index) {
       if (!state.segmentation) return;
@@ -833,37 +753,6 @@ HTML = r"""<!doctype html>
         else document.querySelectorAll(".thumb").forEach((el) => el.classList.toggle("selected", el.dataset.id === state.source));
       } catch (error) { gallery.innerHTML = '<div class="empty-text">No se pudo cargar el catálogo.</div>'; showError(error.message); }
     }
-    async function loadTextures() {
-      const gallery = $("#textureGallery");
-      if ($("#material").value.trim().toLowerCase() === "none") {
-        state.textureId = null;
-        gallery.innerHTML = '<div class="empty-text">Sin textura ni muestra de referencia.</div>';
-        $("#textureNote").textContent = "Textura desactivada";
-        return;
-      }
-      gallery.innerHTML = '<div class="empty-text">Buscando muestras…</div>';
-      try {
-        const query = new URLSearchParams({material: $("#material").value});
-        const data = await request(`/api/textures?${query}`);
-        $("#textureNote").textContent = data.note;
-        gallery.innerHTML = "";
-        if (!data.items.length) gallery.innerHTML = '<div class="empty-text">No hay muestras. Puedes usar el material sin referencia visual.</div>';
-        data.items.forEach((item) => {
-          const button = document.createElement("button");
-          button.type = "button"; button.className = "texture-tile";
-          button.classList.toggle("selected", state.textureId === item.id); button.dataset.id = item.id;
-          const image = document.createElement("img"); image.loading = "lazy"; image.alt = item.id; image.src = item.preview_url;
-          const label = document.createElement("span"); label.textContent = item.id;
-          button.append(image, label);
-          button.addEventListener("click", () => {
-            state.textureId = state.textureId === item.id ? null : item.id;
-            document.querySelectorAll(".texture-tile").forEach((el) => el.classList.toggle("selected", el.dataset.id === state.textureId));
-          });
-          gallery.append(button);
-        });
-        if (state.textureId && !data.items.some((item) => item.id === state.textureId)) state.textureId = null;
-      } catch (error) { gallery.innerHTML = '<div class="empty-text">No se pudieron cargar las muestras.</div>'; $("#textureNote").textContent = error.message; }
-    }
     async function loadHistory() {
       const list = $("#historyList");
       try {
@@ -908,10 +797,7 @@ HTML = r"""<!doctype html>
         button.classList.toggle("selected", texture === $("#material").value.trim().toLowerCase());
         button.addEventListener("click", () => {
           $("#material").value = texture;
-          state.textureId = null;
-          document.querySelectorAll(".texture-tile").forEach((tile) => tile.classList.remove("selected"));
           updateMaterialChoices();
-          loadTextures();
         });
         $("#materialOptions").append(button);
       });
@@ -1045,17 +931,16 @@ HTML = r"""<!doctype html>
               color: editColor.toLowerCase() === "none" ? "" : editColor,
               texture: edit.texture.trim() || "none",
               extra: edit.extra.trim(),
-              texture_id: edit.texture.toLowerCase() === "none" ? null : edit.texture_id,
             };
           })
         : null;
       if (garmentEdits && garmentEdits.some((edit) =>
-        !edit.color && edit.texture.toLowerCase() === "none" && !edit.extra && !edit.texture_id)) {
-        showError("Cada prenda incluida necesita al menos un cambio de color, material, muestra o instrucción.");
+        !edit.color && edit.texture.toLowerCase() === "none" && !edit.extra)) {
+        showError("Cada prenda incluida necesita al menos un cambio de color, material o instrucción.");
         return;
       }
-      if (!state.segmentation && !color && (!material || material.toLowerCase() === "none") && !extra && !state.textureId) {
-        showError("Indica un color, material, muestra de textura o instrucción antes de generar.");
+      if (!state.segmentation && !color && (!material || material.toLowerCase() === "none") && !extra) {
+        showError("Indica un color, material o instrucción antes de generar.");
         return;
       }
       $("#generateButton").disabled = true;
@@ -1070,7 +955,6 @@ HTML = r"""<!doctype html>
             color,
             texture: material || "none",
             extra,
-            texture_id: material.toLowerCase() === "none" ? null : state.textureId,
             segmentation_id: state.segmentation?.id || null,
             garment_indices: state.segmentation ? [...state.segmentation.selected] : null,
             garment_edits: garmentEdits
@@ -1089,8 +973,6 @@ HTML = r"""<!doctype html>
     $("#refreshHistory").addEventListener("click", loadHistory);
     $("#uploadButton").addEventListener("click", () => $("#fileInput").click());
     $("#fileInput").addEventListener("change", (event) => uploadImage(event.target.files[0]));
-    $("#refreshTextures").addEventListener("click", loadTextures);
-    $("#moreTextures").addEventListener("click", loadTextures);
     $("#detectGarments").addEventListener("click", detectGarments);
     $("#sourcePreview").addEventListener("pointermove", (event) => {
       if (!state.segmentation) return;
@@ -1112,19 +994,7 @@ HTML = r"""<!doctype html>
       const index = garmentAt(event.clientX, event.clientY);
       if (index >= 0) toggleGarment(index);
     });
-    $("#noTexture").addEventListener("click", () => {
-      state.textureId = null;
-      document.querySelectorAll(".texture-tile").forEach((el) => el.classList.remove("selected"));
-    });
-    $("#material").addEventListener("input", () => {
-      updateMaterialChoices();
-      if ($("#material").value.trim().toLowerCase() === "none") {
-        state.textureId = null;
-        document.querySelectorAll(".texture-tile").forEach((tile) => tile.classList.remove("selected"));
-      }
-      clearTimeout(state.textureTimer);
-      state.textureTimer = setTimeout(loadTextures, 450);
-    });
+    $("#material").addEventListener("input", updateMaterialChoices);
     $("#color").addEventListener("input", updateSwatches);
     $("#generateButton").addEventListener("click", generate);
     $("#closeResults").addEventListener("click", () => $("#resultsCard").close());
@@ -1140,7 +1010,7 @@ HTML = r"""<!doctype html>
     (async function init() {
       try { populateOptions(await request("/api/config")); }
       catch (error) { showError(error.message); }
-      await Promise.all([loadImages(), loadTextures(), loadHistory()]);
+      await Promise.all([loadImages(), loadHistory()]);
     })();
   </script>
 </body>
@@ -1157,14 +1027,6 @@ def get_dataset(app_state):
             max_side=C.PIX2PIX_IMAGE_SIZE,
         )
     return app_state.dataset
-
-
-def get_textures(app_state):
-    if app_state.textures is None:
-        from src.recolor import load_texture_index
-
-        app_state.textures = load_texture_index(C.PIX2PIX_TEXTURES_DIR)
-    return app_state.textures
 
 
 def source_path(app_state, source_id):
@@ -1374,34 +1236,6 @@ async def upload_image(request: Request, filename: str = "imagen"):
     }
 
 
-@app.get("/api/textures")
-async def textures(request: Request, material: str = ""):
-    from src.recolor import find_textures
-
-    entries, note = find_textures(material, get_textures(request.app.state))
-    chosen = random.sample(entries, min(C.PIX2PIX_NUM_TEXTURE_CHOICES, len(entries)))
-    return {
-        "note": note,
-        "items": [
-            {
-                "id": entry["id"],
-                "category": entry["category"],
-                "preview_url": f"/api/textures/{entry['id']}/preview",
-            }
-            for entry in chosen
-        ],
-    }
-
-
-@app.get("/api/textures/{texture_id}/preview")
-async def texture_preview(texture_id: str, request: Request):
-    texture = next((entry for entry in get_textures(request.app.state)
-                    if entry["id"] == texture_id), None)
-    if texture is None:
-        raise HTTPException(status_code=404, detail="La muestra de textura no está disponible.")
-    return FileResponse(texture["path"])
-
-
 def run_generation(app_state, job_id, source, color, texture, extra, texture_path,
                   segmentation, garment_indices, garment_edits=None):
     with job_lock:
@@ -1473,26 +1307,15 @@ async def generate(request: Request, options: GenerationRequest):
     if color.lower() == C.PIX2PIX_NO_TEXTURE:
         color = ""
     texture_name = options.texture.strip() or C.PIX2PIX_NO_TEXTURE
-    texture_id = (
-        options.texture_id
-        if texture_name.lower() != C.PIX2PIX_NO_TEXTURE
-        else None
-    )
     extra = options.extra.strip()
     if (options.garment_edits is None
             and not color and texture_name.lower() == C.PIX2PIX_NO_TEXTURE
-            and not extra and not texture_id):
+            and not extra):
         raise HTTPException(
             status_code=400,
-            detail="Indica un color, material, muestra de textura o instrucción antes de generar.",
+            detail="Indica un color, material o instrucción antes de generar.",
         )
-    texture_path = None
-    if texture_id and options.garment_edits is None:
-        texture = next((entry for entry in get_textures(request.app.state)
-                        if entry["id"] == texture_id), None)
-        if texture is None:
-            raise HTTPException(status_code=400, detail="La muestra de textura elegida ya no existe.")
-        texture_path = texture["path"]
+    texture_path = None  # ya no se usan muestras de AmbientCG; generate_recolor sigue esperando el argumento
 
     segmentation = None
     garment_indices = None
@@ -1521,36 +1344,18 @@ async def generate(request: Request, options: GenerationRequest):
                 if edit_color.lower() == C.PIX2PIX_NO_TEXTURE:
                     edit_color = ""
                 edit_texture = edit.texture.strip() or C.PIX2PIX_NO_TEXTURE
-                edit_texture_id = (
-                    edit.texture_id
-                    if edit_texture.lower() != C.PIX2PIX_NO_TEXTURE
-                    else None
-                )
                 edit_extra = edit.extra.strip()
                 if (not edit_color and edit_texture.lower() == C.PIX2PIX_NO_TEXTURE
-                        and not edit_extra and not edit_texture_id):
+                        and not edit_extra):
                     raise HTTPException(
                         status_code=400,
                         detail=f"Indica un cambio para la prenda {segmentation['garments'][edit.index]['name']}.",
                     )
-                edit_texture_path = None
-                if edit_texture_id:
-                    texture_entry = next(
-                        (entry for entry in get_textures(request.app.state)
-                         if entry["id"] == edit_texture_id),
-                        None,
-                    )
-                    if texture_entry is None:
-                        raise HTTPException(
-                            status_code=400,
-                            detail=f"La muestra de textura de {segmentation['garments'][edit.index]['name']} ya no existe.",
-                        )
-                    edit_texture_path = texture_entry["path"]
                 garment_edits[edit.index] = {
                     "color": edit_color,
                     "texture": edit_texture,
                     "extra": edit_extra,
-                    "texture_path": edit_texture_path,
+                    "texture_path": None,
                 }
     elif options.garment_indices is not None:
         raise HTTPException(status_code=400, detail="Primero detecta las prendas de la imagen.")
