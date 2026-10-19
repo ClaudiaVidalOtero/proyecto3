@@ -115,10 +115,14 @@ HTML = r"""<!doctype html>
       border-radius: 8px; background: white; color: #666860; font-size: 12px; }
     .history-refresh:hover { border-color: #d5b6aa; color: var(--accent-dark); }
     .history-list { display: grid; gap: 7px; max-height: min(46vh, 430px); overflow-y: auto; padding: 1px 4px 2px 0; }
-    .history-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
-      min-height: 39px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px;
-      background: #fff; color: #454741; text-align: left; }
-    .history-item:hover { border-color: #d5b6aa; background: #fdf9f6; color: var(--accent-dark); }
+    .history-item { display: flex; align-items: center; gap: 4px; width: 100%; min-height: 39px;
+      border: 1px solid var(--line); border-radius: 9px; background: #fff; color: #454741; }
+    .history-item:hover, .history-item:focus-within { border-color: #d5b6aa; background: #fdf9f6; color: var(--accent-dark); }
+    .history-open-button { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 1;
+      min-width: 0; padding: 9px 4px 9px 10px; border: 0; background: transparent; color: inherit; text-align: left; }
+    .history-delete { display: grid; place-items: center; flex: 0 0 27px; width: 27px; height: 27px; margin-right: 6px;
+      border: 1px solid transparent; border-radius: 7px; background: transparent; color: #85877f; font-size: 14px; }
+    .history-delete:hover { border-color: #e6b6a8; background: #fbf0eb; color: var(--accent-dark); }
     .history-item-name { display: block; min-width: 0; overflow: hidden; font-size: 11px; font-weight: 600;
       text-overflow: ellipsis; white-space: nowrap; }
     .history-open { flex: 0 0 auto; color: var(--accent); font-size: 14px; }
@@ -203,14 +207,25 @@ HTML = r"""<!doctype html>
     .garment-tab { flex: 0 0 auto; max-width: 180px; padding: 7px 10px; border: 1px solid var(--line);
       border-radius: 9px; background: white; color: #565851; font-size: 10px; }
     .garment-tab.selected { border-color: var(--accent); background: #fbf0eb; color: var(--accent-dark); font-weight: 650; }
-    .garment-tab:not(.included)::after { content: " · omitida"; color: var(--muted); font-weight: 400; }
     .garment-tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .garment-editor-pane { display: none; }
     .garment-editor-pane.active { display: block; }
-    .garment-editor-pane .garment-toggle { display: flex; align-items: center; gap: 7px; margin: 0 0 10px;
-      color: #62645d; font-size: 10px; }
-    .garment-editor-pane .garment-toggle input { accent-color: var(--accent); }
+    .garment-editor-pane .texture-grid { margin-top: 8px; }
+    .texture-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; min-height: 67px; }
+    .texture-tile { min-width: 0; padding: 0 0 5px; overflow: hidden; border: 2px solid transparent; border-radius: 9px;
+      background: #f4f3ef; color: #565851; font-size: 9px; }
+    .texture-tile img { display: block; width: 100%; height: 36px; object-fit: cover; margin-bottom: 4px; }
+    .texture-tile span { display: block; overflow: hidden; padding: 0 3px; text-overflow: ellipsis; white-space: nowrap; }
+    .texture-tile.selected { border-color: var(--accent); }
     .hint { margin: 8px 0 0; color: #94968f; font-size: 10px; line-height: 1.5; }
+    .right .card-head h2 { font-size: 13px; }
+    .right .card-head p { font-size: 10px; }
+    .right .step { font-size: 10px; }
+    .right .field-label { margin-bottom: 6px; font-size: 10px; }
+    .right .input { min-height: 36px; padding: 8px 10px; font-size: 11px; }
+    .right .field { margin-bottom: 10px; }
+    .right .hint { margin-top: 6px; font-size: 9px; line-height: 1.45; }
+    .right #garmentEditorHint { font-size: 10px; }
     textarea.input { resize: vertical; min-height: 74px; line-height: 1.5; }
     .generate { width: 100%; min-height: 46px; margin-top: 1px; border: 0; border-radius: 11px; background: var(--accent);
       color: white; font-size: 12px; font-weight: 700; transition: background .2s, transform .2s; }
@@ -340,7 +355,7 @@ HTML = r"""<!doctype html>
           <section class="card">
             <div class="card-head">
               <div><h2>Elige tu imagen</h2><p>Selecciona una prenda del catálogo o sube tu propia foto.</p></div>
-              <span class="step">1</span>
+              <button class="garment-choice selected" id="detectGarments" type="button">◌ Detectar prendas</button>
             </div>
             <div class="preview" id="sourcePreview">
               <div class="preview-empty"><span class="upload-symbol">↥</span><span>Selecciona una imagen para empezar</span></div>
@@ -352,7 +367,6 @@ HTML = r"""<!doctype html>
               <div class="source-actions">
                 <button class="button small" id="uploadButton" type="button">＋ Subir foto</button>
                 <button class="button small" id="refreshImages" type="button">↻ Otras imágenes</button>
-                <button class="button small" id="detectGarments" type="button">◌ Detectar prendas</button>
               </div>
               <input class="hidden" id="fileInput" type="file" accept="image/jpeg,image/png,image/webp,image/bmp">
             </div>
@@ -393,7 +407,7 @@ HTML = r"""<!doctype html>
             <div class="garment-style-editor" id="garmentStyleEditor" aria-live="polite">
               <div class="garment-tabs" id="garmentTabs" role="tablist" aria-label="Configurar cada prenda"></div>
               <div id="garmentEditorPanes"></div>
-              <p class="hint">Cada pestaña tiene sus propios cambios. Solo se enviarán las prendas marcadas para aplicar.</p>
+              <p class="hint" id="garmentEditorHint">Cada pestaña tiene sus propios cambios. Solo se enviarán las prendas marcadas para aplicar.</p>
             </div>
             <button class="generate" id="generateButton" type="button">✦ &nbsp; Crear mi diseño</button>
             <div class="progress-card" id="progressCard" aria-live="polite">
@@ -504,10 +518,6 @@ HTML = r"""<!doctype html>
         button.addEventListener("click", () => toggleGarment(index));
         list.append(button);
       });
-      $("#garmentEditorPanes").querySelectorAll(".garment-editor-pane").forEach((pane, index) => {
-        const toggle = pane.querySelector(".garment-toggle input");
-        if (toggle) toggle.checked = segmentation.selected.has(index);
-      });
       updateGarmentTabs();
     }
     function createGarmentEditor(index, item, config) {
@@ -516,15 +526,6 @@ HTML = r"""<!doctype html>
       pane.className = "garment-editor-pane";
       pane.id = `garment-pane-${index}`;
       pane.setAttribute("role", "tabpanel");
-      const toggleLabel = document.createElement("label");
-      toggleLabel.className = "garment-toggle";
-      const toggle = document.createElement("input");
-      toggle.type = "checkbox";
-      toggle.checked = state.segmentation.selected.has(index);
-      toggle.addEventListener("change", () => toggleGarment(index));
-      toggleLabel.append(toggle, document.createTextNode("Incluir esta prenda en la generación"));
-      pane.append(toggleLabel);
-
       const colorField = document.createElement("div");
       colorField.className = "field";
       const colorLabel = document.createElement("label");
@@ -632,12 +633,19 @@ HTML = r"""<!doctype html>
       const tabList = $("#garmentTabs");
       tabList.replaceChildren();
       if (!segmentation) return;
+      const selectedIndices = [...segmentation.selected];
+      if (!selectedIndices.includes(state.activeGarmentTab)) {
+        state.activeGarmentTab = selectedIndices[0] ?? null;
+      }
+      $("#garmentEditorHint").textContent = selectedIndices.length
+        ? "Cada pestaña tiene sus propios cambios. Solo se enviarán las prendas marcadas para aplicar."
+        : "Selecciona una o más prendas para mostrar aquí sus opciones de color y textura.";
       segmentation.items.forEach((item, index) => {
+        if (!segmentation.selected.has(index)) return;
         const tab = document.createElement("button");
         tab.type = "button";
         tab.className = "garment-tab";
         tab.classList.toggle("selected", state.activeGarmentTab === index);
-        tab.classList.toggle("included", segmentation.selected.has(index));
         tab.id = `garment-tab-${index}`;
         tab.setAttribute("role", "tab");
         tab.setAttribute("aria-selected", String(state.activeGarmentTab === index));
@@ -649,12 +657,14 @@ HTML = r"""<!doctype html>
         tab.addEventListener("click", () => setActiveGarmentTab(index));
         tabList.append(tab);
       });
+      $("#garmentEditorPanes").querySelectorAll(".garment-editor-pane").forEach((pane, index) =>
+        pane.classList.toggle("active", segmentation.selected.has(index)
+          && index === state.activeGarmentTab));
     }
     function setActiveGarmentTab(index) {
+      if (!state.segmentation?.selected.has(index)) return;
       state.activeGarmentTab = index;
       updateGarmentTabs();
-      $("#garmentEditorPanes").querySelectorAll(".garment-editor-pane").forEach((pane, paneIndex) =>
-        pane.classList.toggle("active", paneIndex === index));
     }
     function buildGarmentEditors(config) {
       const segmentation = state.segmentation;
@@ -727,13 +737,15 @@ HTML = r"""<!doctype html>
         canvas.width = data.width;
         canvas.height = data.height;
         state.segmentation = {id:data.id, sourceId, items, selected:new Set(), hovered:-1};
-        items.forEach((_, index) => state.segmentation.selected.add(index));
+        if (items.length === 1) state.segmentation.selected.add(0);
         $("#sourcePreview").classList.add("has-segmentation");
         buildGarmentEditors(window.atelierConfig || {textures:["none"]});
         updateGarmentOptions();
         drawSegmentationOverlay();
         const status = $("#segmentationStatus");
-        status.textContent = `${items.length} prenda(s) detectada(s). Pasa el cursor por encima para identificarlas y haz clic para seleccionarlas; puedes marcar varias.`;
+        status.textContent = items.length === 1
+          ? "Se ha detectado y seleccionado la única prenda. Ya puedes configurar su color y textura."
+          : `${items.length} prenda(s) detectada(s). Pasa el cursor por encima para identificarlas y haz clic para seleccionarlas; puedes marcar varias.`;
         status.classList.add("visible");
       } catch (error) {
         clearSegmentation(`No se pudieron detectar las prendas: ${error.message}`);
@@ -769,19 +781,29 @@ HTML = r"""<!doctype html>
           return;
         }
         items.forEach((item) => {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "history-item";
-          button.title = `Ver ${item.label}`;
+          const entry = document.createElement("div");
+          entry.className = "history-item";
+          const openButton = document.createElement("button");
+          openButton.type = "button";
+          openButton.className = "history-open-button";
+          openButton.title = `Ver ${item.label}`;
           const name = document.createElement("span");
           name.className = "history-item-name";
           name.textContent = item.label;
           const arrow = document.createElement("span");
           arrow.className = "history-open";
           arrow.textContent = "↗";
-          button.append(name, arrow);
-          button.addEventListener("click", () => displayHistoryResult(item));
-          list.append(button);
+          openButton.append(name, arrow);
+          openButton.addEventListener("click", () => displayHistoryResult(item));
+          const deleteButton = document.createElement("button");
+          deleteButton.type = "button";
+          deleteButton.className = "history-delete";
+          deleteButton.textContent = "×";
+          deleteButton.title = `Eliminar ${item.label}`;
+          deleteButton.setAttribute("aria-label", `Eliminar diseño ${item.label}`);
+          deleteButton.addEventListener("click", () => deleteHistoryItem(item, deleteButton));
+          entry.append(openButton, deleteButton);
+          list.append(entry);
         });
       } catch (error) {
         list.innerHTML = "";
@@ -789,6 +811,17 @@ HTML = r"""<!doctype html>
         message.className = "empty-text";
         message.textContent = `No se pudo cargar el historial: ${error.message}`;
         list.append(message);
+      }
+    }
+    async function deleteHistoryItem(item, button) {
+      if (!window.confirm(`¿Quieres eliminar el diseño «${item.label}»? Esta acción no se puede deshacer.`)) return;
+      button.disabled = true;
+      try {
+        await request(`/api/history/${encodeURIComponent(item.filename)}`, {method:"DELETE"});
+        await loadHistory();
+      } catch (error) {
+        button.disabled = false;
+        showError(`No se pudo eliminar el diseño: ${error.message}`);
       }
     }
     function populateOptions(config) {
@@ -1109,6 +1142,23 @@ async def history_image(filename: str, download: bool = False, name: str | None 
         raise HTTPException(status_code=404, detail="No se encontró ese diseño guardado.")
     download_name = safe_download_filename(name, path.name) if download else None
     return FileResponse(path, media_type="image/png", filename=download_name)
+
+
+@app.delete("/api/history/{filename}")
+async def delete_history_image(filename: str):
+    output_dir = history_directory().resolve()
+    path = (output_dir / filename).resolve()
+    if (path.parent != output_dir or not filename.startswith(C.PIX2PIX_OUTPUT_PREFIX)
+            or path.suffix.lower() != ".png" or not path.is_file()):
+        raise HTTPException(status_code=404, detail="No se encontró ese diseño guardado.")
+    try:
+        path.unlink()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Ese diseño ya no existe.") from exc
+    except OSError as exc:
+        logger.exception("No se pudo eliminar el diseño guardado %s", path)
+        raise HTTPException(status_code=500, detail="No se pudo eliminar el diseño guardado.") from exc
+    return {"deleted": filename}
 
 
 @app.get("/api/images")
