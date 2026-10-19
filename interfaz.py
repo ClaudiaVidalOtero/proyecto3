@@ -245,7 +245,7 @@ HTML = r"""<!doctype html>
       color: white; font-size: 12px; font-weight: 700; transition: background .2s, transform .2s; }
     .generate:hover:not(:disabled) { transform: translateY(-1px); background: var(--accent-dark); }
     .generate:disabled { cursor: wait; opacity: .65; }
-    .generate.is-loading { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 13px; text-align: left; }
+    .generate.is-loading { display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 8px; padding: 10px 13px; text-align: left; }
     .generate-progress[hidden] { display: none; }
     .generate-progress { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .generate-progress-leading { display: flex; align-items: center; gap: 8px; min-width: 0; }
