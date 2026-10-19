@@ -132,6 +132,22 @@ HTML = r"""<!doctype html>
     .device-pill { display: flex; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid var(--line);
       border-radius: 99px; background: #fff; color: #5e6159; font-size: 11px; }
     .dot { width: 7px; height: 7px; border-radius: 50%; background: #82a179; }
+    .topline-actions { display: flex; align-items: center; gap: 10px; }
+    .settings { position: relative; }
+    .settings-button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--line);
+      border-radius: 50%; background: #fff; color: #5e6159; cursor: pointer; transition: border-color .2s, color .2s; }
+    .settings-button svg { transition: transform .3s; }
+    .settings-button:hover, .settings-button[aria-expanded="true"] { border-color: #d5b6aa; color: var(--accent-dark); }
+    .settings-button[aria-expanded="true"] svg { transform: rotate(60deg); }
+    .settings-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; width: 270px; padding: 14px;
+      border: 1px solid var(--line); border-radius: 14px; background: #fff; box-shadow: 0 16px 40px #29271e22; }
+    .settings-title { margin-bottom: 10px; font-size: 12px; font-weight: 700; }
+    .settings-option { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+    .settings-option input { margin-top: 2px; accent-color: var(--accent); }
+    .settings-option b { display: block; font-size: 12px; }
+    .settings-option small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    body:not(.dev-mode) .dev-only { display: none; }
+    body:not(.dev-mode) .result-alternates { grid-template-rows: minmax(0, 1fr); }
     .hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 25px; margin-bottom: 12px; }
     .eyebrow { margin-bottom: 10px; color: var(--accent); font-size: 10px; font-weight: 750; letter-spacing: 1.8px; text-transform: uppercase; }
     h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(34px, 3.5vw, 44px); font-weight: 500; letter-spacing: -1.8px; }
@@ -338,7 +354,29 @@ HTML = r"""<!doctype html>
     <main id="editor">
       <div class="topline">
         <div class="breadcrumb">Estudio <span aria-hidden="true">/</span> <b>Recolorado creativo</b></div>
-        <div class="device-pill"><span class="dot"></span> Generación local activada</div>
+        <div class="topline-actions">
+          <div class="device-pill"><span class="dot"></span> Generación local activada</div>
+          <div class="settings">
+            <button class="settings-button" id="settingsButton" type="button" title="Configuración" aria-label="Configuración"
+                    aria-haspopup="true" aria-expanded="false" aria-controls="settingsMenu">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </button>
+            <div class="settings-menu" id="settingsMenu" hidden>
+              <div class="settings-title">Configuración</div>
+              <label class="settings-option">
+                <input type="checkbox" id="devModeToggle">
+                <span>
+                  <b>Modo desarrollador</b>
+                  <small>Muestra la confianza de detección de las prendas y los pasos intermedios del resultado (máscara y edición del modelo).</small>
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
       </div>
       <header class="hero">
         <div>
@@ -428,8 +466,8 @@ HTML = r"""<!doctype html>
               <figure class="result-image featured"><img id="resultFinal" alt="Resultado final"><figcaption>Resultado final</figcaption></figure>
               <div class="result-alternates">
                 <figure class="result-image"><img id="resultOriginal" alt="Imagen original"><figcaption>Original</figcaption></figure>
-                <figure class="result-image"><img id="resultMask" alt="Máscara segmentada"><figcaption>Máscara</figcaption></figure>
-                <figure class="result-image"><img id="resultEdited" alt="Edición del modelo"><figcaption>Edición del modelo</figcaption></figure>
+                <figure class="result-image dev-only"><img id="resultMask" alt="Máscara segmentada"><figcaption>Máscara</figcaption></figure>
+                <figure class="result-image dev-only"><img id="resultEdited" alt="Edición del modelo"><figcaption>Edición del modelo</figcaption></figure>
               </div>
             </div>
             <div class="result-footer">
@@ -444,7 +482,26 @@ HTML = r"""<!doctype html>
   </div>
   <script>
     const $ = (selector) => document.querySelector(selector);
-    const state = { source: null, activeJob: null, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null, historyItem: null };
+    const state = { source: null, activeJob: null, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null, devMode: false, historyItem: null };
+    // modo desarrollador: se guarda en el navegador para que se recuerde al recargar la página
+    const DEV_MODE_KEY = "atelier-dev-mode";
+    function readDevMode() {
+      try { return localStorage.getItem(DEV_MODE_KEY) === "1"; } catch (error) { return false; }
+    }
+    function setDevMode(enabled) {
+      state.devMode = enabled;
+      try { localStorage.setItem(DEV_MODE_KEY, enabled ? "1" : "0"); } catch (error) { /* sin almacenamiento: no se recuerda */ }
+      document.body.classList.toggle("dev-mode", enabled);
+      $("#devModeToggle").checked = enabled;
+      if (state.segmentation) updateGarmentOptions();  // repinta los botones de prenda con o sin porcentaje
+    }
+    function closeSettings() {
+      $("#settingsMenu").hidden = true;
+      $("#settingsButton").setAttribute("aria-expanded", "false");
+    }
+    function garmentLabel(item) {
+      return state.devMode ? `${item.name} · ${Math.round(item.score * 100)}%` : item.name;
+    }
     const colorHex = {
       black:"#252525", white:"#f7f5ef", red:"#c94843", blue:"#466ca5", "navy blue":"#293650",
       green:"#66866a", "dark green":"#345343", yellow:"#e9c44e", pink:"#dc91a4",
@@ -516,7 +573,7 @@ HTML = r"""<!doctype html>
         button.className = "garment-choice";
         button.classList.toggle("selected", segmentation.selected.has(index));
         button.setAttribute("aria-pressed", String(segmentation.selected.has(index)));
-        button.textContent = `${item.name} · ${Math.round(item.score * 100)}%`;
+        button.textContent = garmentLabel(item);
         button.addEventListener("click", () => toggleGarment(index));
         list.append(button);
       });
@@ -1014,6 +1071,15 @@ HTML = r"""<!doctype html>
     $("#uploadButton").addEventListener("click", () => $("#fileInput").click());
     $("#fileInput").addEventListener("change", (event) => uploadImage(event.target.files[0]));
     $("#detectGarments").addEventListener("click", detectGarments);
+    $("#settingsButton").addEventListener("click", () => {
+      const menu = $("#settingsMenu");
+      menu.hidden = !menu.hidden;
+      $("#settingsButton").setAttribute("aria-expanded", String(!menu.hidden));
+    });
+    $("#devModeToggle").addEventListener("change", (event) => setDevMode(event.target.checked));
+    // el menú se cierra al hacer clic fuera de él o al pulsar Escape
+    document.addEventListener("click", (event) => { if (!event.target.closest(".settings")) closeSettings(); });
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeSettings(); });
     $("#sourcePreview").addEventListener("pointermove", (event) => {
       if (!state.segmentation) return;
       const index = garmentAt(event.clientX, event.clientY);
@@ -1021,7 +1087,9 @@ HTML = r"""<!doctype html>
       state.segmentation.hovered = index;
       drawSegmentationOverlay();
       $("#segmentationStatus").textContent = index >= 0
-        ? `${state.segmentation.items[index].name} · ${Math.round(state.segmentation.items[index].score * 100)}% de confianza`
+        ? (state.devMode
+            ? `${state.segmentation.items[index].name} · ${Math.round(state.segmentation.items[index].score * 100)}% de confianza`
+            : state.segmentation.items[index].name)
         : "Pasa el cursor por encima para identificar una prenda; haz clic para seleccionarla.";
     });
     $("#sourcePreview").addEventListener("pointerleave", () => {
@@ -1051,6 +1119,7 @@ HTML = r"""<!doctype html>
       });
     });
     (async function init() {
+      setDevMode(readDevMode());
       try { populateOptions(await request("/api/config")); }
       catch (error) { showError(error.message); }
       await Promise.all([loadImages(), loadHistory()]);
@@ -1348,7 +1417,7 @@ def run_generation(app_state, job_id, source, color, texture, extra, texture_pat
             raise RuntimeError("No se detectó ninguna prenda clara. Prueba con otra imagen.")
 
         # el modelo trabaja en cuadrado (PIX2PIX_SIZE x PIX2PIX_SIZE) y eso deforma la imagen,
-        # así que devolvemos las 4 vistas al tamaño de la original para recuperar su proporción
+        # así que devolvemos al tamaño de la original para recuperar su proporción
         from PIL import Image
 
         size = original_size(source, dataset)
