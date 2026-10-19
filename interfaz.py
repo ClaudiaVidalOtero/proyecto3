@@ -21,6 +21,11 @@ from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
+try:
+    from winotify import Notification  # solo funciona en Windows
+except ImportError:
+    Notification = None  # sin winotify la interfaz va igual, solo que sin notificación
+
 from src import config as C
 
 
@@ -187,7 +192,7 @@ HTML = r"""<!doctype html>
     .swatch.selected { box-shadow: 0 0 0 2px var(--accent); }
     .material-line { display: flex; align-items: center; gap: 8px; }
     .material-line .input { flex: 1; }
-    .material-options { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 10px; }
+    .material-options { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
     .material-choice { padding: 5px 8px; border: 1px solid var(--line); border-radius: 99px; background: #fff;
       color: #62645d; font-size: 9px; }
     .material-choice:hover { border-color: #d5b6aa; color: var(--accent-dark); }
@@ -376,9 +381,9 @@ HTML = r"""<!doctype html>
               <div class="material-line">
                 <input class="input" id="material" value="leather" maxlength="80" autocomplete="off" placeholder="Ej. denim, silk, leather">
               </div>
+              <div class="material-options" id="materialOptions" role="group" aria-label="Materiales sugeridos"></div>
               <p class="hint">Elige o escribe un material. Atelier intentará reproducir su grano, costuras y patrón sobre la prenda, manteniendo el color elegido.</p>
             </div>
-            <div class="material-options" id="materialOptions" role="group" aria-label="Materiales sugeridos"></div>
             <div class="field">
               <label class="field-label" for="extra">Instrucción adicional <span style="color:#999;font-weight:400">(opcional)</span></label>
               <textarea class="input" id="extra" maxlength="500" placeholder="Ej. make the buttons gold"></textarea>
@@ -604,7 +609,8 @@ HTML = r"""<!doctype html>
         materialOptions.querySelectorAll(".material-choice").forEach((button) =>
           button.classList.toggle("selected", button.textContent.toLowerCase() === material.value.trim().toLowerCase()));
       });
-      pane.append(materialOptions, materialField);
+      materialField.append(materialOptions);  // los tags van justo debajo de la barra de escritura
+      pane.append(materialField);
 
       const extraField = document.createElement("div");
       extraField.className = "field";
@@ -1236,6 +1242,34 @@ async def upload_image(request: Request, filename: str = "imagen"):
     }
 
 
+def notify_done(saved_path):
+    """Notificación de Windows al terminar. Si falla no debe romper la generación, por eso el try."""
+    if Notification is None:
+        logger.warning("winotify no está instalado: no se envía notificación (pip install winotify)")
+        return
+    try:
+        Notification(
+            app_id="Recolor de prendas",
+            title="Prenda creada",
+            msg=f"El resultado se guardó en:\n{Path(saved_path).resolve()}",
+            duration="long",
+        ).show()
+    except Exception:
+        logger.exception("No se pudo enviar la notificación")
+
+
+def original_size(source, dataset):
+    """Tamaño (ancho, alto) de la imagen original, para devolver el resultado sin deformar."""
+    from PIL import Image
+
+    source = str(source)
+    if source.isdigit():  # índice del dataset en vez de ruta
+        tensor, _ = dataset[int(source)]  # tensor (C, H, W)
+        return tensor.shape[2], tensor.shape[1]
+    with Image.open(source) as img:
+        return img.size
+
+
 def run_generation(app_state, job_id, source, color, texture, extra, texture_path,
                   segmentation, garment_indices, garment_edits=None):
     with job_lock:
@@ -1258,6 +1292,15 @@ def run_generation(app_state, job_id, source, color, texture, extra, texture_pat
         )
         if result is None:
             raise RuntimeError("No se detectó ninguna prenda clara. Prueba con otra imagen.")
+
+        # el modelo trabaja en cuadrado (PIX2PIX_SIZE x PIX2PIX_SIZE) y eso deforma la imagen,
+        # así que devolvemos las 4 vistas al tamaño de la original para recuperar su proporción
+        from PIL import Image
+
+        size = original_size(source, dataset)
+        for key in ("image", "mask", "edited", "final"):
+            if result[key].size != size:
+                result[key] = result[key].resize(size, Image.LANCZOS)
 
         output_dir = Path(C.PIX2PIX_OUTPUT_DIR)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -1286,6 +1329,7 @@ def run_generation(app_state, job_id, source, color, texture, extra, texture_pat
                 "images": paths,
                 "saved_path": str(final_path),
             })
+        notify_done(final_path)  # fuera del lock y con su propio try, no puede marcar el trabajo como fallido
     except Exception as exc:
         logger.exception("Falló la generación del trabajo %s", job_id)
         with job_lock:
