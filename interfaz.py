@@ -132,9 +132,13 @@ HTML = r"""<!doctype html>
     .device-pill { display: flex; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid var(--line);
       border-radius: 99px; background: #fff; color: #5e6159; font-size: 11px; }
     .dot { width: 7px; height: 7px; border-radius: 50%; background: #82a179; }
-    .topline-actions { display: flex; align-items: center; gap: 10px; }
-    .settings { position: relative; }
-    .settings-button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--line);
+    .topline-actions { display: flex; align-items: center; gap: 10px; padding-right: 56px; margin-right: -44px; }
+    .dev-mode-indicator { display: none; padding: 8px 11px; border: 1px solid #e6b6a8;
+      border-radius: 99px; background: #fbf0eb; color: var(--accent-dark); font-size: 10px; font-weight: 650; cursor: pointer; }
+    .dev-mode .dev-mode-indicator { display: flex; }
+    .dev-mode-indicator:hover { border-color: #d99b85; background: #f8e4dc; }
+    .settings { position: fixed; top: 18px; right: 12px; z-index: 40; }
+    .settings-button { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--line);
       border-radius: 50%; background: #fff; color: #5e6159; cursor: pointer; transition: border-color .2s, color .2s; }
     .settings-button svg { transition: transform .3s; }
     .settings-button:hover, .settings-button[aria-expanded="true"] { border-color: #d5b6aa; color: var(--accent-dark); }
@@ -304,12 +308,14 @@ HTML = r"""<!doctype html>
       .shell { grid-template-columns: 205px minmax(0, 1fr); }
       .layout { grid-template-columns: 1fr; }
       .stack.right { grid-row: 2; }
+      .topline-actions { margin-right: 0; }
     }
     @media (max-width: 680px) {
       .shell { display: block; }
       aside { position: static; height: auto; padding: 13px 18px; border-right: 0; border-bottom: 1px solid var(--line); }
       .brand { padding: 0; } .nav-label, .nav-item, .history-nav, .side-note { display: none; }
       main { padding: 23px 15px 40px; }
+      .settings-button { width: 30px; height: 30px; }
       .topline { margin-bottom: 12px; } .device-pill { font-size: 9px; }
       .hero { align-items: flex-start; }
       .card { padding: 17px; } .gallery { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
@@ -353,9 +359,11 @@ HTML = r"""<!doctype html>
     </aside>
     <main id="editor">
       <div class="topline">
-        <div class="breadcrumb">Estudio <span aria-hidden="true">/</span> <b>Recolorado creativo</b></div>
+        <div class="breadcrumb">Estudio <span aria-hidden="true">/</span> <b>Recoloreado creativo</b></div>
         <div class="topline-actions">
           <div class="device-pill"><span class="dot"></span> Generación local activada</div>
+          <button class="dev-mode-indicator" id="devModeIndicator" type="button"
+                  title="Desactivar modo desarrollador" aria-label="Desactivar modo desarrollador">Modo desarrollador</button>
           <div class="settings">
             <button class="settings-button" id="settingsButton" type="button" title="Configuración" aria-label="Configuración"
                     aria-haspopup="true" aria-expanded="false" aria-controls="settingsMenu">
@@ -488,11 +496,17 @@ HTML = r"""<!doctype html>
     function readDevMode() {
       try { return localStorage.getItem(DEV_MODE_KEY) === "1"; } catch (error) { return false; }
     }
+    function alignSettingsButton() {
+      const pill = $(".device-pill").getBoundingClientRect();
+      const button = $("#settingsButton");
+      button.parentElement.style.top = `${pill.top + (pill.height - button.offsetHeight) / 2}px`;
+    }
     function setDevMode(enabled) {
       state.devMode = enabled;
       try { localStorage.setItem(DEV_MODE_KEY, enabled ? "1" : "0"); } catch (error) { /* sin almacenamiento: no se recuerda */ }
       document.body.classList.toggle("dev-mode", enabled);
       $("#devModeToggle").checked = enabled;
+      alignSettingsButton();
       if (state.segmentation) updateGarmentOptions();  // repinta los botones de prenda con o sin porcentaje
     }
     function closeSettings() {
@@ -1076,7 +1090,9 @@ HTML = r"""<!doctype html>
       menu.hidden = !menu.hidden;
       $("#settingsButton").setAttribute("aria-expanded", String(!menu.hidden));
     });
+    window.addEventListener("resize", alignSettingsButton);
     $("#devModeToggle").addEventListener("change", (event) => setDevMode(event.target.checked));
+    $("#devModeIndicator").addEventListener("click", () => setDevMode(false));
     // el menú se cierra al hacer clic fuera de él o al pulsar Escape
     document.addEventListener("click", (event) => { if (!event.target.closest(".settings")) closeSettings(); });
     document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeSettings(); });
