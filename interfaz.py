@@ -96,63 +96,83 @@ HTML = r"""<!doctype html>
       --paper: #f7f7f4; --white: #fff; --ink: #20211e; --muted: #777972;
       --line: #e9e9e3; --accent: #c75d3a; --accent-dark: #a8472b;
       --green: #657b63; --shadow: 0 12px 36px #29271e0b;
+      --surface-raised: #fff; --surface-soft: #fbfbf8; --surface-muted: #f4f3ef;
+      --surface-hover: #fdf9f6; --surface-accent: #fbf0eb; --surface-preview: #f2f2ed;
+      --text-strong: #454741; --text-default: #565851; --text-subtle: #62645d;
+      --text-muted: #94968f; --text-label: #a1a39d; --line-strong: #e5e5df;
+      --line-soft: #dedfd7;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --paper: #171815; --white: #242521; --ink: #eeeee8; --muted: #a6a79f;
+      --line: #3a3b36; --accent: #dc7958; --accent-dark: #f09a78;
+      --green: #91ad8d; --shadow: 0 12px 36px #0005;
+      --surface-raised: #242521; --surface-soft: #20211e; --surface-muted: #2c2d29;
+      --surface-hover: #34352f; --surface-accent: #3a2d28; --surface-preview: #292a26;
+      --text-strong: #d0d1ca; --text-default: #c7c8c1; --text-subtle: #bfc0b8;
+      --text-muted: #a6a79f; --text-label: #92938c; --line-strong: #41423c;
+      --line-soft: #484a43;
     }
     * { box-sizing: border-box; }
     body { margin: 0; color: var(--ink); background: var(--paper); }
     button, input, select { font: inherit; }
     button { cursor: pointer; }
     .shell { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
-    aside { position: sticky; top: 0; height: 100vh; padding: 27px 20px; background: #fff;
+    aside { position: sticky; top: 0; height: 100vh; padding: 27px 20px; background: var(--surface-raised);
       border-right: 1px solid var(--line); display: flex; flex-direction: column; }
     .brand { display: flex; align-items: center; gap: 11px; padding: 0 8px 27px; }
     .brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 13px;
       color: white; background: var(--accent); font-family: Georgia, serif; font-size: 22px; }
     .brand-name { font-family: Georgia, "Times New Roman", serif; font-size: 22px; letter-spacing: -.6px; }
     .brand-sub { margin-top: 1px; color: var(--muted); font-size: 10px; letter-spacing: 1.7px; text-transform: uppercase; }
-    .nav-label { padding: 0 10px; color: #a1a39d; font-size: 10px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; }
+    .nav-label { padding: 0 10px; color: var(--text-label); font-size: 10px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; }
     .nav-item { display: flex; align-items: center; gap: 12px; margin-top: 9px; padding: 12px 13px;
-      border-radius: 10px; color: #565851; font-size: 13px; text-decoration: none; }
-    .nav-item.active { color: var(--accent-dark); background: #fbf0eb; font-weight: 650; }
+      border-radius: 10px; color: var(--text-default); font-size: 13px; text-decoration: none; }
+    .nav-item.active { color: var(--accent-dark); background: var(--surface-accent); font-weight: 650; }
     .nav-icon { width: 18px; text-align: center; font-size: 16px; }
     .history-nav { display: flex; flex-direction: column; min-height: 0; margin-top: 22px; }
     .history-nav-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 9px; }
-    .history-nav-title { padding-left: 10px; color: #a1a39d; font-size: 10px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; }
+    .history-nav-title { padding-left: 10px; color: var(--text-label); font-size: 10px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; }
     .history-refresh { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid var(--line);
-      border-radius: 8px; background: white; color: #666860; font-size: 12px; }
+      border-radius: 8px; background: var(--surface-raised); color: var(--text-subtle); font-size: 12px; }
     .history-refresh:hover { border-color: #d5b6aa; color: var(--accent-dark); }
     .history-list { display: grid; gap: 7px; max-height: min(46vh, 430px); overflow-y: auto; padding: 1px 4px 2px 0; }
     .history-item { width: 100%; }
     .history-open-button { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
       min-width: 0; padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px;
-      background: #fff; color: #454741; text-align: left; }
-    .history-open-button:hover { border-color: #d5b6aa; background: #fdf9f6; color: var(--accent-dark); }
+      background: var(--surface-raised); color: var(--text-strong); text-align: left; }
+    .history-open-button:hover { border-color: #d5b6aa; background: var(--surface-hover); color: var(--accent-dark); }
     .history-item-name { display: block; min-width: 0; overflow: hidden; font-size: 11px; font-weight: 600;
       text-overflow: ellipsis; white-space: nowrap; }
     .history-open { flex: 0 0 auto; color: var(--accent); font-size: 14px; }
-    .side-note { margin-top: auto; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: #fbfbf8; }
+    .side-note { margin-top: auto; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-soft); }
     .side-note strong { display: block; margin-bottom: 6px; font-size: 12px; }
     .side-note p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
     main { min-width: 0; max-width: 1500px; width: 100%; margin: 0 auto; padding: 20px clamp(20px, 4vw, 58px) 60px; }
     .topline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .breadcrumb { color: var(--muted); font-size: 12px; }
     .device-pill { display: flex; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid var(--line);
-      border-radius: 99px; background: #fff; color: #5e6159; font-size: 11px; }
+      border-radius: 99px; background: var(--surface-raised); color: var(--text-subtle); font-size: 11px; }
     .dot { width: 7px; height: 7px; border-radius: 50%; background: #82a179; }
     .topline-actions { display: flex; align-items: center; gap: 10px; padding-right: 56px; margin-right: -44px; }
     .dev-mode-indicator { display: none; padding: 8px 11px; border: 1px solid #e6b6a8;
-      border-radius: 99px; background: #fbf0eb; color: var(--accent-dark); font-size: 10px; font-weight: 650; cursor: pointer; }
+      border-radius: 99px; background: var(--surface-accent); color: var(--accent-dark); font-size: 10px; font-weight: 650; cursor: pointer; }
     .dev-mode .dev-mode-indicator { display: flex; }
     .dev-mode-indicator:hover { border-color: #d99b85; background: #f8e4dc; }
     .settings { position: fixed; top: 18px; right: 12px; z-index: 40; }
     .settings-button { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--line);
-      border-radius: 50%; background: #fff; color: #5e6159; cursor: pointer; transition: border-color .2s, color .2s; }
+      border-radius: 50%; background: var(--surface-raised); color: var(--text-subtle); cursor: pointer; transition: border-color .2s, color .2s; }
     .settings-button svg { transition: transform .3s; }
     .settings-button:hover, .settings-button[aria-expanded="true"] { border-color: #d5b6aa; color: var(--accent-dark); }
     .settings-button[aria-expanded="true"] svg { transform: rotate(60deg); }
     .settings-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; width: 270px; padding: 14px;
-      border: 1px solid var(--line); border-radius: 14px; background: #fff; box-shadow: 0 16px 40px #29271e22; }
+      border: 1px solid var(--line); border-radius: 14px; background: var(--surface-raised); color: var(--ink); box-shadow: 0 16px 40px #29271e22; }
     .settings-title { margin-bottom: 10px; font-size: 12px; font-weight: 700; }
+    .settings-themes { display: flex; gap: 8px; margin-bottom: 14px; }
+    .settings-theme { display: flex; flex: 1; align-items: center; gap: 7px; padding: 9px;
+      border: 1px solid var(--line); border-radius: 9px; cursor: pointer; font-size: 11px; }
+    .settings-theme input { margin: 0; accent-color: var(--accent); }
     .settings-option { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
     .settings-option input { margin-top: 2px; accent-color: var(--accent); }
     .settings-option b { display: block; font-size: 12px; }
@@ -169,34 +189,34 @@ HTML = r"""<!doctype html>
     .card-head h2 { margin: 0; font-size: 14px; font-weight: 700; letter-spacing: -.15px; }
     .card-head p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
     .step { display: grid; place-items: center; flex: 0 0 25px; width: 25px; height: 25px; border-radius: 50%;
-      color: var(--accent-dark); background: #fbf0eb; font-size: 11px; font-weight: 700; }
-    .preview { position: relative; display: grid; place-items: center; height: 170px; overflow: hidden; border: 1px dashed #dedfd7;
+      color: var(--accent-dark); background: var(--surface-accent); font-size: 11px; font-weight: 700; }
+    .preview { position: relative; display: grid; place-items: center; height: 170px; overflow: hidden; border: 1px dashed var(--line-soft);
       border-radius: 13px; background: linear-gradient(145deg, #fafaf7, #f1f1eb); }
     .preview img { display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
     .preview canvas { display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; cursor: crosshair; }
     .preview.has-image img { display: block; }
     .preview.has-segmentation canvas { display: block; }
-    .preview-empty { display: grid; justify-items: center; gap: 8px; color: #8b8d86; font-size: 12px; }
+    .preview-empty { display: grid; justify-items: center; gap: 8px; color: var(--text-muted); font-size: 12px; }
     .preview-empty .upload-symbol { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px;
-      background: white; color: var(--accent); font-size: 20px; box-shadow: 0 4px 15px #3331; }
+      background: var(--surface-raised); color: var(--accent); font-size: 20px; box-shadow: 0 4px 15px #3331; }
     .preview.has-image .preview-empty { display: none; }
     .source-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 14px 0 13px; }
     .source-actions { display: flex; flex-wrap: wrap; gap: 7px; }
     .segmentation-status { display: none; margin: -5px 0 10px; color: var(--muted); font-size: 10px; line-height: 1.5; }
     .segmentation-status.visible { display: block; }
     .garment-options { display: flex; flex-wrap: wrap; gap: 7px; margin: -2px 0 12px; }
-    .garment-choice { padding: 7px 9px; border: 1px solid var(--line); border-radius: 9px; background: white;
-      color: #565851; font-size: 10px; }
+    .garment-choice { padding: 7px 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-raised);
+      color: var(--text-default); font-size: 10px; }
     .garment-choice:hover { border-color: #d5b6aa; }
-    .garment-choice.selected { border-color: var(--accent); background: #fbf0eb; color: var(--accent-dark); font-weight: 650; }
+    .garment-choice.selected { border-color: var(--accent); background: var(--surface-accent); color: var(--accent-dark); font-weight: 650; }
     .source-name { overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
     .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 8px 12px;
-      border: 1px solid var(--line); border-radius: 9px; background: white; color: #43453f; font-size: 11px; font-weight: 650; }
-    .button:hover { border-color: #d5b6aa; background: #fdf9f6; }
+      border: 1px solid var(--line); border-radius: 9px; background: var(--surface-raised); color: var(--text-strong); font-size: 11px; font-weight: 650; }
+    .button:hover { border-color: #d5b6aa; background: var(--surface-hover); }
     .button.small { min-height: 31px; padding: 6px 10px; font-size: 10px; }
     .gallery { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
     .thumb { position: relative; height: 112px; overflow: hidden; padding: 0; border: 2px solid transparent; border-radius: 8px;
-      background: #f2f2ed; }
+      background: var(--surface-preview); }
     .thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
     .thumb:hover { transform: translateY(-1px); }
     .thumb.selected { border-color: var(--accent); box-shadow: 0 0 0 2px #c75d3a20; }
@@ -205,48 +225,50 @@ HTML = r"""<!doctype html>
     .gallery-note { margin: 12px 0 0; color: var(--muted); font-size: 10px; }
     .history-showcase { grid-template-columns: minmax(0, 1fr); }
     .history-showcase .result-image.featured { width: 100%; }
-    .field-label { display: block; margin: 0 0 8px; color: #454741; font-size: 11px; font-weight: 700; }
+    .field-label { display: block; margin: 0 0 8px; color: var(--text-strong); font-size: 11px; font-weight: 700; }
     .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
     .field { min-width: 0; margin-bottom: 12px; }
-    .input { width: 100%; min-height: 40px; padding: 9px 11px; border: 1px solid #e5e5df; border-radius: 9px;
-      outline: none; background: #fff; color: var(--ink); font-size: 12px; }
+    .input { width: 100%; min-height: 40px; padding: 9px 11px; border: 1px solid var(--line-strong); border-radius: 9px;
+      outline: none; background: var(--surface-raised); color: var(--ink); font-size: 12px; }
     .input:focus { border-color: #d99b85; box-shadow: 0 0 0 3px #c75d3a14; }
     .swatches { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-    .swatch { width: 23px; height: 23px; padding: 0; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px #deded8; }
-    .swatch-none { width: auto; min-width: 38px; padding: 0 7px; border-radius: 99px; background: #fff; color: #62645d; font-size: 9px; }
+    .swatch { appearance: none; width: 23px; height: 23px; padding: 0; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px #deded8; }
+    .swatch[title="white"] { background: #fff !important; border-color: #777972; box-shadow: none; }
+    .swatch-none { flex: 0 0 auto; width: max-content; min-width: max-content; padding: 0 9px;
+      border-radius: 99px; background: var(--surface-raised); color: var(--text-subtle); font-size: 9px; white-space: nowrap; }
     .swatch.selected { box-shadow: 0 0 0 2px var(--accent); }
     .material-line { display: flex; align-items: center; gap: 8px; }
     .material-line .input { flex: 1; }
     .material-options { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
-    .material-choice { padding: 5px 8px; border: 1px solid var(--line); border-radius: 99px; background: #fff;
-      color: #62645d; font-size: 9px; }
+    .material-choice { padding: 5px 8px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface-raised);
+      color: var(--text-subtle); font-size: 9px; }
     .material-choice:hover { border-color: #d5b6aa; color: var(--accent-dark); }
-    .material-choice.selected { border-color: var(--accent); background: #fbf0eb; color: var(--accent-dark); font-weight: 650; }
+    .material-choice.selected { border-color: var(--accent); background: var(--surface-accent); color: var(--accent-dark); font-weight: 650; }
     .garment-style-editor { display: none; margin-bottom: 14px; }
     .garment-style-editor.visible { display: block; }
     .garment-tabs { display: flex; gap: 6px; margin: 0 0 12px; overflow-x: auto; padding: 2px 1px 5px; }
     .garment-tab { flex: 0 0 auto; max-width: 180px; padding: 7px 10px; border: 1px solid var(--line);
-      border-radius: 9px; background: white; color: #565851; font-size: 10px; }
-    .garment-tab.selected { border-color: var(--accent); background: #fbf0eb; color: var(--accent-dark); font-weight: 650; }
+      border-radius: 9px; background: var(--surface-raised); color: var(--text-default); font-size: 10px; }
+    .garment-tab.selected { border-color: var(--accent); background: var(--surface-accent); color: var(--accent-dark); font-weight: 650; }
     .garment-tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .garment-editor-pane { display: none; }
     .garment-editor-pane.active { display: block; }
     .garment-editor-pane .texture-grid { margin-top: 8px; }
     .placement-tools { display: flex; flex-wrap: wrap; gap: 7px; }
-    .placement-choice[aria-pressed="true"] { border-color: var(--accent); background: #fbf0eb; color: var(--accent-dark); }
+    .placement-choice[aria-pressed="true"] { border-color: var(--accent); background: var(--surface-accent); color: var(--accent-dark); }
     .placement-status { margin: 8px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
     .placement-list { display: grid; gap: 5px; margin: 8px 0 0; padding: 0; list-style: none; }
     .placement-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px;
-      border-radius: 8px; background: #f7f7f4; color: #565851; font-size: 10px; }
+      border-radius: 8px; background: var(--surface-soft); color: var(--text-default); font-size: 10px; }
     .placement-remove { flex: 0 0 auto; padding: 1px 5px; border: 0; background: transparent; color: var(--accent-dark); font-size: 14px; }
     .preview.placing canvas { cursor: crosshair; }
     .texture-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; min-height: 67px; }
     .texture-tile { min-width: 0; padding: 0 0 5px; overflow: hidden; border: 2px solid transparent; border-radius: 9px;
-      background: #f4f3ef; color: #565851; font-size: 9px; }
+      background: var(--surface-muted); color: var(--text-default); font-size: 9px; }
     .texture-tile img { display: block; width: 100%; height: 36px; object-fit: cover; margin-bottom: 4px; }
     .texture-tile span { display: block; overflow: hidden; padding: 0 3px; text-overflow: ellipsis; white-space: nowrap; }
     .texture-tile.selected { border-color: var(--accent); }
-    .hint { margin: 8px 0 0; color: #94968f; font-size: 10px; line-height: 1.5; }
+    .hint { margin: 8px 0 0; color: var(--text-muted); font-size: 10px; line-height: 1.5; }
     .right .card-head h2 { font-size: 13px; }
     .right .card-head p { font-size: 10px; }
     .right .step { font-size: 10px; }
@@ -260,14 +282,12 @@ HTML = r"""<!doctype html>
       color: white; font-size: 12px; font-weight: 700; transition: background .2s, transform .2s; }
     .generate:hover:not(:disabled) { transform: translateY(-1px); background: var(--accent-dark); }
     .generate:disabled { cursor: wait; opacity: .65; }
-    .generate.is-loading { display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 8px; padding: 10px 13px; text-align: left; }
-    .generate-progress[hidden] { display: none; }
-    .generate-progress { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .generate-progress-leading { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .generate-spinner { flex: 0 0 auto; font-size: 16px; line-height: 1; animation: generate-spin .9s linear infinite; }
-    @keyframes generate-spin { to { transform: rotate(360deg); } }
-    .generate-progress-message { overflow: hidden; font-size: 10px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-    .generate-progress-state { font-size: 9px; font-weight: 700; }
+    .queue-status { display: flex; align-items: center; justify-content: center; gap: 6px;
+      margin: 9px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; text-align: center; }
+    .queue-status[hidden] { display: none; }
+    .queue-spinner { display: inline-block; color: var(--accent); font-size: 15px; line-height: 1; animation: queue-spin .9s linear infinite; }
+    .queue-spinner[hidden] { display: none; }
+    @keyframes queue-spin { to { transform: rotate(360deg); } }
     @media (min-width: 1021px) and (max-height: 900px) {
       main { padding-top: 10px; }
       .topline { margin-bottom: 8px; }
@@ -283,7 +303,7 @@ HTML = r"""<!doctype html>
       textarea.input { min-height: 58px; }
       .hint { margin-top: 5px; }
     }
-    .error { display: none; margin-top: 12px; padding: 11px; border-radius: 9px; background: #fff0ed; color: #a33d29; font-size: 11px; line-height: 1.5; }
+    .error { display: none; margin-top: 12px; padding: 11px; border-radius: 9px; background: var(--surface-accent); color: var(--accent-dark); font-size: 11px; line-height: 1.5; }
     .error.visible { display: block; }
     .result-dialog { width: min(1000px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 32px); padding: 0;
       overflow: auto; border: 1px solid var(--line); border-radius: 20px; background: var(--white); color: var(--ink);
@@ -295,29 +315,29 @@ HTML = r"""<!doctype html>
     .results-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .results-title h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 500; }
     .result-meta { overflow: hidden; margin-top: 3px; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-    .result-filename { width: min(210px, 22vw); min-height: 34px; padding: 7px 9px; border: 1px solid #e5e5df;
-      border-radius: 8px; outline: none; color: var(--ink); font-size: 11px; }
+    .result-filename { width: min(210px, 22vw); min-height: 34px; padding: 7px 9px; border: 1px solid var(--line-strong);
+      border-radius: 8px; outline: none; background: var(--surface-raised); color: var(--ink); font-size: 11px; }
     .result-filename:focus { border-color: #d99b85; box-shadow: 0 0 0 3px #c75d3a14; }
     .result-actions { display: flex; flex: 0 0 auto; gap: 8px; }
     .result-download { border-color: var(--accent); background: var(--accent); color: white; }
     .result-download:hover { border-color: var(--accent-dark); background: var(--accent-dark); color: white; }
     .result-footer { display: flex; justify-content: flex-end; padding: 0 22px 18px; }
-    .result-delete { border-color: #e6b6a8; background: #fbf0eb; color: var(--accent-dark); }
-    .result-delete:hover { border-color: #d99b85; background: #f8e4dc; }
+    .result-delete { border-color: #e6b6a8; background: var(--surface-accent); color: var(--accent-dark); }
+    .result-delete:hover { border-color: #d99b85; background: var(--surface-hover); }
     .result-showcase { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(170px, .7fr); gap: 14px;
       min-height: 0; padding: 18px 22px 22px; }
-    .result-image { min-width: 0; margin: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #f6f6f2; }
+    .result-image { min-width: 0; margin: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-muted); }
     .result-image img { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
-    .result-image figcaption { padding: 9px 11px; color: #62645d; font-size: 10px; }
+    .result-image figcaption { padding: 9px 11px; color: var(--text-subtle); font-size: 10px; }
     .result-image.featured { display: flex; flex-direction: column; min-height: 300px; max-height: calc(100dvh - 155px); }
     .result-image.featured img { flex: 1; min-height: 240px; }
     .result-alternates { display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 10px; min-height: 0; }
     .result-alternates .result-image { display: flex; flex-direction: column; min-height: 0; }
     .result-alternates .result-image img { flex: 1; min-height: 60px; }
-    .result-error { display: none; margin: 0 22px 18px; padding: 11px; border-radius: 9px; background: #fff0ed; color: #a33d29; font-size: 11px; }
+    .result-error { display: none; margin: 0 22px 18px; padding: 11px; border-radius: 9px; background: var(--surface-accent); color: var(--accent-dark); font-size: 11px; }
     .result-error.visible { display: block; }
-    .empty-text { display: grid; place-items: center; min-height: 74px; color: #92948e; font-size: 10px; text-align: center; }
-    footer { margin-top: 27px; color: #999b94; font-size: 10px; text-align: center; }
+    .empty-text { display: grid; place-items: center; min-height: 74px; color: var(--text-muted); font-size: 10px; text-align: center; }
+    footer { margin-top: 27px; color: var(--text-label); font-size: 10px; text-align: center; }
     .hidden { display: none !important; }
     @media (max-width: 1020px) {
       .shell { grid-template-columns: 205px minmax(0, 1fr); }
@@ -390,6 +410,17 @@ HTML = r"""<!doctype html>
             </button>
             <div class="settings-menu" id="settingsMenu" hidden>
               <div class="settings-title">Configuración</div>
+              <div class="settings-title">Tema</div>
+              <div class="settings-themes" role="group" aria-label="Tema de la interfaz">
+                <label class="settings-theme">
+                  <input type="radio" name="theme" id="themeLight" value="light">
+                  <span>Claro</span>
+                </label>
+                <label class="settings-theme">
+                  <input type="radio" name="theme" id="themeDark" value="dark">
+                  <span>Oscuro</span>
+                </label>
+              </div>
               <label class="settings-option">
                 <input type="checkbox" id="devModeToggle">
                 <span>
@@ -443,7 +474,7 @@ HTML = r"""<!doctype html>
               <input class="input" id="color" list="colors" value="black" maxlength="80" placeholder="Escribe un color en inglés">
               <datalist id="colors"></datalist>
               <div class="swatches" id="swatches" aria-label="Colores sugeridos"></div>
-              <p class="hint">Elige un color o selecciona none para conservar el original.</p>
+              <p class="hint">Elige un color o selecciona «Ninguno» para conservar el original.</p>
             </div>
             <div class="field">
               <label class="field-label" for="material">Material o textura</label>
@@ -464,16 +495,11 @@ HTML = r"""<!doctype html>
               <div id="garmentEditorPanes"></div>
               <p class="hint" id="garmentEditorHint">Cada pestaña tiene sus propios cambios. Solo se enviarán las prendas marcadas para aplicar.</p>
             </div>
-            <button class="generate" id="generateButton" type="button" aria-live="polite">
-              <span id="generateLabel">✦ &nbsp; Crear mi diseño</span>
-              <span class="generate-progress" id="generateProgress" hidden>
-                <span class="generate-progress-leading">
-                  <span class="generate-spinner" aria-hidden="true">↻</span>
-                  <span class="generate-progress-message" id="generateProgressMessage">Preparando el modelo…</span>
-                </span>
-                <span class="generate-progress-state">EN CURSO</span>
-              </span>
-            </button>
+            <button class="generate" id="generateButton" type="button" aria-live="polite">✦ &nbsp; Crear mi diseño</button>
+            <p class="queue-status" id="queueStatus" role="status" aria-live="polite" hidden>
+              <span class="queue-spinner" id="queueSpinner" aria-hidden="true" hidden>↻</span>
+              <span id="queueStatusText"></span>
+            </p>
             <div class="error" id="errorMessage" role="alert"></div>
           </section>
           <dialog class="result-dialog" id="resultsCard" aria-labelledby="resultHeading">
@@ -505,11 +531,24 @@ HTML = r"""<!doctype html>
   </div>
   <script>
     const $ = (selector) => document.querySelector(selector);
-    const state = { source: null, activeJob: null, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null, activePlacement: null, devMode: false, historyItem: null };
+    const state = { source: null, activeJob: null, pendingJobs: [], pollingJobs: false, submittingJob: false, detectingGarments: false, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null, activePlacement: null, devMode: false, historyItem: null };
     // modo desarrollador: se guarda en el navegador para que se recuerde al recargar la página
     const DEV_MODE_KEY = "atelier-dev-mode";
+    const THEME_KEY = "atelier-theme";
     function readDevMode() {
       try { return localStorage.getItem(DEV_MODE_KEY) === "1"; } catch (error) { return false; }
+    }
+    function readTheme() {
+      try { return localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light"; }
+      catch (error) { return "light"; }
+    }
+    function setTheme(theme) {
+      const selectedTheme = theme === "dark" ? "dark" : "light";
+      document.documentElement.dataset.theme = selectedTheme;
+      $("#themeLight").checked = selectedTheme === "light";
+      $("#themeDark").checked = selectedTheme === "dark";
+      $('meta[name="theme-color"]').content = selectedTheme === "dark" ? "#191a18" : "#f7f7f4";
+      try { localStorage.setItem(THEME_KEY, selectedTheme); } catch (error) { /* sin almacenamiento: no se recuerda */ }
     }
     function alignSettingsButton() {
       const pill = $(".device-pill").getBoundingClientRect();
@@ -532,7 +571,7 @@ HTML = r"""<!doctype html>
       return state.devMode ? `${item.name} · ${Math.round(item.score * 100)}%` : item.name;
     }
     const colorHex = {
-      black:"#252525", white:"#f7f5ef", red:"#c94843", blue:"#466ca5", "navy blue":"#293650",
+      black:"#252525", white:"#ffffff", red:"#c94843", blue:"#466ca5", "navy blue":"#293650",
       green:"#66866a", "dark green":"#345343", yellow:"#e9c44e", pink:"#dc91a4",
       purple:"#886c9f", orange:"#e29150", brown:"#866044", gray:"#91938e", beige:"#d5c4a2"
     };
@@ -557,6 +596,7 @@ HTML = r"""<!doctype html>
     }
     function clearError() { $("#errorMessage").classList.remove("visible"); }
     function setSource(source, label, previewUrl) {
+      if (state.detectingGarments) return;
       if (state.source !== source) clearSegmentation();
       state.source = source;
       $("#sourceName").textContent = label;
@@ -564,6 +604,13 @@ HTML = r"""<!doctype html>
       $("#sourcePreview").classList.add("has-image");
       document.querySelectorAll(".thumb").forEach((el) => el.classList.toggle("selected", el.dataset.id === source));
       clearError();
+    }
+    function setImageSelectionLocked(locked) {
+      state.detectingGarments = locked;
+      $("#uploadButton").disabled = locked;
+      $("#refreshImages").disabled = locked;
+      $("#fileInput").disabled = locked;
+      document.querySelectorAll(".thumb").forEach((button) => { button.disabled = locked; });
     }
     function clearSegmentation(message = "") {
       state.segmentation = null;
@@ -649,7 +696,7 @@ HTML = r"""<!doctype html>
       color.addEventListener("input", () => {
         edit.color = color.value;
         colorField.querySelectorAll(".swatch").forEach((swatch) =>
-          swatch.classList.toggle("selected", swatch.title === color.value.trim().toLowerCase()));
+          swatch.classList.toggle("selected", swatch.dataset.value === color.value.trim().toLowerCase()));
       });
       colorField.append(colorLabel, color);
       const swatches = document.createElement("div");
@@ -660,6 +707,7 @@ HTML = r"""<!doctype html>
         swatch.type = "button";
         swatch.className = "swatch";
         swatch.title = name;
+        swatch.dataset.value = name;
         swatch.setAttribute("aria-label", name);
         swatch.style.background = hex;
         swatch.classList.toggle("selected", edit.color.trim().toLowerCase() === name);
@@ -673,9 +721,10 @@ HTML = r"""<!doctype html>
       const noColor = document.createElement("button");
       noColor.type = "button";
       noColor.className = "swatch swatch-none";
-      noColor.title = "none";
-      noColor.textContent = "none";
-      noColor.setAttribute("aria-label", "Sin cambio de color");
+      noColor.title = "Ninguno";
+      noColor.dataset.value = "none";
+      noColor.textContent = "Ninguno";
+      noColor.setAttribute("aria-label", "Ninguno: conservar el color original");
       noColor.classList.toggle("selected", edit.color.trim().toLowerCase() === "none");
       noColor.addEventListener("click", () => {
         edit.color = "none";
@@ -706,7 +755,8 @@ HTML = r"""<!doctype html>
         const option = document.createElement("button");
         option.type = "button";
         option.className = "material-choice";
-        option.textContent = value;
+        option.textContent = value === "none" ? "none" : value;
+        option.dataset.value = value;
         option.classList.toggle("selected", edit.texture.toLowerCase() === value);
         option.addEventListener("click", () => {
           edit.texture = value;
@@ -718,7 +768,7 @@ HTML = r"""<!doctype html>
       material.addEventListener("input", () => {
         edit.texture = material.value;
         materialOptions.querySelectorAll(".material-choice").forEach((button) =>
-          button.classList.toggle("selected", button.textContent.toLowerCase() === material.value.trim().toLowerCase()));
+          button.classList.toggle("selected", button.dataset.value === material.value.trim().toLowerCase()));
       });
       materialField.append(materialOptions);  // los tags van justo debajo de la barra de escritura
       pane.append(materialField);
@@ -933,8 +983,11 @@ HTML = r"""<!doctype html>
     }
     async function detectGarments() {
       clearError();
+      if (state.detectingGarments) return;
       if (!state.source) { showError("Elige una imagen antes de detectar las prendas."); return; }
+      setImageSelectionLocked(true);
       clearSegmentation("Detectando prendas y afinando sus bordes. Puede tardar un poco…");
+      $("#segmentationStatus").textContent += " No se puede cambiar la imagen hasta que termine.";
       const button = $("#detectGarments");
       button.disabled = true;
       try {
@@ -974,9 +1027,11 @@ HTML = r"""<!doctype html>
         clearSegmentation(`No se pudieron detectar las prendas: ${error.message}`);
       } finally {
         button.disabled = false;
+        setImageSelectionLocked(false);
       }
     }
     async function loadImages() {
+      if (state.detectingGarments) return;
       const gallery = $("#imageGallery");
       gallery.innerHTML = Array.from({length:10}, () => '<div class="thumb"></div>').join("");
       try {
@@ -987,6 +1042,7 @@ HTML = r"""<!doctype html>
           button.type = "button"; button.className = "thumb"; button.title = item.label; button.dataset.id = item.id;
           const image = document.createElement("img"); image.loading = "lazy"; image.alt = item.label; image.src = item.preview_url;
           button.append(image);
+          button.disabled = state.detectingGarments;
           button.addEventListener("click", () => setSource(item.id, item.label, item.preview_url));
           gallery.append(button);
         });
@@ -1048,7 +1104,8 @@ HTML = r"""<!doctype html>
         const button = document.createElement("button");
         button.type = "button";
         button.className = "material-choice";
-        button.textContent = texture;
+        button.textContent = texture === "none" ? "none" : texture;
+        button.dataset.value = texture;
         button.classList.toggle("selected", texture === $("#material").value.trim().toLowerCase());
         button.addEventListener("click", () => {
           $("#material").value = texture;
@@ -1058,32 +1115,36 @@ HTML = r"""<!doctype html>
       });
       $("#swatches").innerHTML = config.colors.filter((color) => colorHex[color]).map((color) => {
         const button = document.createElement("button");
-        button.type = "button"; button.className = "swatch"; button.title = color; button.setAttribute("aria-label", color);
+        button.type = "button"; button.className = "swatch"; button.title = color; button.dataset.value = color;
+        button.setAttribute("aria-label", color);
         button.style.background = colorHex[color];
         return button.outerHTML;
       }).join("");
       const noColor = document.createElement("button");
       noColor.type = "button";
       noColor.className = "swatch swatch-none";
-      noColor.title = "none";
-      noColor.setAttribute("aria-label", "Sin color");
+      noColor.title = "Ninguno";
+      noColor.dataset.value = "none";
+      noColor.setAttribute("aria-label", "Ninguno: conservar el color original");
       noColor.textContent = "none";
       $("#swatches").append(noColor);
       $("#swatches").querySelectorAll(".swatch").forEach((button) => {
-        button.addEventListener("click", () => { $("#color").value = button.title; updateSwatches(); });
+        button.addEventListener("click", () => { $("#color").value = button.dataset.value; updateSwatches(); });
       });
     }
     function updateMaterialChoices() {
       const value = $("#material").value.trim().toLowerCase();
       $("#materialOptions").querySelectorAll(".material-choice").forEach((button) => {
-        button.classList.toggle("selected", button.textContent.toLowerCase() === value);
+        button.classList.toggle("selected", button.dataset.value === value);
       });
     }
     function updateSwatches() {
-      $("#swatches").querySelectorAll(".swatch").forEach((button) => button.classList.toggle("selected", button.title === $("#color").value.trim().toLowerCase()));
+      $("#swatches").querySelectorAll(".swatch").forEach((button) =>
+        button.classList.toggle("selected", button.dataset.value === $("#color").value.trim().toLowerCase()));
     }
     async function uploadImage(file) {
       clearError();
+      if (state.detectingGarments) return;
       if (!file) return;
       if (file.size > 20 * 1024 * 1024) { showError("La imagen supera el límite de 20 MB."); return; }
       $("#sourceName").textContent = "Cargando imagen…";
@@ -1148,32 +1209,77 @@ HTML = r"""<!doctype html>
     $("#resultFilename").addEventListener("input", () => {
       setDownloadFilename();
     });
-    function setGenerateProgress(active, message = "Preparando el modelo…") {
+    function updateQueueStatus(job = null) {
       const button = $("#generateButton");
-      button.disabled = active;
-      button.classList.toggle("is-loading", active);
-      $("#generateLabel").hidden = active;
-      $("#generateProgress").hidden = !active;
-      $("#generateProgressMessage").textContent = message;
+      const status = $("#queueStatus");
+      const statusText = $("#queueStatusText");
+      const spinner = $("#queueSpinner");
+      const count = state.pendingJobs.length;
+      const currentJob = job || state.pendingJobs[0];
+      button.disabled = state.submittingJob;
+      button.textContent = state.submittingJob
+        ? "Añadiendo a la cola…"
+        : count ? `＋ Añadir a la cola (${count})` : "✦ Crear mi diseño";
+      spinner.hidden = currentJob?.status !== "running";
+      if (state.submittingJob) {
+        statusText.textContent = "Enviando tu solicitud…";
+        status.hidden = false;
+      } else if (!count) {
+        statusText.textContent = "";
+        status.hidden = true;
+      } else if (currentJob?.status === "queued") {
+        statusText.textContent = `Tu cambio está en la cola, puesto ${currentJob.queue_position || count}${count > 1 ? ` · ${count} trabajos pendientes` : ""}.`;
+        status.hidden = false;
+      } else {
+        statusText.textContent = count > 1
+          ? `Aplicando tu cambio · ${count - 1} ${count === 2 ? "trabajo pendiente" : "trabajos pendientes"}.`
+          : "Aplicando tu cambio…";
+        status.hidden = false;
+      }
     }
-    async function pollJob(jobId) {
-      while (state.activeJob === jobId) {
-        const job = await request(`/api/jobs/${jobId}`);
-        $("#generateProgressMessage").textContent = job.message || "Preparando…";
-        if (job.status === "completed") {
-          setGenerateProgress(false);
+    function waitForResultsClose() {
+      const dialog = $("#resultsCard");
+      if (!dialog.open) return Promise.resolve();
+      return new Promise((resolve) => dialog.addEventListener("close", resolve, {once: true}));
+    }
+    async function pollQueue() {
+      if (state.pollingJobs) return;
+      state.pollingJobs = true;
+      try {
+        while (state.pendingJobs.length) {
+          const current = state.pendingJobs[0];
+          state.activeJob = current.id;
+          let job;
+          while (state.pendingJobs[0]?.id === current.id) {
+            try {
+              job = await request(`/api/jobs/${current.id}`);
+            } catch (error) {
+              showError(`No se pudo consultar el estado del trabajo: ${error.message}`);
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+              continue;
+            }
+            current.status = job.status;
+            current.queue_position = job.queue_position;
+            updateQueueStatus(job);
+            if (job.status === "completed" || job.status === "failed") break;
+            await new Promise((resolve) => setTimeout(resolve, 1300));
+          }
+          if (state.pendingJobs[0]?.id !== current.id) continue;
+          state.pendingJobs.shift();
           state.activeJob = null;
-          loadHistory();
-          displayResult(job, jobId);
-          return;
+          updateQueueStatus();
+          if (job.status === "completed") {
+            loadHistory();
+            displayResult(job, current.id);
+            if (state.pendingJobs.length || state.submittingJob) await waitForResultsClose();
+          } else {
+            showError(job.error || "No se pudo generar el diseño.");
+          }
         }
-        if (job.status === "failed") {
-          setGenerateProgress(false);
-          state.activeJob = null;
-          showError(job.error || "No se pudo generar el diseño.");
-          return;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 1300));
+      } finally {
+        state.activeJob = null;
+        state.pollingJobs = false;
+        updateQueueStatus();
       }
     }
     async function generate() {
@@ -1209,7 +1315,9 @@ HTML = r"""<!doctype html>
         showError("Indica un color, material o instrucción antes de generar.");
         return;
       }
-      setGenerateProgress(true);
+      if (state.submittingJob) return;
+      state.submittingJob = true;
+      updateQueueStatus();
       try {
         const job = await request("/api/generate", {
           method: "POST", headers: {"Content-Type":"application/json"},
@@ -1223,12 +1331,14 @@ HTML = r"""<!doctype html>
             garment_edits: garmentEdits
           })
         });
-        state.activeJob = job.id;
-        await pollJob(job.id);
+        state.pendingJobs.push({id: job.id, status: "queued", queue_position: job.queue_position});
+        updateQueueStatus();
+        pollQueue();
       } catch (error) {
-        state.activeJob = null;
-        setGenerateProgress(false);
         showError(error.message);
+      } finally {
+        state.submittingJob = false;
+        updateQueueStatus();
       }
     }
     $("#refreshImages").addEventListener("click", loadImages);
@@ -1243,6 +1353,10 @@ HTML = r"""<!doctype html>
     });
     window.addEventListener("resize", alignSettingsButton);
     $("#devModeToggle").addEventListener("change", (event) => setDevMode(event.target.checked));
+    document.querySelectorAll('input[name="theme"]').forEach((input) =>
+      input.addEventListener("change", (event) => {
+        if (event.target.checked) setTheme(event.target.value);
+      }));
     $("#devModeIndicator").addEventListener("click", () => setDevMode(false));
     // el menú se cierra al hacer clic fuera de él o al pulsar Escape
     document.addEventListener("click", (event) => { if (!event.target.closest(".settings")) closeSettings(); });
@@ -1312,6 +1426,7 @@ HTML = r"""<!doctype html>
       });
     });
     (async function init() {
+      setTheme(readTheme());
       setDevMode(readDevMode());
       try { populateOptions(await request("/api/config")); }
       catch (error) { showError(error.message); }
@@ -1726,8 +1841,9 @@ async def generate(request: Request, options: GenerationRequest):
     with job_lock:
         if request.app.state.segmenting:
             raise HTTPException(status_code=409, detail="Espera a que termine la detección de prendas.")
-        if any(job["status"] in {"queued", "running"} for job in jobs.values()):
-            raise HTTPException(status_code=409, detail="Ya hay una generación en curso. Espera a que termine.")
+        queue_position = 1 + sum(
+            job["status"] in {"queued", "running"} for job in jobs.values()
+        )
         job_id = uuid.uuid4().hex
         jobs[job_id] = {
             "status": "queued",
@@ -1751,7 +1867,7 @@ async def generate(request: Request, options: GenerationRequest):
             garment_indices,
             garment_edits,
         )
-    return {"id": job_id, "status": "queued"}
+    return {"id": job_id, "status": "queued", "queue_position": queue_position}
 
 
 @app.get("/api/jobs/{job_id}")
@@ -1760,8 +1876,19 @@ async def job_status(job_id: str):
         job = jobs.get(job_id)
         if job is None:
             raise HTTPException(status_code=404, detail="No se encontró esta generación.")
+        queue_position = None
+        if job["status"] == "running":
+            queue_position = 1
+        elif job["status"] == "queued":
+            queue_position = 1
+            for earlier_id, earlier_job in jobs.items():
+                if earlier_id == job_id:
+                    break
+                if earlier_job["status"] in {"queued", "running"}:
+                    queue_position += 1
         return {
             "id": job_id,
+            "queue_position": queue_position,
             **{key: value for key, value in job.items() if key not in {"images", "saved_path"}},
         }
 

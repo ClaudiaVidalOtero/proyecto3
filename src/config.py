@@ -89,7 +89,7 @@ PIX2PIX_COLOR_OPTIONS = [
 ]
 PIX2PIX_TEXTURE_OPTIONS = [
     PIX2PIX_NO_TEXTURE, "leather", "denim", "silk", "velvet", "wool",
-    "cotton", "lace", "satin", "corduroy",
+    "cotton", "satin",
 ]
 PIX2PIX_TEXTURE_CATEGORY_HINTS = {
     "denim": "fabric", "jeans": "fabric", "silk": "fabric", "satin": "fabric",
