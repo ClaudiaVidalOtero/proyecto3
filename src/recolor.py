@@ -32,9 +32,12 @@ from tkinter import ttk, filedialog, messagebox
 import numpy as np
 import torch
 import torchvision.transforms.functional as TF
-from PIL import Image, ImageFilter, ImageTk
+from PIL import Image, ImageChops, ImageFilter, ImageTk
 import matplotlib.pyplot as plt
-from diffusers import StableDiffusionInstructPix2PixPipeline, EulerAncestralDiscreteScheduler
+from diffusers import (
+    StableDiffusionInstructPix2PixPipeline,
+    EulerAncestralDiscreteScheduler,
+)
 from winotify import Notification
 
 # Añadimos la raíz del proyecto (carpeta padre de utils/)
@@ -534,17 +537,224 @@ def get_pipeline(device):
     key = (C.PIX2PIX_MODEL_ID, str(device), str(dtype))
     with _PIPELINE_LOCK:
         pipe = _PIPELINE_CACHE.get(key)
-        if pipe is not None:
-            return pipe
-        pipe = StableDiffusionInstructPix2PixPipeline.from_pretrained(
-            C.PIX2PIX_MODEL_ID, torch_dtype=dtype, safety_checker=None
-        )
-        pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
-        pipe = pipe.to(device)
+        if pipe is None:
+            pipe = StableDiffusionInstructPix2PixPipeline.from_pretrained(
+                C.PIX2PIX_MODEL_ID, torch_dtype=dtype, safety_checker=None
+            )
+            pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
+            _PIPELINE_CACHE[key] = pipe
+        _activate_pipeline(key, pipe, device)
         if C.PIX2PIX_ATTENTION_SLICING:
             pipe.enable_attention_slicing()
-        _PIPELINE_CACHE[key] = pipe
         return pipe
+
+
+def _activate_pipeline(key, pipe, device):
+    for cached_key, cached_pipe in _PIPELINE_CACHE.items():
+        if cached_key != key and getattr(cached_pipe, "device", torch.device("cpu")).type != "cpu":
+            cached_pipe.to("cpu")
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+        pipe = pipe.to(device)
+    elif getattr(pipe, "device", torch.device("cpu")) != device:
+        pipe = pipe.to(device)
+    _PIPELINE_CACHE[key] = pipe
+
+
+def add_placed_detail(image, garment_mask, placement, device, progress):
+    """Adds a textured pocket or a shaded button at the selected garment point."""
+
+    mask_height, mask_width = garment_mask.shape
+    ys, xs = np.nonzero(garment_mask)
+    if not len(xs):
+        raise ValueError("No se puede añadir un detalle a una máscara de prenda vacía.")
+    garment_left, garment_right = int(xs.min()), int(xs.max())
+    garment_top, garment_bottom = int(ys.min()), int(ys.max())
+    garment_width = garment_right - garment_left + 1
+    garment_height = garment_bottom - garment_top + 1
+    image_width, image_height = image.size
+    center_x = round(
+        (garment_left + placement["x"] / 100 * max(garment_width - 1, 0))
+        * image_width / mask_width
+    )
+    center_y = round(
+        (garment_top + placement["y"] / 100 * max(garment_height - 1, 0))
+        * image_height / mask_height
+    )
+    garment_width_px = garment_width * image_width / mask_width
+    garment_height_px = garment_height * image_height / mask_height
+    if placement["type"] == "pocket":
+        half_width = max(11, round(garment_width_px * 0.06))
+        half_height = max(11, round(garment_height_px * 0.075))
+        bounds = (
+            max(0, center_x - half_width),
+            max(0, center_y - half_height),
+            min(image_width - 1, center_x + half_width),
+            min(image_height - 1, center_y + half_height),
+        )
+        progress("Añadiendo bolsillo con textura y pespuntes...")
+        return draw_pocket_detail(image, bounds, garment_mask)
+    radius = max(5, round(garment_width_px * 0.022))
+    progress("Añadiendo botón con relieve y agujeros de costura...")
+    return draw_button_detail(image, center_x, center_y, radius, garment_mask)
+
+
+def draw_pocket_detail(image, bounds, garment_mask=None):
+    """Composites a small sewn pocket from matching local fabric and a clipped shadow."""
+    from PIL import ImageDraw
+
+    left, top, right, bottom = bounds
+    width, height = right - left, bottom - top
+    if width < 8 or height < 8:
+        raise ValueError("La zona seleccionada es demasiado pequeña para dibujar un bolsillo.")
+
+    inset_x = max(1, round(width * 0.035))
+    inset_y = max(1, round(height * 0.035))
+    left += inset_x
+    right -= inset_x
+    top += inset_y
+    bottom -= inset_y
+    width, height = right - left, bottom - top
+    corners = [
+        (left, top),
+        (right, top),
+        (right, bottom - height // 6),
+        (left + width // 2, bottom),
+        (left, bottom - height // 6),
+    ]
+    image_array = np.asarray(image.convert("RGB"), dtype=np.float32)
+    fabric = image_array[top:bottom + 1, left:right + 1].copy()
+    local_y, local_x = np.mgrid[0:height + 1, 0:width + 1]
+    edge = np.minimum.reduce((
+        np.ones_like(local_x, dtype=np.float32),
+        (local_x + 1) / max(width * 0.16, 1),
+        (width - local_x + 1) / max(width * 0.16, 1),
+        (local_y + 1) / max(height * 0.12, 1),
+        (height - local_y + 1) / max(height * 0.12, 1),
+    ))
+    light = 0.88 + 0.28 * edge + 0.1 * (1 - local_y / max(height, 1))
+    fabric = np.clip(fabric * light[..., None], 0, 255).astype(np.uint8)
+
+    patch_layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    patch = Image.fromarray(fabric).convert("RGBA")
+    patch_alpha = Image.new("L", patch.size, 0)
+    local_corners = [(x - left, y - top) for x, y in corners]
+    ImageDraw.Draw(patch_alpha).polygon(local_corners, fill=255)
+    patch.putalpha(patch_alpha)
+    patch_layer.alpha_composite(patch, (left, top))
+
+    shadow_layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    shadow_draw = ImageDraw.Draw(shadow_layer)
+    shadow_draw.polygon([(x, y + max(1, height // 24)) for x, y in corners], fill=(0, 0, 0, 75))
+    shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(max(1, width / 35)))
+    if garment_mask is not None:
+        garment_alpha = Image.fromarray((garment_mask.astype(np.uint8) * 255)).resize(
+            image.size, Image.Resampling.NEAREST
+        )
+        shadow_alpha = ImageChops.multiply(shadow_layer.getchannel("A"), garment_alpha)
+        shadow_layer.putalpha(shadow_alpha)
+    result = Image.alpha_composite(image.convert("RGBA"), shadow_layer)
+    result = Image.alpha_composite(result, patch_layer).convert("RGB")
+
+    luminance = np.asarray(image.convert("RGB"), dtype=np.float32)
+    sample_y = min(max((top + bottom) // 2, 0), image.height - 1)
+    sample_x = min(max((left + right) // 2, 0), image.width - 1)
+    brightness = float(luminance[sample_y, sample_x].mean())
+    thread = (236, 230, 210) if brightness < 125 else (55, 52, 46)
+    seam = (min(thread[0] + 15, 255), min(thread[1] + 15, 255), min(thread[2] + 15, 255))
+    edge_thread = (28, 40, 58) if brightness < 125 else (75, 70, 62)
+    draw = ImageDraw.Draw(result)
+    # The top opening is reinforced; the other three sides use short, fabric-scale stitches.
+    draw.line((left, top, right, top), fill=edge_thread, width=max(1, round(width / 35)))
+    draw.line(
+        (left + 2, top + max(1, height // 18), right - 2, top + max(1, height // 18)),
+        fill=seam,
+        width=max(1, round(width / 70)),
+    )
+    stitch = max(2, round(min(width, height) / 18))
+    gap = max(2, stitch)
+    for start, end in zip(corners[1:], corners[2:] + corners[:1]):
+        draw.line((start, end), fill=edge_thread, width=max(1, round(width / 100)))
+        dx, dy = end[0] - start[0], end[1] - start[1]
+        length = max(1, round((dx * dx + dy * dy) ** 0.5))
+        for offset in range(stitch, length - stitch, stitch + gap):
+            x1 = round(start[0] + dx * offset / length)
+            y1 = round(start[1] + dy * offset / length)
+            x2 = round(start[0] + dx * min(offset + stitch, length) / length)
+            y2 = round(start[1] + dy * min(offset + stitch, length) / length)
+            draw.line((x1, y1, x2, y2), fill=thread, width=max(1, round(width / 60)))
+
+    if garment_mask is not None:
+        clipped = ImageChops.multiply(
+            Image.new("L", image.size, 255),
+            Image.fromarray((garment_mask.astype(np.uint8) * 255)).resize(image.size, Image.Resampling.NEAREST),
+        )
+        result = Image.composite(result, image.convert("RGB"), clipped)
+    return result
+
+
+def draw_button_detail(image, center_x, center_y, radius, garment_mask=None):
+    """Draws an anti-aliased, shaded four-hole button with a cast shadow."""
+    from PIL import ImageDraw
+
+    scale = 4
+    diameter = radius * 2
+    size = diameter + 10
+    high = size * scale
+    center = high // 2
+    r = radius * scale
+    layer = Image.new("RGBA", (high, high), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    sample_x = min(max(center_x, 0), image.width - 1)
+    sample_y = min(max(center_y, 0), image.height - 1)
+    garment_brightness = sum(image.convert("RGB").getpixel((sample_x, sample_y))) / 3
+    base = (35, 36, 38) if garment_brightness > 125 else (202, 195, 177)
+    draw.ellipse((center - r, center - r + 2 * scale, center + r, center + r + 2 * scale),
+                 fill=(0, 0, 0, 75))
+    draw.ellipse((center - r, center - r, center + r, center + r), fill=(*base, 245))
+    inner_r = r * 0.82
+    for step in range(10):
+        fraction = step / 10
+        ring_r = inner_r * (1 - fraction * 0.78)
+        shade = round(0.55 + 0.3 * fraction)
+        draw.ellipse(
+            (center - ring_r, center - ring_r - fraction * r * 0.12,
+             center + ring_r, center + ring_r - fraction * r * 0.12),
+            fill=tuple(round(channel * shade) for channel in base) + (255,),
+        )
+    hole_r = max(1.2 * scale, r * 0.105)
+    offset = r * 0.32
+    for dx, dy in ((-offset, -offset), (offset, -offset), (-offset, offset), (offset, offset)):
+        draw.ellipse((center + dx - hole_r, center + dy - hole_r,
+                      center + dx + hole_r, center + dy + hole_r),
+                     fill=(30, 30, 30, 255) if garment_brightness > 125 else (100, 97, 89, 255))
+    thread_width = max(1, round(scale * 0.55))
+    draw.line((center - offset, center + offset, center + offset, center - offset),
+              fill=(205, 195, 170, 255), width=thread_width)
+    draw.line((center - offset, center - offset, center + offset, center + offset),
+              fill=(205, 195, 170, 255), width=thread_width)
+    draw.ellipse((center - r * 0.48, center - r * 0.67,
+                  center + r * 0.16, center - r * 0.35), fill=(255, 255, 255, 90))
+    layer = layer.resize((size, size), Image.Resampling.LANCZOS)
+    left, top = center_x - size // 2, center_y - size // 2
+    canvas = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    crop_left = max(0, -left)
+    crop_top = max(0, -top)
+    crop_right = min(size, image.width - left)
+    crop_bottom = min(size, image.height - top)
+    if crop_left >= crop_right or crop_top >= crop_bottom:
+        return image.convert("RGB")
+    canvas.alpha_composite(
+        layer.crop((crop_left, crop_top, crop_right, crop_bottom)),
+        (max(0, left), max(0, top)),
+    )
+    if garment_mask is not None:
+        garment_alpha = Image.fromarray(garment_mask.astype(np.uint8) * 255).resize(
+            image.size, Image.Resampling.NEAREST
+        )
+        button_alpha = ImageChops.multiply(canvas.getchannel("A"), garment_alpha)
+        canvas.putalpha(button_alpha)
+    return Image.alpha_composite(image.convert("RGBA"), canvas).convert("RGB")
 
 
 def prepare_ip_adapter(pipe, progress=print):
@@ -654,18 +864,33 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
         binary_mask, C.PIX2PIX_SIZE, C.PIX2PIX_FEATHER_RADIUS,
         C.PIX2PIX_MASK_CLOSE_SIZE)
 
-    # cargar InstructPix2Pix (se reutiliza entre generaciones, ver get_pipeline)
-    progress("Cargando InstructPix2Pix (puede tardar la primera vez)...")
-    pipe = get_pipeline(device)
     edit_texture_paths = [
         edit.get("texture_path")
         for edit in (garment_edits or {}).values()
     ]
+    needs_pix2pix = garment_edits is None or any(
+        (
+            bool(edit["color"].strip())
+            and edit["color"].strip().lower() != C.PIX2PIX_NO_TEXTURE
+        )
+        or (
+            bool(edit["texture"].strip())
+            and edit["texture"].strip().lower() != C.PIX2PIX_NO_TEXTURE
+        )
+        or edit["extra"].strip()
+        for edit in garment_edits.values()
+    )
+    pipe = None
+    if needs_pix2pix:
+        progress("Cargando InstructPix2Pix (puede tardar la primera vez)...")
+        pipe = get_pipeline(device)
     needs_ip_adapter = bool(texture_path or any(edit_texture_paths))
 
     # Carga el adaptador (solo la primera vez); cada prenda puede recibir una referencia diferente.
     texture_image = None
     if needs_ip_adapter:
+        if pipe is None:
+            raise ValueError("La muestra de textura necesita también una instrucción de material.")
         prepare_ip_adapter(pipe, progress)
         if texture_path:
             try:
@@ -723,20 +948,23 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
                 edit["extra"].strip(),
                 has_texture_reference=reference_image is not None,
             )
-            print(f"Instrucción para {garment['name']}: {garment_prompt}")
-            call_kwargs = dict(
-                prompt=garment_prompt or "keep the image as it is",
-                image=image_pil,
-                num_inference_steps=C.PIX2PIX_NUM_INFERENCE_STEPS,
-                guidance_scale=C.PIX2PIX_GUIDANCE_SCALE,
-                image_guidance_scale=C.PIX2PIX_IMAGE_GUIDANCE_SCALE,
-                generator=torch.Generator(device=device).manual_seed(C.PIX2PIX_SEED + index),
-            )
-            if reference_image is not None:
-                call_kwargs["ip_adapter_image"] = reference_image
-            progress(f"Generando {garment['name']} ({position}/{len(indices)})...")
-            garment_result = pipe(**call_kwargs).images[0].convert("RGB")
-            garment_result = preserve_garment_folds(image_pil, garment_result)
+            if garment_prompt:
+                print(f"Instrucción para {garment['name']}: {garment_prompt}")
+                call_kwargs = dict(
+                    prompt=garment_prompt,
+                    image=image_pil,
+                    num_inference_steps=C.PIX2PIX_NUM_INFERENCE_STEPS,
+                    guidance_scale=C.PIX2PIX_GUIDANCE_SCALE,
+                    image_guidance_scale=C.PIX2PIX_IMAGE_GUIDANCE_SCALE,
+                    generator=torch.Generator(device=device).manual_seed(C.PIX2PIX_SEED + index),
+                )
+                if reference_image is not None:
+                    call_kwargs["ip_adapter_image"] = reference_image
+                progress(f"Generando {garment['name']} ({position}/{len(indices)})...")
+                garment_result = pipe(**call_kwargs).images[0].convert("RGB")
+                garment_result = preserve_garment_folds(image_pil, garment_result)
+            else:
+                garment_result = image_pil.copy()
             garment_mask = mask_to_pil(
                 garment["mask"], C.PIX2PIX_SIZE, C.PIX2PIX_FEATHER_RADIUS,
                 C.PIX2PIX_MASK_CLOSE_SIZE,
@@ -776,6 +1004,17 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
         final = Image.composite(edited, image_pil, mask_pil)
         sample_id = pathlib.Path(texture_path).stem if texture_image is not None else ""
         label = ", ".join(p for p in [color, texture if use_texture else "", extra, sample_id] if p)
+
+    if garment_edits is not None:
+        for index in indices:
+            for placement in garment_edits[index].get("placements", []):
+                final = add_placed_detail(
+                    final,
+                    prendas[index]["mask"],
+                    placement,
+                    device,
+                    progress,
+                )
 
     return {
         "source": source, "prenda_name": ", ".join(garment_names), "label": label,

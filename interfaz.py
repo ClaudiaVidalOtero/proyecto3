@@ -55,18 +55,25 @@ async def lifespan(app):
 app = FastAPI(title="Atelier — recolore prendas", lifespan=lifespan)
 
 
+class PlacementRequest(BaseModel):
+    type: str = Field(pattern="^(pocket|button)$")
+    x: int = Field(ge=0, le=100)
+    y: int = Field(ge=0, le=100)
+
+
 class GarmentEditRequest(BaseModel):
     index: int = Field(ge=0)
     color: str = Field(default="", max_length=80)
     texture: str = Field(default=C.PIX2PIX_NO_TEXTURE, max_length=80)
-    extra: str = Field(default="", max_length=500)
+    extra: str = Field(default="", max_length=2000)
+    placements: list[PlacementRequest] = Field(default_factory=list, max_length=12)
 
 
 class GenerationRequest(BaseModel):
     source_id: str = Field(min_length=1, max_length=100)
     color: str = Field(default="", max_length=80)
     texture: str = Field(default=C.PIX2PIX_NO_TEXTURE, max_length=80)
-    extra: str = Field(default="", max_length=500)
+    extra: str = Field(default="", max_length=2000)
     segmentation_id: str | None = Field(default=None, max_length=100)
     garment_indices: list[int] | None = None
     garment_edits: list[GarmentEditRequest] | None = None
@@ -225,6 +232,14 @@ HTML = r"""<!doctype html>
     .garment-editor-pane { display: none; }
     .garment-editor-pane.active { display: block; }
     .garment-editor-pane .texture-grid { margin-top: 8px; }
+    .placement-tools { display: flex; flex-wrap: wrap; gap: 7px; }
+    .placement-choice[aria-pressed="true"] { border-color: var(--accent); background: #fbf0eb; color: var(--accent-dark); }
+    .placement-status { margin: 8px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .placement-list { display: grid; gap: 5px; margin: 8px 0 0; padding: 0; list-style: none; }
+    .placement-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px;
+      border-radius: 8px; background: #f7f7f4; color: #565851; font-size: 10px; }
+    .placement-remove { flex: 0 0 auto; padding: 1px 5px; border: 0; background: transparent; color: var(--accent-dark); font-size: 14px; }
+    .preview.placing canvas { cursor: crosshair; }
     .texture-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; min-height: 67px; }
     .texture-tile { min-width: 0; padding: 0 0 5px; overflow: hidden; border: 2px solid transparent; border-radius: 9px;
       background: #f4f3ef; color: #565851; font-size: 9px; }
@@ -490,7 +505,7 @@ HTML = r"""<!doctype html>
   </div>
   <script>
     const $ = (selector) => document.querySelector(selector);
-    const state = { source: null, activeJob: null, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null, devMode: false, historyItem: null };
+    const state = { source: null, activeJob: null, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null, activePlacement: null, devMode: false, historyItem: null };
     // modo desarrollador: se guarda en el navegador para que se recuerde al recargar la página
     const DEV_MODE_KEY = "atelier-dev-mode";
     function readDevMode() {
@@ -554,11 +569,13 @@ HTML = r"""<!doctype html>
       state.segmentation = null;
       state.garmentEdits.clear();
       state.activeGarmentTab = null;
+      state.activePlacement = null;
       $("#defaultStyle").hidden = false;
       $("#garmentStyleEditor").classList.remove("visible");
       const canvas = $("#segmentationOverlay");
       canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
       $("#sourcePreview").classList.remove("has-segmentation");
+      $("#sourcePreview").classList.remove("placing");
       $("#garmentOptions").replaceChildren();
       const status = $("#segmentationStatus");
       status.textContent = message;
@@ -575,6 +592,26 @@ HTML = r"""<!doctype html>
         context.drawImage(item.maskImage, 0, 0, canvas.width, canvas.height);
       });
       context.globalAlpha = 1;
+      segmentation.items.forEach((item, index) => {
+        const edit = state.garmentEdits.get(index);
+        if (!edit) return;
+        edit.points.forEach((point) => {
+          const x = item.bounds.left + point.x / 100 * Math.max(item.bounds.width - 1, 0);
+          const y = item.bounds.top + point.y / 100 * Math.max(item.bounds.height - 1, 0);
+          context.beginPath();
+          context.arc(x, y, Math.max(10, canvas.width / 80), 0, Math.PI * 2);
+          context.fillStyle = point.type === "pocket" ? "#c75d3a" : "#293650";
+          context.fill();
+          context.lineWidth = Math.max(2, canvas.width / 400);
+          context.strokeStyle = "#fff";
+          context.stroke();
+          context.fillStyle = "#fff";
+          context.font = `bold ${Math.max(12, canvas.width / 55)}px sans-serif`;
+          context.textAlign = "center";
+          context.textBaseline = "middle";
+          context.fillText(point.type === "pocket" ? "P" : "B", x, y);
+        });
+      });
     }
     function updateGarmentOptions() {
       const list = $("#garmentOptions");
@@ -699,6 +736,39 @@ HTML = r"""<!doctype html>
       extra.addEventListener("input", () => { edit.extra = extra.value; });
       extraField.append(extraLabel, extra);
       pane.append(extraField);
+
+      const placementField = document.createElement("div");
+      placementField.className = "field";
+      const placementLabel = document.createElement("label");
+      placementLabel.className = "field-label";
+      placementLabel.textContent = "Añadir bolsillos o botones";
+      const placementTools = document.createElement("div");
+      placementTools.className = "placement-tools";
+      for (const [type, label] of [["pocket", "＋ Bolsillo"], ["button", "＋ Botón"]]) {
+        const choice = document.createElement("button");
+        choice.type = "button";
+        choice.className = "button small placement-choice";
+        choice.dataset.type = type;
+        choice.setAttribute("aria-pressed", "false");
+        choice.textContent = label;
+        choice.addEventListener("click", () => activatePlacement(index, type));
+        placementTools.append(choice);
+      }
+      const cancelPlacement = document.createElement("button");
+      cancelPlacement.type = "button";
+      cancelPlacement.className = "button small";
+      cancelPlacement.textContent = "Cancelar";
+      cancelPlacement.hidden = true;
+      cancelPlacement.addEventListener("click", cancelActivePlacement);
+      placementTools.append(cancelPlacement);
+      const placementStatus = document.createElement("p");
+      placementStatus.className = "placement-status";
+      placementStatus.textContent = "Elige un elemento y pulsa en su ubicación sobre la prenda detectada. Máximo: 12 puntos por prenda.";
+      const placementList = document.createElement("ul");
+      placementList.className = "placement-list";
+      placementList.setAttribute("aria-label", `Elementos añadidos a ${item.name}`);
+      placementField.append(placementLabel, placementTools, placementStatus, placementList);
+      pane.append(placementField);
       return pane;
     }
     function updateGarmentTabs() {
@@ -750,6 +820,7 @@ HTML = r"""<!doctype html>
           color: $("#color").value.trim() || "black",
           texture: $("#material").value.trim() || "none",
           extra: $("#extra").value.trim(),
+          points: [],
         });
         panes.append(createGarmentEditor(index, item, config));
       });
@@ -761,21 +832,99 @@ HTML = r"""<!doctype html>
       if (!state.segmentation) return;
       if (state.segmentation.selected.has(index)) state.segmentation.selected.delete(index);
       else state.segmentation.selected.add(index);
+      if (!state.segmentation.selected.has(index) && state.activePlacement?.index === index) {
+        state.activePlacement = null;
+        updatePlacementControls();
+      }
       drawSegmentationOverlay();
       updateGarmentOptions();
       $("#segmentationStatus").textContent = state.segmentation.selected.size
         ? `${state.segmentation.selected.size} prenda(s) incluida(s). Configura cada una en su pestaña.`
         : "Pasa el cursor sobre una prenda de la imagen o elige una abajo.";
     }
-    function garmentAt(clientX, clientY) {
-      const segmentation = state.segmentation;
-      if (!segmentation) return -1;
+    function updatePlacementControls() {
+      const active = state.activePlacement;
+      $("#sourcePreview").classList.toggle("placing", Boolean(active));
+      document.querySelectorAll(".garment-editor-pane").forEach((pane) => {
+        const index = Number(pane.id.replace("garment-pane-", ""));
+        pane.querySelectorAll(".placement-choice").forEach((button) => {
+          button.setAttribute("aria-pressed", String(active?.index === index && active.type === button.dataset.type));
+        });
+        const cancel = pane.querySelector(".placement-tools button:last-child");
+        if (cancel) cancel.hidden = active?.index !== index;
+        const status = pane.querySelector(".placement-status");
+        if (!status) return;
+        status.textContent = active?.index === index
+          ? `Pulsa sobre ${state.segmentation.items[index].name} para colocar ${active.type === "pocket" ? "el bolsillo" : "el botón"}.`
+          : "Elige un elemento y pulsa en su ubicación sobre la prenda detectada. Máximo: 12 puntos por prenda.";
+      });
+    }
+    function activatePlacement(index, type) {
+      if (!state.segmentation) return;
+      state.segmentation.selected.add(index);
+      state.activeGarmentTab = index;
+      state.activePlacement = {index, type};
+      updateGarmentOptions();
+      updatePlacementControls();
+      drawSegmentationOverlay();
+    }
+    function cancelActivePlacement() {
+      state.activePlacement = null;
+      updatePlacementControls();
+    }
+    function renderPlacementPoints(index) {
+      const edit = state.garmentEdits.get(index);
+      const list = $(`#garment-pane-${index} .placement-list`);
+      if (!edit || !list) return;
+      list.replaceChildren();
+      edit.points.forEach((point, pointIndex) => {
+        const row = document.createElement("li");
+        row.className = "placement-item";
+        const description = document.createElement("span");
+        description.textContent = `${point.type === "pocket" ? "Bolsillo" : "Botón"} · ${point.x}% desde la izquierda, ${point.y}% desde arriba`;
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "placement-remove";
+        remove.setAttribute("aria-label", `Quitar ${point.type === "pocket" ? "bolsillo" : "botón"} ${pointIndex + 1}`);
+        remove.textContent = "×";
+        remove.addEventListener("click", () => {
+          edit.points.splice(pointIndex, 1);
+          renderPlacementPoints(index);
+          drawSegmentationOverlay();
+        });
+        row.append(description, remove);
+        list.append(row);
+      });
+    }
+    function canvasPointAt(clientX, clientY) {
       const canvas = $("#segmentationOverlay");
       const rect = canvas.getBoundingClientRect();
       const scale = Math.min(rect.width / canvas.width, rect.height / canvas.height);
       const x = Math.floor((clientX - rect.left - (rect.width - canvas.width * scale) / 2) / scale);
       const y = Math.floor((clientY - rect.top - (rect.height - canvas.height * scale) / 2) / scale);
-      if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return -1;
+      if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return null;
+      return {x, y};
+    }
+    function maskBounds(maskPixels, width, height) {
+      let left = width, top = height, right = -1, bottom = -1;
+      for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+          if (maskPixels.data[(y * width + x) * 4 + 3] === 0) continue;
+          left = Math.min(left, x);
+          top = Math.min(top, y);
+          right = Math.max(right, x);
+          bottom = Math.max(bottom, y);
+        }
+      }
+      return {left, top, width:right - left + 1, height:bottom - top + 1};
+    }
+    function garmentAt(clientX, clientY) {
+      const segmentation = state.segmentation;
+      if (!segmentation) return -1;
+      const point = canvasPointAt(clientX, clientY);
+      if (!point) return -1;
+      const canvas = $("#segmentationOverlay");
+      const {x, y} = point;
       for (let index = segmentation.items.length - 1; index >= 0; index -= 1) {
         const pixels = segmentation.items[index].maskPixels;
         if (pixels.data[(y * canvas.width + x) * 4 + 3] > 0) return index;
@@ -804,7 +953,8 @@ HTML = r"""<!doctype html>
           maskCanvas.height = data.height;
           const maskContext = maskCanvas.getContext("2d", {willReadFrequently:true});
           maskContext.drawImage(maskImage, 0, 0, data.width, data.height);
-          return {...item, maskImage, maskPixels:maskContext.getImageData(0, 0, data.width, data.height)};
+          const maskPixels = maskContext.getImageData(0, 0, data.width, data.height);
+          return {...item, maskImage, maskPixels, bounds:maskBounds(maskPixels, data.width, data.height)};
         }));
         const canvas = $("#segmentationOverlay");
         canvas.width = data.width;
@@ -817,7 +967,7 @@ HTML = r"""<!doctype html>
         drawSegmentationOverlay();
         const status = $("#segmentationStatus");
         status.textContent = items.length === 1
-          ? "Se ha detectado y seleccionado la única prenda. Ya puedes configurar su color y textura."
+          ? "Prenda detectada y seleccionada. Configura el estilo y añade bolsillos o botones pulsando en su ubicación."
           : `${items.length} prenda(s) detectada(s). Pasa el cursor por encima para identificarlas y haz clic para seleccionarlas; puedes marcar varias.`;
         status.classList.add("visible");
       } catch (error) {
@@ -1046,11 +1196,12 @@ HTML = r"""<!doctype html>
               color: editColor.toLowerCase() === "none" ? "" : editColor,
               texture: edit.texture.trim() || "none",
               extra: edit.extra.trim(),
+              placements: edit.points,
             };
           })
         : null;
       if (garmentEdits && garmentEdits.some((edit) =>
-        !edit.color && edit.texture.toLowerCase() === "none" && !edit.extra)) {
+        !edit.color && edit.texture.toLowerCase() === "none" && !edit.extra && !edit.placements.length)) {
         showError("Cada prenda incluida necesita al menos un cambio de color, material o instrucción.");
         return;
       }
@@ -1102,7 +1253,9 @@ HTML = r"""<!doctype html>
       if (index === state.segmentation.hovered) return;
       state.segmentation.hovered = index;
       drawSegmentationOverlay();
-      $("#segmentationStatus").textContent = index >= 0
+      $("#segmentationStatus").textContent = state.activePlacement
+        ? `Pulsa dentro de la máscara de ${state.segmentation.items[state.activePlacement.index].name} para añadir ${state.activePlacement.type === "pocket" ? "el bolsillo" : "el botón"}.`
+        : index >= 0
         ? (state.devMode
             ? `${state.segmentation.items[index].name} · ${Math.round(state.segmentation.items[index].score * 100)}% de confianza`
             : state.segmentation.items[index].name)
@@ -1115,6 +1268,30 @@ HTML = r"""<!doctype html>
     });
     $("#sourcePreview").addEventListener("click", (event) => {
       if (!state.segmentation) return;
+      if (state.activePlacement) {
+        const index = garmentAt(event.clientX, event.clientY);
+        if (index !== state.activePlacement.index) {
+          $("#segmentationStatus").textContent = `Pulsa dentro de la prenda seleccionada (${state.segmentation.items[state.activePlacement.index].name}).`;
+          return;
+        }
+        const position = canvasPointAt(event.clientX, event.clientY);
+        if (!position) return;
+        const item = state.segmentation.items[index];
+        const edit = state.garmentEdits.get(index);
+        if (edit.points.length >= 12) {
+          $("#segmentationStatus").textContent = "Has alcanzado el máximo de 12 puntos para esta prenda.";
+          return;
+        }
+        edit.points.push({
+          type: state.activePlacement.type,
+          x: Math.round((position.x - item.bounds.left) / Math.max(item.bounds.width - 1, 1) * 100),
+          y: Math.round((position.y - item.bounds.top) / Math.max(item.bounds.height - 1, 1) * 100),
+        });
+        renderPlacementPoints(index);
+        drawSegmentationOverlay();
+        $("#segmentationStatus").textContent = "Ubicación añadida. Puedes seguir pulsando para colocar más o cancelar.";
+        return;
+      }
       const index = garmentAt(event.clientX, event.clientY);
       if (index >= 0) toggleGarment(index);
     });
@@ -1529,7 +1706,7 @@ async def generate(request: Request, options: GenerationRequest):
                 edit_texture = edit.texture.strip() or C.PIX2PIX_NO_TEXTURE
                 edit_extra = edit.extra.strip()
                 if (not edit_color and edit_texture.lower() == C.PIX2PIX_NO_TEXTURE
-                        and not edit_extra):
+                        and not edit_extra and not edit.placements):
                     raise HTTPException(
                         status_code=400,
                         detail=f"Indica un cambio para la prenda {segmentation['garments'][edit.index]['name']}.",
@@ -1539,6 +1716,7 @@ async def generate(request: Request, options: GenerationRequest):
                     "texture": edit_texture,
                     "extra": edit_extra,
                     "texture_path": None,
+                    "placements": [placement.model_dump() for placement in edit.placements],
                 }
     elif options.garment_indices is not None:
         raise HTTPException(status_code=400, detail="Primero detecta las prendas de la imagen.")

@@ -21,13 +21,19 @@ haz clic para seleccionar una o varias y genera con el color y la textura elegid
 Al detectar varias prendas, aparece una pestaña de configuración por cada una;
 puedes asignarles colores, materiales, muestras e instrucciones independientes y
 generarlas juntas en una sola imagen.
+En la configuración de cada prenda también puedes añadir bolsillos o botones:
+elige el elemento y pulsa sobre la prenda para marcar su ubicación; puedes quitar
+los puntos añadidos antes de generar. Los bolsillos se componen como un parche
+pequeño con textura local y pespuntes; los botones se dibujan con relieve,
+agujeros y sombra. Así se ven sin depender de que el modelo los invente. La forma
+de la prenda determina parte del aspecto; la colocación sigue siendo orientativa.
 La instrucción adicional se envía junto con esos cambios. Si eliges una muestra
 visual, se usa como referencia de textura; si no se puede cargar, la generación
 se detiene y muestra un error en vez de omitir la muestra silenciosamente.
 El montaje final amplía ligeramente la máscara para cubrir bordes sin teñir y
 recupera parte del contraste de pliegues y costuras desde la imagen original.
 La generación reutiliza los modelos Mask R-CNN, SAM 2 e InstructPix2Pix del
-proyecto; también se puede seguir usando la interfaz de escritorio con
+proyecto. También se puede seguir usando la interfaz de escritorio con
 `python src/recolor.py`.
 
 ### PyTorch con CUDA (Windows, NVIDIA)
