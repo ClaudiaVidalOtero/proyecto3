@@ -121,23 +121,18 @@ HTML = r"""<!doctype html>
     .shell { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
     aside { position: sticky; top: 0; height: 100vh; padding: 27px 20px; background: var(--surface-raised);
       border-right: 1px solid var(--line); display: flex; flex-direction: column; }
-    .brand { display: flex; align-items: center; gap: 11px; padding: 0 8px 27px; }
-    .brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 13px;
-      color: white; background: var(--accent); font-family: Georgia, serif; font-size: 22px; }
-    .brand-name { font-family: Georgia, "Times New Roman", serif; font-size: 22px; letter-spacing: -.6px; }
-    .brand-sub { margin-top: 1px; color: var(--muted); font-size: 10px; letter-spacing: 1.7px; text-transform: uppercase; }
-    .nav-label { padding: 0 10px; color: var(--text-label); font-size: 10px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; }
-    .nav-item { display: flex; align-items: center; gap: 12px; margin-top: 9px; padding: 12px 13px;
-      border-radius: 10px; color: var(--text-default); font-size: 13px; text-decoration: none; }
-    .nav-item.active { color: var(--accent-dark); background: var(--surface-accent); font-weight: 650; }
-    .nav-icon { width: 18px; text-align: center; font-size: 16px; }
-    .history-nav { display: flex; flex-direction: column; min-height: 0; margin-top: 22px; }
+    .brand { display: flex; align-items: center; gap: 14px; padding: 0 8px 27px; }
+    .brand-mark { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 18px;
+      color: white; background: var(--accent); font-family: Georgia, serif; font-size: 33px; }
+    .brand-name { font-family: Georgia, "Times New Roman", serif; font-size: 32px; letter-spacing: -1px; }
+    .brand-sub { margin-top: 1px; color: var(--muted); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
+    .history-nav { display: flex; flex: 1; flex-direction: column; min-height: 0; margin-top: 28px; }
     .history-nav-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 9px; }
     .history-nav-title { padding-left: 10px; color: var(--text-label); font-size: 10px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; }
     .history-refresh { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid var(--line);
       border-radius: 8px; background: var(--surface-raised); color: var(--text-subtle); font-size: 12px; }
     .history-refresh:hover { border-color: #d5b6aa; color: var(--accent-dark); }
-    .history-list { display: grid; gap: 7px; max-height: min(46vh, 430px); overflow-y: auto; padding: 1px 4px 2px 0; }
+    .history-list { display: grid; flex: 1; align-content: start; gap: 7px; min-height: 0; overflow-y: auto; padding: 1px 4px 2px 0; }
     .history-item { width: 100%; }
     .history-open-button { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
       min-width: 0; padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px;
@@ -146,21 +141,12 @@ HTML = r"""<!doctype html>
     .history-item-name { display: block; min-width: 0; overflow: hidden; font-size: 11px; font-weight: 600;
       text-overflow: ellipsis; white-space: nowrap; }
     .history-open { flex: 0 0 auto; color: var(--accent); font-size: 14px; }
-    .side-note { margin-top: auto; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-soft); }
-    .side-note strong { display: block; margin-bottom: 6px; font-size: 12px; }
-    .side-note p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
-    main { min-width: 0; max-width: 1500px; width: 100%; margin: 0 auto; padding: 20px clamp(20px, 4vw, 58px) 60px; }
-    .topline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .breadcrumb { color: var(--muted); font-size: 12px; }
-    .device-pill { display: flex; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid var(--line);
-      border-radius: 99px; background: var(--surface-raised); color: var(--text-subtle); font-size: 11px; }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: #82a179; }
-    .topline-actions { display: flex; align-items: center; gap: 10px; padding-right: 56px; margin-right: -44px; }
+    main { min-width: 0; max-width: 1700px; width: 100%; margin: 0 auto; padding: 20px clamp(20px, 4vw, 58px) 60px; }
     .dev-mode-indicator { display: none; padding: 8px 11px; border: 1px solid #e6b6a8;
       border-radius: 99px; background: var(--surface-accent); color: var(--accent-dark); font-size: 10px; font-weight: 650; cursor: pointer; }
     .dev-mode .dev-mode-indicator { display: flex; }
     .dev-mode-indicator:hover { border-color: #d99b85; background: #f8e4dc; }
-    .settings { position: fixed; top: 18px; right: 12px; z-index: 40; }
+    .settings { position: fixed; top: 18px; right: 12px; z-index: 40; display: flex; align-items: center; gap: 8px; }
     .settings-button { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--line);
       border-radius: 50%; background: var(--surface-raised); color: var(--text-subtle); cursor: pointer; transition: border-color .2s, color .2s; }
     .settings-button svg { transition: transform .3s; }
@@ -179,10 +165,10 @@ HTML = r"""<!doctype html>
     .settings-option small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.5; }
     body:not(.dev-mode) .dev-only { display: none; }
     body:not(.dev-mode) .result-alternates { grid-template-rows: minmax(0, 1fr); }
-    .hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 25px; margin-bottom: 12px; }
+    .hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 25px; margin-bottom: 12px; padding-right: 48px; }
     .eyebrow { margin-bottom: 10px; color: var(--accent); font-size: 10px; font-weight: 750; letter-spacing: 1.8px; text-transform: uppercase; }
     h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(34px, 3.5vw, 44px); font-weight: 500; letter-spacing: -1.8px; }
-    .layout { display: grid; grid-template-columns: minmax(0, 1.42fr) minmax(300px, .86fr); gap: 19px; align-items: start; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(380px, 1fr); gap: 19px; align-items: stretch; }
     .stack { display: grid; gap: 18px; }
     .card { min-width: 0; padding: 19px; border: 1px solid var(--line); border-radius: 17px; background: var(--white); box-shadow: var(--shadow); }
     .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; margin-bottom: 13px; }
@@ -209,20 +195,28 @@ HTML = r"""<!doctype html>
       color: var(--text-default); font-size: 10px; }
     .garment-choice:hover { border-color: #d5b6aa; }
     .garment-choice.selected { border-color: var(--accent); background: var(--surface-accent); color: var(--accent-dark); font-weight: 650; }
-    .source-name { overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .source-name { overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    .source-name-label { color: var(--text-strong); font-weight: 650; }
     .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 8px 12px;
       border: 1px solid var(--line); border-radius: 9px; background: var(--surface-raised); color: var(--text-strong); font-size: 11px; font-weight: 650; }
     .button:hover { border-color: #d5b6aa; background: var(--surface-hover); }
     .button.small { min-height: 31px; padding: 6px 10px; font-size: 10px; }
-    .gallery { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
-    .thumb { position: relative; height: 112px; overflow: hidden; padding: 0; border: 2px solid transparent; border-radius: 8px;
+    .picker { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 14px; align-items: stretch; }
+    .picker-main { display: flex; min-width: 0; flex-direction: column; }
+    .picker-main .preview { flex: 1; height: auto; min-height: 300px; }
+    /* con tres botones el nombre del archivo ocupa su propia fila y los botones van debajo */
+    .picker-main .source-toolbar { flex-wrap: wrap; }
+    .picker-main .source-name { flex: 1 1 100%; }
+    .picker-main .source-actions { flex: 1 1 100%; gap: 8px; }
+    .picker-main .source-actions .button { flex: 1 1 auto; min-height: 44px; padding: 10px 14px; font-size: 12px; }
+    .gallery { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; align-content: start; }
+    .thumb { position: relative; height: 56px; overflow: hidden; padding: 0; border: 2px solid transparent; border-radius: 8px;
       background: var(--surface-preview); }
     .thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
     .thumb:hover { transform: translateY(-1px); }
     .thumb.selected { border-color: var(--accent); box-shadow: 0 0 0 2px #c75d3a20; }
     .thumb.selected::after { position: absolute; top: 5px; right: 5px; content: "✓"; display: grid; place-items: center;
       width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: white; font-size: 11px; }
-    .gallery-note { margin: 12px 0 0; color: var(--muted); font-size: 10px; }
     .history-showcase { grid-template-columns: minmax(0, 1fr); }
     .history-showcase .result-image.featured { width: 100%; }
     .field-label { display: block; margin: 0 0 8px; color: var(--text-strong); font-size: 11px; font-weight: 700; }
@@ -290,13 +284,10 @@ HTML = r"""<!doctype html>
     @keyframes queue-spin { to { transform: rotate(360deg); } }
     @media (min-width: 1021px) and (max-height: 900px) {
       main { padding-top: 10px; }
-      .topline { margin-bottom: 8px; }
       .hero { margin-bottom: 8px; }
       h1 { font-size: 40px; }
       .card { padding: 15px; }
-      .preview { height: 160px; }
-      .thumb { height: 102px; }
-      .gallery-note { margin-top: 8px; }
+      .thumb { height: 48px; }
       .field { margin-bottom: 8px; }
       .swatches { gap: 6px; margin-top: 6px; }
       .swatch { width: 20px; height: 20px; }
@@ -336,6 +327,31 @@ HTML = r"""<!doctype html>
     .result-alternates .result-image img { flex: 1; min-height: 60px; }
     .result-error { display: none; margin: 0 22px 18px; padding: 11px; border-radius: 9px; background: var(--surface-accent); color: var(--accent-dark); font-size: 11px; }
     .result-error.visible { display: block; }
+    @media (min-width: 1021px) {
+      /* la tarjeta ocupa todo el alto de la fila y el contenido se reparte para llenarlo */
+      .stack.right .card { display: flex; flex-direction: column; }
+      .stack.right .card-head { margin-bottom: 15px; }
+      .stack.right .card-head h2 { font-size: 15px; }
+      .stack.right .card-head p { margin-top: 5px; font-size: 11px; }
+      .stack.right #defaultStyle { display: flex; flex: 1; flex-direction: column; justify-content: space-between; }
+      .stack.right #defaultStyle[hidden] { display: none; }  /* sin esto el display:flex anularía el atributo hidden */
+      .stack.right .garment-style-editor.visible { flex: 1; }
+      .stack.right .field { margin-bottom: 12px; }
+      .stack.right .field-label { margin-bottom: 7px; font-size: 12px; }
+      .stack.right .input { min-height: 42px; padding: 10px 12px; border-radius: 10px; font-size: 13px; }
+      .stack.right textarea.input { min-height: 78px; }
+      .stack.right .hint { margin-top: 7px; font-size: 10.5px; line-height: 1.5; }
+      .stack.right #garmentEditorHint { font-size: 10.5px; }
+      .stack.right .swatches { gap: 9px; margin-top: 11px; }
+      .stack.right .swatch { width: 26px; height: 26px; }
+      .stack.right .swatch-none { padding: 0 11px; font-size: 10px; }
+      .stack.right .material-options { gap: 7px; margin-top: 9px; }
+      .stack.right .material-choice { padding: 6px 11px; font-size: 11px; }
+      .stack.right .garment-tab { padding: 8px 12px; font-size: 11px; }
+      .stack.right .generate { min-height: 52px; margin-top: 16px; border-radius: 12px; font-size: 14px; }
+      .stack.right .queue-status { font-size: 11px; }
+      .stack.right .error { font-size: 12px; }
+    }
     .empty-text { display: grid; place-items: center; min-height: 74px; color: var(--text-muted); font-size: 10px; text-align: center; }
     footer { margin-top: 27px; color: var(--text-label); font-size: 10px; text-align: center; }
     .hidden { display: none !important; }
@@ -343,18 +359,21 @@ HTML = r"""<!doctype html>
       .shell { grid-template-columns: 205px minmax(0, 1fr); }
       .layout { grid-template-columns: 1fr; }
       .stack.right { grid-row: 2; }
-      .topline-actions { margin-right: 0; }
     }
     @media (max-width: 680px) {
       .shell { display: block; }
       aside { position: static; height: auto; padding: 13px 18px; border-right: 0; border-bottom: 1px solid var(--line); }
-      .brand { padding: 0; } .nav-label, .nav-item, .history-nav, .side-note { display: none; }
+      .brand { padding: 0; } .history-nav { display: none; }
       main { padding: 23px 15px 40px; }
       .settings-button { width: 30px; height: 30px; }
-      .topline { margin-bottom: 12px; } .device-pill { font-size: 9px; }
       .hero { align-items: flex-start; }
-      .card { padding: 17px; } .gallery { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-      .preview { height: 150px; }
+      .card { padding: 17px; }
+      /* en móvil no cabe en dos columnas: la imagen elegida arriba y los ejemplos debajo en horizontal */
+      .picker { grid-template-columns: minmax(0, 1fr); }
+      .picker-main { order: -1; }
+      .picker-main .preview { flex: none; min-height: 0; height: 150px; }
+      .gallery { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+      .thumb { height: 80px; }
       .result-dialog { width: calc(100vw - 20px); max-height: calc(100dvh - 20px); border-radius: 15px; }
       .results-head { align-items: flex-start; padding: 14px; }
       .results-title { align-items: flex-start; gap: 8px; }
@@ -376,8 +395,6 @@ HTML = r"""<!doctype html>
         <div class="brand-mark">a</div>
         <div><div class="brand-name">atelier</div><div class="brand-sub">color studio</div></div>
       </div>
-      <div class="nav-label">Espacio creativo</div>
-      <a class="nav-item active" href="#editor"><span class="nav-icon">◈</span>Editor de prendas</a>
       <section class="history-nav" aria-label="Prendas editadas">
         <div class="history-nav-head">
           <span class="history-nav-title">Prendas editadas</span>
@@ -387,19 +404,11 @@ HTML = r"""<!doctype html>
           <div class="empty-text">Cargando historial…</div>
         </div>
       </section>
-      <div class="side-note">
-        <strong>Color con intención</strong>
-        <p>El modelo conserva la prenda en su sitio y aplica el cambio dentro de sus bordes.</p>
-      </div>
     </aside>
     <main id="editor">
-      <div class="topline">
-        <div class="breadcrumb">Estudio <span aria-hidden="true">/</span> <b>Recoloreado creativo</b></div>
-        <div class="topline-actions">
-          <div class="device-pill"><span class="dot"></span> Generación local activada</div>
-          <button class="dev-mode-indicator" id="devModeIndicator" type="button"
-                  title="Desactivar modo desarrollador" aria-label="Desactivar modo desarrollador">Modo desarrollador</button>
-          <div class="settings">
+      <div class="settings">
+            <button class="dev-mode-indicator" id="devModeIndicator" type="button"
+                    title="Desactivar modo desarrollador" aria-label="Desactivar modo desarrollador">Modo desarrollador</button>
             <button class="settings-button" id="settingsButton" type="button" title="Configuración" aria-label="Configuración"
                     aria-haspopup="true" aria-expanded="false" aria-controls="settingsMenu">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -429,8 +438,6 @@ HTML = r"""<!doctype html>
                 </span>
               </label>
             </div>
-          </div>
-        </div>
       </div>
       <header class="hero">
         <div>
@@ -442,25 +449,28 @@ HTML = r"""<!doctype html>
           <section class="card">
             <div class="card-head">
               <div><h2>Elige tu imagen</h2><p>Selecciona una prenda del catálogo o sube tu propia foto.</p></div>
-              <button class="garment-choice selected" id="detectGarments" type="button">◌ Detectar prendas</button>
             </div>
-            <div class="preview" id="sourcePreview">
-              <div class="preview-empty"><span class="upload-symbol">↥</span><span>Selecciona una imagen para empezar</span></div>
-              <img id="sourceImage" alt="Imagen seleccionada">
-              <canvas id="segmentationOverlay" aria-label="Máscaras de prendas detectadas"></canvas>
-            </div>
-            <div class="source-toolbar">
-              <span class="source-name" id="sourceName">Aún no has elegido una imagen</span>
-              <div class="source-actions">
-                <button class="button small" id="uploadButton" type="button">＋ Subir foto</button>
-                <button class="button small" id="refreshImages" type="button">↻ Otras imágenes</button>
+            <div class="picker">
+              <div class="gallery" id="imageGallery" aria-label="Imágenes del catálogo"></div>
+              <div class="picker-main">
+                <div class="preview" id="sourcePreview">
+                  <div class="preview-empty"><span class="upload-symbol">↥</span><span>Selecciona una imagen para empezar</span></div>
+                  <img id="sourceImage" alt="Imagen seleccionada">
+                  <canvas id="segmentationOverlay" aria-label="Máscaras de prendas detectadas"></canvas>
+                </div>
+                <div class="source-toolbar">
+                  <div class="source-name"><span class="source-name-label">Nombre de la imagen:</span> <span id="sourceName">ninguna</span></div>
+                  <div class="source-actions">
+                    <button class="button small garment-choice selected" id="detectGarments" type="button">◌ Detectar prendas</button>
+                    <button class="button small" id="uploadButton" type="button">＋ Subir foto</button>
+                    <button class="button small" id="refreshImages" type="button">↻ Otras imágenes</button>
+                  </div>
+                  <input class="hidden" id="fileInput" type="file" accept="image/jpeg,image/png,image/webp,image/bmp">
+                </div>
+                <div class="segmentation-status" id="segmentationStatus" aria-live="polite"></div>
+                <div class="garment-options" id="garmentOptions" role="group" aria-label="Prendas detectadas"></div>
               </div>
-              <input class="hidden" id="fileInput" type="file" accept="image/jpeg,image/png,image/webp,image/bmp">
             </div>
-            <div class="segmentation-status" id="segmentationStatus" aria-live="polite"></div>
-            <div class="garment-options" id="garmentOptions" role="group" aria-label="Prendas detectadas"></div>
-            <div class="gallery" id="imageGallery" aria-label="Imágenes del catálogo"></div>
-            <p class="gallery-note">Elige una de las imágenes aleatorias del conjunto o carga un JPG, PNG, WEBP o BMP (máx. 20 MB).</p>
           </section>
         </div>
         <div class="stack right">
@@ -550,17 +560,11 @@ HTML = r"""<!doctype html>
       $('meta[name="theme-color"]').content = selectedTheme === "dark" ? "#191a18" : "#f7f7f4";
       try { localStorage.setItem(THEME_KEY, selectedTheme); } catch (error) { /* sin almacenamiento: no se recuerda */ }
     }
-    function alignSettingsButton() {
-      const pill = $(".device-pill").getBoundingClientRect();
-      const button = $("#settingsButton");
-      button.parentElement.style.top = `${pill.top + (pill.height - button.offsetHeight) / 2}px`;
-    }
     function setDevMode(enabled) {
       state.devMode = enabled;
       try { localStorage.setItem(DEV_MODE_KEY, enabled ? "1" : "0"); } catch (error) { /* sin almacenamiento: no se recuerda */ }
       document.body.classList.toggle("dev-mode", enabled);
       $("#devModeToggle").checked = enabled;
-      alignSettingsButton();
       if (state.segmentation) updateGarmentOptions();  // repinta los botones de prenda con o sin porcentaje
     }
     function closeSettings() {
@@ -1351,7 +1355,6 @@ HTML = r"""<!doctype html>
       menu.hidden = !menu.hidden;
       $("#settingsButton").setAttribute("aria-expanded", String(!menu.hidden));
     });
-    window.addEventListener("resize", alignSettingsButton);
     $("#devModeToggle").addEventListener("change", (event) => setDevMode(event.target.checked));
     document.querySelectorAll('input[name="theme"]').forEach((input) =>
       input.addEventListener("change", (event) => {
