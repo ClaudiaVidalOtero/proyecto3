@@ -4,9 +4,11 @@ Uso desde la raíz del proyecto:
     python interfaz.py
 """
 
+import json
 import logging
 import random
 import re
+import shutil
 import tempfile
 import threading
 import uuid
@@ -141,7 +143,7 @@ HTML = r"""<!doctype html>
     .history-item-name { display: block; min-width: 0; overflow: hidden; font-size: 11px; font-weight: 600;
       text-overflow: ellipsis; white-space: nowrap; }
     .history-open { flex: 0 0 auto; color: var(--accent); font-size: 14px; }
-    main { min-width: 0; max-width: 1700px; width: 100%; margin: 0 auto; padding: 20px clamp(20px, 4vw, 58px) 60px; }
+    main { min-width: 0; max-width: 1700px; width: 100%; margin: 0 auto; padding: 20px clamp(20px, 4vw, 58px) 60px clamp(12px, 1.5vw, 24px); }
     .dev-mode-indicator { display: none; padding: 8px 11px; border: 1px solid #e6b6a8;
       border-radius: 99px; background: var(--surface-accent); color: var(--accent-dark); font-size: 10px; font-weight: 650; cursor: pointer; }
     .dev-mode .dev-mode-indicator { display: flex; }
@@ -188,25 +190,35 @@ HTML = r"""<!doctype html>
     .preview.has-image .preview-empty { display: none; }
     .source-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 14px 0 13px; }
     .source-actions { display: flex; flex-wrap: wrap; gap: 7px; }
-    .segmentation-status { display: none; margin: -5px 0 10px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .segmentation-status { display: none; margin: 3px 0 6px; color: var(--muted); font-size: 10px; line-height: 1.5; }
     .segmentation-status.visible { display: block; }
     .garment-options { display: flex; flex-wrap: wrap; gap: 7px; margin: -2px 0 12px; }
     .garment-choice { padding: 7px 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-raised);
       color: var(--text-default); font-size: 10px; }
     .garment-choice:hover { border-color: #d5b6aa; }
     .garment-choice.selected { border-color: var(--accent); background: var(--surface-accent); color: var(--accent-dark); font-weight: 650; }
-    .source-name { overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-    .source-name-label { color: var(--text-strong); font-weight: 650; }
     .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 8px 12px;
       border: 1px solid var(--line); border-radius: 9px; background: var(--surface-raised); color: var(--text-strong); font-size: 11px; font-weight: 650; }
     .button:hover { border-color: #d5b6aa; background: var(--surface-hover); }
     .button.small { min-height: 31px; padding: 6px 10px; font-size: 10px; }
+    .detect-button { flex-direction: column; }
+    .detect-button-content { display: flex; align-items: center; justify-content: center; gap: 7px; }
+    .detect-spinner { display: none; color: var(--accent); font-size: 15px; line-height: 1; }
+    .detect-button.detecting .detect-spinner { display: inline-block; }
+    .detect-button.detecting .detect-spinner { animation: detect-spin .9s linear infinite; }
+    .detect-progress { display: none; width: 100%; height: 3px; overflow: hidden; border-radius: 99px; background: var(--line); }
+    .detect-button.detecting .detect-progress { display: block; }
+    .detect-progress::after { display: block; width: 38%; height: 100%; border-radius: inherit; background: var(--accent);
+      content: ""; animation: detect-progress 1.2s ease-in-out infinite; }
+    .detect-button:disabled { cursor: wait; }
+    @keyframes detect-spin { to { transform: rotate(360deg); } }
+    @keyframes detect-progress { from { transform: translateX(-110%); } to { transform: translateX(280%); } }
+    @media (prefers-reduced-motion: reduce) {
+      .detect-button.detecting .detect-spinner, .detect-progress::after { animation-duration: 3s; }
+    }
     .picker { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 14px; align-items: stretch; }
     .picker-main { display: flex; min-width: 0; flex-direction: column; }
     .picker-main .preview { flex: 1; height: auto; min-height: 300px; }
-    /* con tres botones el nombre del archivo ocupa su propia fila y los botones van debajo */
-    .picker-main .source-toolbar { flex-wrap: wrap; }
-    .picker-main .source-name { flex: 1 1 100%; }
     .picker-main .source-actions { flex: 1 1 100%; gap: 8px; }
     .picker-main .source-actions .button { flex: 1 1 auto; min-height: 44px; padding: 10px 14px; font-size: 12px; }
     .gallery { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; align-content: start; }
@@ -217,8 +229,9 @@ HTML = r"""<!doctype html>
     .thumb.selected { border-color: var(--accent); box-shadow: 0 0 0 2px #c75d3a20; }
     .thumb.selected::after { position: absolute; top: 5px; right: 5px; content: "✓"; display: grid; place-items: center;
       width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: white; font-size: 11px; }
-    .history-showcase { grid-template-columns: minmax(0, 1fr); }
-    .history-showcase .result-image.featured { width: 100%; }
+    .result-showcase.history-showcase { display: block; flex: 0 0 auto; }
+    .history-showcase .result-image.featured { width: 100%; height: min(48dvh, 460px); min-height: 260px; max-height: none; }
+    .history-showcase .result-image.featured img { min-height: 0; }
     .field-label { display: block; margin: 0 0 8px; color: var(--text-strong); font-size: 11px; font-weight: 700; }
     .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
     .field { min-width: 0; margin-bottom: 12px; }
@@ -325,6 +338,12 @@ HTML = r"""<!doctype html>
     .result-alternates { display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 10px; min-height: 0; }
     .result-alternates .result-image { display: flex; flex-direction: column; min-height: 0; }
     .result-alternates .result-image img { flex: 1; min-height: 60px; }
+    .history-segmentation { flex: 0 0 auto; padding: 0 22px 18px; }
+    .history-segmentation h3 { margin: 0 0 10px; color: var(--text-strong); font-size: 12px; }
+    .history-segmentation-images { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .history-segmentation-images .result-image { display: flex; min-height: 145px; flex-direction: column; }
+    .history-segmentation-images .result-image img { flex: 1; min-height: 110px; }
+    .history-segmentation-empty { margin: 0; color: var(--text-subtle); font-size: 11px; }
     .result-error { display: none; margin: 0 22px 18px; padding: 11px; border-radius: 9px; background: var(--surface-accent); color: var(--accent-dark); font-size: 11px; }
     .result-error.visible { display: block; }
     @media (min-width: 1021px) {
@@ -383,6 +402,7 @@ HTML = r"""<!doctype html>
       .result-showcase { grid-template-columns: minmax(0, 1fr); padding: 12px; }
       .result-image.featured { min-height: 220px; max-height: 48dvh; }
       .result-image.featured img { min-height: 180px; }
+      .history-showcase .result-image.featured { height: min(38dvh, 320px); min-height: 190px; }
       .result-alternates { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: 95px; }
       .result-alternates .result-image img { min-height: 0; }
     }
@@ -458,17 +478,23 @@ HTML = r"""<!doctype html>
                   <img id="sourceImage" alt="Imagen seleccionada">
                   <canvas id="segmentationOverlay" aria-label="Máscaras de prendas detectadas"></canvas>
                 </div>
+                <div class="segmentation-status" id="segmentationStatus" aria-live="polite"></div>
+                <div class="garment-options" id="garmentOptions" role="group" aria-label="Prendas detectadas"></div>
                 <div class="source-toolbar">
-                  <div class="source-name"><span class="source-name-label">Nombre de la imagen:</span> <span id="sourceName">ninguna</span></div>
                   <div class="source-actions">
-                    <button class="button small garment-choice selected" id="detectGarments" type="button">◌ Detectar prendas</button>
+                    <button class="button small garment-choice selected detect-button" id="detectGarments" type="button">
+                      <span class="detect-button-content">
+                        <span class="detect-spinner" aria-hidden="true">↻</span>
+                        <span class="detect-label">Detectar prendas</span>
+                      </span>
+                      <span class="detect-progress" role="progressbar" aria-label="Detección de prendas en curso"
+                            aria-valuetext="Detección en curso"></span>
+                    </button>
                     <button class="button small" id="uploadButton" type="button">＋ Subir foto</button>
                     <button class="button small" id="refreshImages" type="button">↻ Otras imágenes</button>
                   </div>
                   <input class="hidden" id="fileInput" type="file" accept="image/jpeg,image/png,image/webp,image/bmp">
                 </div>
-                <div class="segmentation-status" id="segmentationStatus" aria-live="polite"></div>
-                <div class="garment-options" id="garmentOptions" role="group" aria-label="Prendas detectadas"></div>
               </div>
             </div>
           </section>
@@ -503,7 +529,7 @@ HTML = r"""<!doctype html>
             <div class="garment-style-editor" id="garmentStyleEditor" aria-live="polite">
               <div class="garment-tabs" id="garmentTabs" role="tablist" aria-label="Configurar cada prenda"></div>
               <div id="garmentEditorPanes"></div>
-              <p class="hint" id="garmentEditorHint">Cada pestaña tiene sus propios cambios. Solo se enviarán las prendas marcadas para aplicar.</p>
+              <p class="hint" id="garmentEditorHint"></p>
             </div>
             <button class="generate" id="generateButton" type="button" aria-live="polite">✦ &nbsp; Crear mi diseño</button>
             <p class="queue-status" id="queueStatus" role="status" aria-live="polite" hidden>
@@ -529,6 +555,11 @@ HTML = r"""<!doctype html>
                 <figure class="result-image dev-only"><img id="resultEdited" alt="Edición del modelo"><figcaption>Edición del modelo</figcaption></figure>
               </div>
             </div>
+            <section class="history-segmentation dev-only" id="historySegmentation" hidden>
+              <h3>Máscaras de segmentación</h3>
+              <div class="history-segmentation-images" id="historySegmentationImages"></div>
+              <p class="history-segmentation-empty" id="historySegmentationEmpty" hidden></p>
+            </section>
             <div class="result-footer">
               <button class="button small result-delete" id="deleteHistoryButton" type="button" hidden>Eliminar diseño</button>
             </div>
@@ -566,6 +597,7 @@ HTML = r"""<!doctype html>
       document.body.classList.toggle("dev-mode", enabled);
       $("#devModeToggle").checked = enabled;
       if (state.segmentation) updateGarmentOptions();  // repinta los botones de prenda con o sin porcentaje
+      renderHistorySegmentation();
     }
     function closeSettings() {
       $("#settingsMenu").hidden = true;
@@ -599,11 +631,10 @@ HTML = r"""<!doctype html>
       box.classList.add("visible");
     }
     function clearError() { $("#errorMessage").classList.remove("visible"); }
-    function setSource(source, label, previewUrl) {
+    function setSource(source, previewUrl) {
       if (state.detectingGarments) return;
       if (state.source !== source) clearSegmentation();
       state.source = source;
-      $("#sourceName").textContent = label;
       $("#sourceImage").src = previewUrl;
       $("#sourcePreview").classList.add("has-image");
       document.querySelectorAll(".thumb").forEach((el) => el.classList.toggle("selected", el.dataset.id === source));
@@ -835,7 +866,7 @@ HTML = r"""<!doctype html>
         state.activeGarmentTab = selectedIndices[0] ?? null;
       }
       $("#garmentEditorHint").textContent = selectedIndices.length
-        ? "Cada pestaña tiene sus propios cambios. Solo se enviarán las prendas marcadas para aplicar."
+        ? ""
         : "Selecciona una o más prendas para mostrar aquí sus opciones de color y textura.";
       segmentation.items.forEach((item, index) => {
         if (!segmentation.selected.has(index)) return;
@@ -994,6 +1025,9 @@ HTML = r"""<!doctype html>
       $("#segmentationStatus").textContent += " No se puede cambiar la imagen hasta que termine.";
       const button = $("#detectGarments");
       button.disabled = true;
+      button.classList.add("detecting");
+      button.setAttribute("aria-busy", "true");
+      $(".detect-label").textContent = "Detectando prendas…";
       try {
         const sourceId = state.source;
         const data = await request("/api/segment", {
@@ -1031,6 +1065,9 @@ HTML = r"""<!doctype html>
         clearSegmentation(`No se pudieron detectar las prendas: ${error.message}`);
       } finally {
         button.disabled = false;
+        button.classList.remove("detecting");
+        button.removeAttribute("aria-busy");
+        $(".detect-label").textContent = "Detectar prendas";
         setImageSelectionLocked(false);
       }
     }
@@ -1047,10 +1084,10 @@ HTML = r"""<!doctype html>
           const image = document.createElement("img"); image.loading = "lazy"; image.alt = item.label; image.src = item.preview_url;
           button.append(image);
           button.disabled = state.detectingGarments;
-          button.addEventListener("click", () => setSource(item.id, item.label, item.preview_url));
+          button.addEventListener("click", () => setSource(item.id, item.preview_url));
           gallery.append(button);
         });
-        if (!state.source && items.length) setSource(items[0].id, items[0].label, items[0].preview_url);
+        if (!state.source && items.length) setSource(items[0].id, items[0].preview_url);
         else document.querySelectorAll(".thumb").forEach((el) => el.classList.toggle("selected", el.dataset.id === state.source));
       } catch (error) { gallery.innerHTML = '<div class="empty-text">No se pudo cargar el catálogo.</div>'; showError(error.message); }
     }
@@ -1151,19 +1188,19 @@ HTML = r"""<!doctype html>
       if (state.detectingGarments) return;
       if (!file) return;
       if (file.size > 20 * 1024 * 1024) { showError("La imagen supera el límite de 20 MB."); return; }
-      $("#sourceName").textContent = "Cargando imagen…";
       try {
         const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
           method: "POST", headers: {"Content-Type": file.type || "application/octet-stream"}, body: file
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || "No se pudo cargar la imagen.");
-        setSource(data.id, data.label, data.preview_url);
-      } catch (error) { $("#sourceName").textContent = "No se pudo cargar la imagen"; showError(error.message); }
+        setSource(data.id, data.preview_url);
+      } catch (error) { showError(error.message); }
     }
     function displayResult(job, jobId) {
       const cacheBust = `?v=${Date.now()}`;
       state.historyItem = null;
+      renderHistorySegmentation();
       $("#deleteHistoryButton").hidden = true;
       $("#resultHeading").textContent = "Tu resultado";
       document.querySelector(".result-showcase").classList.remove("history-showcase");
@@ -1192,6 +1229,7 @@ HTML = r"""<!doctype html>
       $("#resultHeading").textContent = "Diseño anterior";
       document.querySelector(".result-showcase").classList.add("history-showcase");
       document.querySelectorAll(".result-alternates .result-image").forEach((figure) => figure.classList.add("hidden"));
+      renderHistorySegmentation();
       $("#resultFinal").src = `${imageUrl}${cacheBust}`;
       $("#resultFilename").value = downloadName(item.filename);
       $("#downloadButton").href = `${imageUrl}?download=1`;
@@ -1200,6 +1238,38 @@ HTML = r"""<!doctype html>
       $("#resultMeta").textContent = item.label;
       $("#resultError").classList.remove("visible");
       $("#resultsCard").showModal();
+    }
+    function renderHistorySegmentation() {
+      const section = $("#historySegmentation");
+      const gallery = $("#historySegmentationImages");
+      const empty = $("#historySegmentationEmpty");
+      gallery.replaceChildren();
+      empty.hidden = true;
+      section.hidden = !state.devMode || !state.historyItem;
+      if (section.hidden) return;
+      const assets = state.historyItem.assets;
+      if (!assets) {
+        empty.textContent = "Esta generación es anterior al guardado de máscaras y no tiene datos de segmentación disponibles.";
+        empty.hidden = false;
+        return;
+      }
+      const cacheBust = `?v=${Date.now()}`;
+      const images = [
+        {url: assets.mask_url, label: "Máscara aplicada"},
+        {url: assets.segmentation_url, label: "Segmentación completa"},
+        ...assets.garment_masks.map((garment) => ({url: garment.url, label: garment.name})),
+      ];
+      images.forEach(({url, label}) => {
+        const figure = document.createElement("figure");
+        figure.className = "result-image";
+        const image = document.createElement("img");
+        image.alt = label;
+        image.src = `${url}${cacheBust}`;
+        const caption = document.createElement("figcaption");
+        caption.textContent = label;
+        figure.append(image, caption);
+        gallery.append(figure);
+      });
     }
     function setDownloadFilename() {
       const name = `${downloadName($("#resultFilename").value)}.png`;
@@ -1484,6 +1554,47 @@ def history_directory():
     return Path(C.PIX2PIX_OUTPUT_DIR)
 
 
+def history_assets_directory():
+    return history_directory() / ".atelier-history"
+
+
+def save_history_assets(final_path, result):
+    import numpy as np
+    from PIL import Image
+
+    assets_dir = history_assets_directory() / final_path.stem
+    assets_dir.mkdir(parents=True, exist_ok=False)
+    result["mask"].save(assets_dir / "mask.png")
+
+    palette = ((199, 93, 58), (70, 108, 165), (102, 134, 106),
+               (136, 108, 159), (226, 145, 80), (41, 54, 80))
+    garments = result["garments"]
+    width, height = result["image"].size
+    segmentation = np.zeros((height, width, 4), dtype=np.uint8)
+    garment_names = []
+    for index, garment in enumerate(garments):
+        red, green, blue = palette[index % len(palette)]
+        mask = np.asarray(garment["mask"], dtype=bool)
+        if mask.shape != (height, width):
+            mask = np.asarray(
+                Image.fromarray(mask.astype(np.uint8) * 255).resize(
+                    (width, height), Image.Resampling.NEAREST
+                ),
+                dtype=np.uint8,
+            ) > 0
+        garment_overlay = np.zeros((*mask.shape, 4), dtype=np.uint8)
+        garment_overlay[mask] = (red, green, blue, 175)
+        Image.fromarray(garment_overlay).save(assets_dir / f"garment-{index}.png")
+        segmentation[mask] = (red, green, blue, 175)
+        garment_names.append(garment["name"])
+
+    Image.fromarray(segmentation).save(assets_dir / "segmentation.png")
+    manifest = {"garments": garment_names}
+    (assets_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False), encoding="utf-8"
+    )
+
+
 def safe_download_filename(value, default="atelier.png"):
     name = Path(str(value or default).replace("\\", "/")).name
     name = re.sub(r"[^\w.-]+", "_", name, flags=re.UNICODE).strip("._")
@@ -1504,17 +1615,35 @@ async def history():
         key=lambda path: path.stat().st_mtime,
         reverse=True,
     )
-    return {
-        "items": [
-            {
-                "filename": path.name,
-                "label": path.stem.removeprefix(C.PIX2PIX_OUTPUT_PREFIX).replace("_", " "),
-                "modified": path.stat().st_mtime,
-                "preview_url": f"/api/history/{path.name}",
-            }
-            for path in files[:100]
-        ]
-    }
+    items = []
+    for path in files[:100]:
+        item = {
+            "filename": path.name,
+            "label": path.stem.removeprefix(C.PIX2PIX_OUTPUT_PREFIX).replace("_", " "),
+            "modified": path.stat().st_mtime,
+            "preview_url": f"/api/history/{path.name}",
+            "assets": None,
+        }
+        manifest_path = history_assets_directory() / path.stem / "manifest.json"
+        if manifest_path.is_file():
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                asset_url = f"/api/history/{path.name}/assets"
+                item["assets"] = {
+                    "mask_url": f"{asset_url}/mask",
+                    "segmentation_url": f"{asset_url}/segmentation",
+                    "garment_masks": [
+                        {"name": name, "url": f"{asset_url}/garment-{index}"}
+                        for index, name in enumerate(manifest["garments"])
+                    ],
+                }
+            except (OSError, KeyError, TypeError, json.JSONDecodeError) as exc:
+                logger.exception("No se pudieron leer las máscaras guardadas para %s", path)
+                raise HTTPException(
+                    status_code=500, detail="No se pudieron leer las máscaras de una generación."
+                ) from exc
+        items.append(item)
+    return {"items": items}
 
 
 @app.get("/api/history/{filename}")
@@ -1528,6 +1657,29 @@ async def history_image(filename: str, download: bool = False, name: str | None 
     return FileResponse(path, media_type="image/png", filename=download_name)
 
 
+@app.get("/api/history/{filename}/assets/{asset_name}")
+async def history_asset(filename: str, asset_name: str):
+    output_dir = history_directory().resolve()
+    history_path = (output_dir / filename).resolve()
+    if (history_path.parent != output_dir or not filename.startswith(C.PIX2PIX_OUTPUT_PREFIX)
+            or history_path.suffix.lower() != ".png" or not history_path.is_file()):
+        raise HTTPException(status_code=404, detail="No se encontró ese diseño guardado.")
+
+    if asset_name in {"mask", "segmentation"}:
+        asset_filename = f"{asset_name}.png"
+    else:
+        match = re.fullmatch(r"garment-(\d+)", asset_name)
+        if match is None:
+            raise HTTPException(status_code=404, detail="No se encontró esa máscara.")
+        asset_filename = f"garment-{int(match.group(1))}.png"
+    assets_root = history_assets_directory().resolve()
+    assets_dir = (assets_root / history_path.stem).resolve()
+    path = (assets_dir / asset_filename).resolve()
+    if assets_dir.parent != assets_root or path.parent != assets_dir or not path.is_file():
+        raise HTTPException(status_code=404, detail="No se encontró esa máscara guardada.")
+    return FileResponse(path, media_type="image/png")
+
+
 @app.delete("/api/history/{filename}")
 async def delete_history_image(filename: str):
     output_dir = history_directory().resolve()
@@ -1537,6 +1689,9 @@ async def delete_history_image(filename: str):
         raise HTTPException(status_code=404, detail="No se encontró ese diseño guardado.")
     try:
         path.unlink()
+        assets_dir = history_assets_directory() / path.stem
+        if assets_dir.is_dir():
+            shutil.rmtree(assets_dir)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Ese diseño ya no existe.") from exc
     except OSError as exc:
@@ -1740,6 +1895,7 @@ def run_generation(app_state, job_id, source, color, texture, extra, texture_pat
         output_dir.mkdir(parents=True, exist_ok=True)
         safe_label = re.sub(r"\W+", "_", result["label"]).strip("_")[:45] or "diseno"
         final_path = output_dir / f"{C.PIX2PIX_OUTPUT_PREFIX}{safe_label}_{job_id[:8]}.png"
+        save_history_assets(final_path, result)
         result["final"].save(final_path)
 
         job_dir = app_state.temp_dir / job_id

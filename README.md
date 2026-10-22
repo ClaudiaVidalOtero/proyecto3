@@ -30,6 +30,9 @@ de la prenda determina parte del aspecto; la colocación sigue siendo orientativ
 La instrucción adicional se envía junto con esos cambios. Si eliges una muestra
 visual, se usa como referencia de textura; si no se puede cargar, la generación
 se detiene y muestra un error en vez de omitir la muestra silenciosamente.
+Las generaciones guardan la máscara aplicada y la segmentación por prenda junto
+al resultado. Al activar el modo desarrollador y abrir una generación pasada,
+puedes consultar esas máscaras; se eliminan junto al diseño desde el historial.
 El montaje final amplía ligeramente la máscara para cubrir bordes sin teñir y
 recupera parte del contraste de pliegues y costuras desde la imagen original.
 La generación reutiliza los modelos Mask R-CNN, SAM 2 e InstructPix2Pix del

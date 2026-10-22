@@ -1019,6 +1019,7 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
     return {
         "source": source, "prenda_name": ", ".join(garment_names), "label": label,
         "image": image_pil, "mask": mask_pil, "edited": edited, "final": final,
+        "garments": prendas,
     }
 
 
