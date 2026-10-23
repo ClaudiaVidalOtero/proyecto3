@@ -85,6 +85,10 @@ class SegmentationRequest(BaseModel):
     source_id: str = Field(min_length=1, max_length=100)
 
 
+class RenameHistoryRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+
+
 HTML = r"""<!doctype html>
 <html lang="es">
 <head>
@@ -346,6 +350,13 @@ HTML = r"""<!doctype html>
     .history-segmentation-empty { margin: 0; color: var(--text-subtle); font-size: 11px; }
     .result-error { display: none; margin: 0 22px 18px; padding: 11px; border-radius: 9px; background: var(--surface-accent); color: var(--accent-dark); font-size: 11px; }
     .result-error.visible { display: block; }
+    .confirm-dialog { width: min(430px, calc(100vw - 32px)); }
+    .confirm-body { padding: 22px 23px 0; }
+    .confirm-body h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 21px; font-weight: 500; }
+    .confirm-body p { margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 20px 23px 22px; }
+    .confirm-leave { border-color: #e6b6a8; background: var(--surface-accent); color: var(--accent-dark); }
+    .confirm-leave:hover { border-color: #d99b85; background: var(--surface-hover); }
     @media (min-width: 1021px) {
       /* la tarjeta ocupa todo el alto de la fila y el contenido se reparte para llenarlo */
       .stack.right .card { display: flex; flex-direction: column; }
@@ -543,6 +554,7 @@ HTML = r"""<!doctype html>
               <div class="results-title"><div><h2 id="resultHeading">Tu resultado</h2><div class="result-meta" id="resultMeta"></div></div></div>
               <div class="result-actions">
                 <input class="result-filename" id="resultFilename" aria-label="Nombre del archivo PNG" maxlength="100" value="atelier" title="Nombre del archivo PNG">
+                <button class="button small" id="saveHistoryName" type="button" hidden>Guardar nombre</button>
                 <a class="button small result-download" id="downloadButton" download>↓ Descargar</a>
                 <button class="button small" id="closeResults" type="button">Cerrar</button>
               </div>
@@ -565,6 +577,16 @@ HTML = r"""<!doctype html>
             </div>
             <div class="result-error" id="resultError" role="alert"></div>
           </dialog>
+          <dialog class="result-dialog confirm-dialog" id="reloadWarning" aria-labelledby="reloadWarningTitle">
+            <div class="confirm-body">
+              <h2 id="reloadWarningTitle">¿Salir de la generación?</h2>
+              <p>Si recargas la página ahora, perderás la generación actual. Elige si quieres volver o salir.</p>
+            </div>
+            <div class="confirm-actions">
+              <button class="button small" id="stayOnPage" type="button">Volver</button>
+              <button class="button small confirm-leave" id="leavePage" type="button">Salir</button>
+            </div>
+          </dialog>
         </div>
       </div>
       <footer>Atelier · Recolorado de prendas con inteligencia artificial</footer>
@@ -572,7 +594,7 @@ HTML = r"""<!doctype html>
   </div>
   <script>
     const $ = (selector) => document.querySelector(selector);
-    const state = { source: null, activeJob: null, pendingJobs: [], pollingJobs: false, submittingJob: false, detectingGarments: false, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null, activePlacement: null, devMode: false, historyItem: null };
+    const state = { source: null, activeJob: null, pendingJobs: [], pollingJobs: false, submittingJob: false, detectingGarments: false, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null, activePlacement: null, devMode: false, historyItem: null, historyFilename: null, lastResultGarment: "", allowReload: false };
     // modo desarrollador: se guarda en el navegador para que se recuerde al recargar la página
     const DEV_MODE_KEY = "atelier-dev-mode";
     const THEME_KEY = "atelier-theme";
@@ -1095,6 +1117,10 @@ HTML = r"""<!doctype html>
       const list = $("#historyList");
       try {
         const {items} = await request("/api/history");
+        if (state.historyItem) {
+          state.historyItem = items.find((item) => item.filename === state.historyItem.filename) || state.historyItem;
+          renderHistorySegmentation();
+        }
         list.innerHTML = "";
         if (!items.length) {
           list.innerHTML = '<div class="empty-text">Aún no hay diseños guardados.<br>Cuando generes uno, aparecerá aquí.</div>';
@@ -1200,8 +1226,11 @@ HTML = r"""<!doctype html>
     function displayResult(job, jobId) {
       const cacheBust = `?v=${Date.now()}`;
       state.historyItem = null;
+      state.historyFilename = job.history_filename || null;
+      state.lastResultGarment = job.garment || "";
       renderHistorySegmentation();
       $("#deleteHistoryButton").hidden = true;
+      $("#saveHistoryName").hidden = !state.historyFilename;
       $("#resultHeading").textContent = "Tu resultado";
       document.querySelector(".result-showcase").classList.remove("history-showcase");
       document.querySelectorAll(".result-alternates .result-image").forEach((figure) => figure.classList.remove("hidden"));
@@ -1210,12 +1239,12 @@ HTML = r"""<!doctype html>
       $("#resultEdited").src = `/api/jobs/${jobId}/image/edited${cacheBust}`;
       $("#resultFinal").src = `/api/jobs/${jobId}/image/final${cacheBust}`;
       $("#downloadButton").href = `/api/jobs/${jobId}/image/final?download=1`;
-      $("#resultFilename").value = downloadName(`${job.label || "atelier"}-${jobId.slice(0, 8)}`);
+      $("#resultFilename").value = downloadName(job.label || "atelier");
       $("#downloadButton").download = `${$("#resultFilename").value}.png`;
       setDownloadFilename();
       $("#resultMeta").textContent = `${job.garment} · ${job.label || "diseño listo"}`;
       $("#resultError").classList.remove("visible");
-      $("#resultsCard").showModal();
+      if (!$("#resultsCard").open) $("#resultsCard").showModal();
     }
     function downloadName(value) {
       return value.replace(/\.png$/i, "").replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").trim().replace(/[. ]+$/g, "").slice(0, 100) || "atelier";
@@ -1224,20 +1253,22 @@ HTML = r"""<!doctype html>
       const cacheBust = `?v=${Date.now()}`;
       const imageUrl = `/api/history/${encodeURIComponent(item.filename)}`;
       state.historyItem = item;
+      state.historyFilename = item.filename;
       $("#deleteHistoryButton").hidden = false;
       $("#deleteHistoryButton").disabled = false;
+      $("#saveHistoryName").hidden = false;
       $("#resultHeading").textContent = "Diseño anterior";
       document.querySelector(".result-showcase").classList.add("history-showcase");
       document.querySelectorAll(".result-alternates .result-image").forEach((figure) => figure.classList.add("hidden"));
       renderHistorySegmentation();
       $("#resultFinal").src = `${imageUrl}${cacheBust}`;
-      $("#resultFilename").value = downloadName(item.filename);
+      $("#resultFilename").value = item.label;
       $("#downloadButton").href = `${imageUrl}?download=1`;
       $("#downloadButton").download = `${$("#resultFilename").value}.png`;
       setDownloadFilename();
       $("#resultMeta").textContent = item.label;
       $("#resultError").classList.remove("visible");
-      $("#resultsCard").showModal();
+      if (!$("#resultsCard").open) $("#resultsCard").showModal();
     }
     function renderHistorySegmentation() {
       const section = $("#historySegmentation");
@@ -1273,12 +1304,47 @@ HTML = r"""<!doctype html>
     }
     function setDownloadFilename() {
       const name = `${downloadName($("#resultFilename").value)}.png`;
-      $("#resultFilename").value = name.slice(0, -4);
       $("#downloadButton").download = name;
       const url = new URL($("#downloadButton").href, location.href);
       url.searchParams.set("download", "1");
       url.searchParams.set("name", name);
       $("#downloadButton").href = url.pathname + url.search;
+    }
+    async function saveHistoryName() {
+      if (!state.historyFilename) return;
+      const button = $("#saveHistoryName");
+      button.disabled = true;
+      $("#resultError").classList.remove("visible");
+      try {
+        const result = await request(
+          `/api/history/${encodeURIComponent(state.historyFilename)}/rename`,
+          {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({name: $("#resultFilename").value}),
+          },
+        );
+        state.historyFilename = result.filename;
+        if (state.historyItem) {
+          state.historyItem.filename = result.filename;
+          if (result.label) state.historyItem.label = result.label;
+          $("#resultFinal").src = `/api/history/${encodeURIComponent(result.filename)}?v=${Date.now()}`;
+          $("#downloadButton").href = `/api/history/${encodeURIComponent(result.filename)}?download=1`;
+        }
+        if (result.label) {
+          $("#resultFilename").value = result.label;
+          setDownloadFilename();
+          $("#resultMeta").textContent = state.historyItem
+            ? result.label
+            : `${state.lastResultGarment} · ${result.label}`;
+        }
+        await loadHistory();
+      } catch (error) {
+        $("#resultError").textContent = `No se pudo guardar el nombre: ${error.message}`;
+        $("#resultError").classList.add("visible");
+      } finally {
+        button.disabled = false;
+      }
     }
     $("#resultFilename").addEventListener("input", () => {
       setDownloadFilename();
@@ -1316,6 +1382,37 @@ HTML = r"""<!doctype html>
       if (!dialog.open) return Promise.resolve();
       return new Promise((resolve) => dialog.addEventListener("close", resolve, {once: true}));
     }
+    function hasWorkToLose() {
+      const currentResultOpen = $("#resultsCard").open && !state.historyItem;
+      return Boolean(state.submittingJob || state.activeJob || state.pendingJobs.length || currentResultOpen);
+    }
+    function showReloadWarning() {
+      const dialog = $("#reloadWarning");
+      if (!dialog.open && !state.allowReload && hasWorkToLose()) dialog.showModal();
+    }
+    function requestReloadConfirmation(event) {
+      if (state.allowReload || !hasWorkToLose()) return;
+      event.preventDefault();
+      showReloadWarning();
+    }
+    window.addEventListener("beforeunload", (event) => {
+      if (state.allowReload || !hasWorkToLose()) return;
+      event.preventDefault();
+      event.returnValue = "";
+    });
+    document.addEventListener("keydown", (event) => {
+      const key = (event.key || "").toLowerCase();
+      if (event.key === "F5" || ((event.ctrlKey || event.metaKey) && key === "r")) {
+        requestReloadConfirmation(event);
+      }
+    });
+    $("#reloadWarning").addEventListener("cancel", (event) => event.preventDefault());
+    $("#stayOnPage").addEventListener("click", () => $("#reloadWarning").close());
+    $("#leavePage").addEventListener("click", () => {
+      state.allowReload = true;
+      $("#reloadWarning").close();
+      location.reload();
+    });
     async function pollQueue() {
       if (state.pollingJobs) return;
       state.pollingJobs = true;
@@ -1486,6 +1583,7 @@ HTML = r"""<!doctype html>
     $("#color").addEventListener("input", updateSwatches);
     $("#generateButton").addEventListener("click", generate);
     $("#closeResults").addEventListener("click", () => $("#resultsCard").close());
+    $("#saveHistoryName").addEventListener("click", saveHistoryName);
     $("#deleteHistoryButton").addEventListener("click", () => {
       if (state.historyItem) deleteHistoryItem(state.historyItem, $("#deleteHistoryButton"));
     });
@@ -1550,12 +1648,52 @@ async def config():
     }
 
 
+HISTORY_JOB_SUFFIX = re.compile(r"^[0-9a-f]{8}$")
+
+
 def history_directory():
     return Path(C.PIX2PIX_OUTPUT_DIR)
 
 
 def history_assets_directory():
     return history_directory() / ".atelier-history"
+
+
+def history_label(stem):
+    """Nombre editable del diseño, sin el prefijo ni el identificador del trabajo."""
+    label = stem.removeprefix(C.PIX2PIX_OUTPUT_PREFIX)
+    head, _, suffix = label.rpartition("_")
+    if head and HISTORY_JOB_SUFFIX.fullmatch(suffix):
+        label = head
+    return label.replace("_", " ") or "diseño"
+
+
+def history_job_suffix(stem):
+    """Sufijo del trabajo (p. ej. ``_1a2b3c4d``) que se conserva al renombrar."""
+    label = stem.removeprefix(C.PIX2PIX_OUTPUT_PREFIX)
+    head, _, suffix = label.rpartition("_")
+    return f"_{suffix}" if head and HISTORY_JOB_SUFFIX.fullmatch(suffix) else ""
+
+
+def history_label_key(label):
+    """Clave para comparar nombres sin depender de mayúsculas ni separadores."""
+    return label.replace("_", " ").strip().casefold()
+
+
+def unique_history_label(base_label):
+    """Añade un número al nombre base si ya existe otro diseño con ese nombre."""
+    used = set()
+    output_dir = history_directory()
+    if output_dir.is_dir():
+        for path in output_dir.glob(f"{C.PIX2PIX_OUTPUT_PREFIX}*.png"):
+            if path.is_file():
+                used.add(history_label_key(history_label(path.stem)))
+    candidate = base_label
+    index = 2
+    while history_label_key(candidate) in used:
+        candidate = f"{base_label}_{index}"
+        index += 1
+    return candidate
 
 
 def save_history_assets(final_path, result):
@@ -1619,7 +1757,7 @@ async def history():
     for path in files[:100]:
         item = {
             "filename": path.name,
-            "label": path.stem.removeprefix(C.PIX2PIX_OUTPUT_PREFIX).replace("_", " "),
+            "label": history_label(path.stem),
             "modified": path.stat().st_mtime,
             "preview_url": f"/api/history/{path.name}",
             "assets": None,
@@ -1655,6 +1793,62 @@ async def history_image(filename: str, download: bool = False, name: str | None 
         raise HTTPException(status_code=404, detail="No se encontró ese diseño guardado.")
     download_name = safe_download_filename(name, path.name) if download else None
     return FileResponse(path, media_type="image/png", filename=download_name)
+
+
+@app.post("/api/history/{filename}/rename")
+async def rename_history_image(filename: str, request: RenameHistoryRequest):
+    output_dir = history_directory().resolve()
+    path = (output_dir / filename).resolve()
+    if (path.parent != output_dir or not filename.startswith(C.PIX2PIX_OUTPUT_PREFIX)
+            or path.suffix.lower() != ".png" or not path.is_file()):
+        raise HTTPException(status_code=404, detail="No se encontró ese diseño guardado.")
+
+    requested_name = request.name.strip().removesuffix(".png")
+    safe_label = re.sub(r"\W+", "_", requested_name).strip("_")[:45]
+    if not safe_label:
+        raise HTTPException(status_code=422, detail="Indica un nombre válido para el diseño.")
+
+    requested_key = history_label_key(safe_label)
+    if requested_key != history_label_key(history_label(path.stem)):
+        for other in output_dir.glob(f"{C.PIX2PIX_OUTPUT_PREFIX}*.png"):
+            if (other.is_file() and other.resolve() != path
+                    and history_label_key(history_label(other.stem)) == requested_key):
+                raise HTTPException(status_code=409, detail="Ya existe un diseño con ese nombre.")
+
+    suffix = history_job_suffix(path.stem)
+    new_path = output_dir / f"{C.PIX2PIX_OUTPUT_PREFIX}{safe_label}{suffix}.png"
+    if new_path != path and new_path.exists():
+        raise HTTPException(status_code=409, detail="Ya existe un diseño con ese nombre.")
+    if new_path != path:
+        assets_dir = history_assets_directory() / path.stem
+        new_assets_dir = history_assets_directory() / new_path.stem
+        image_renamed = False
+        try:
+            path.rename(new_path)
+            image_renamed = True
+            if assets_dir.is_dir():
+                assets_dir.rename(new_assets_dir)
+        except OSError as exc:
+            if image_renamed:
+                try:
+                    new_path.rename(path)
+                except OSError:
+                    logger.exception("No se pudo restaurar el nombre anterior de %s", path)
+            logger.exception("No se pudo renombrar el diseño guardado %s", path)
+            raise HTTPException(
+                status_code=500, detail="No se pudo guardar el nuevo nombre del diseño."
+            ) from exc
+
+        with job_lock:
+            for job in jobs.values():
+                if job.get("saved_path") and Path(job["saved_path"]).resolve() == path:
+                    job["saved_path"] = str(new_path)
+                    job["history_filename"] = new_path.name
+
+    return {
+        "filename": new_path.name,
+        "label": safe_label.replace("_", " "),
+    }
 
 
 @app.get("/api/history/{filename}/assets/{asset_name}")
@@ -1894,6 +2088,7 @@ def run_generation(app_state, job_id, source, color, texture, extra, texture_pat
         output_dir = Path(C.PIX2PIX_OUTPUT_DIR)
         output_dir.mkdir(parents=True, exist_ok=True)
         safe_label = re.sub(r"\W+", "_", result["label"]).strip("_")[:45] or "diseno"
+        safe_label = unique_history_label(safe_label)
         final_path = output_dir / f"{C.PIX2PIX_OUTPUT_PREFIX}{safe_label}_{job_id[:8]}.png"
         save_history_assets(final_path, result)
         result["final"].save(final_path)
@@ -1915,9 +2110,10 @@ def run_generation(app_state, job_id, source, color, texture, extra, texture_pat
                 "status": "completed",
                 "message": "Diseño listo",
                 "garment": result["prenda_name"],
-                "label": result["label"],
+                "label": history_label(final_path.stem),
                 "images": paths,
                 "saved_path": str(final_path),
+                "history_filename": final_path.name,
             })
         notify_done(final_path)  # fuera del lock y con su propio try, no puede marcar el trabajo como fallido
     except Exception as exc:
