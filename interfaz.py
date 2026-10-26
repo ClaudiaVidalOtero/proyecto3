@@ -121,11 +121,13 @@ HTML = r"""<!doctype html>
       --line-soft: #484a43;
     }
     * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
     body { margin: 0; color: var(--ink); background: var(--paper); }
     button, input, select { font: inherit; }
     button { cursor: pointer; }
-    .shell { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
-    aside { position: sticky; top: 0; height: 100vh; padding: 27px 20px; background: var(--surface-raised);
+    .shell { min-height: 100vh; min-height: 100dvh; display: grid;
+      grid-template-columns: clamp(220px, 17vw, 248px) minmax(0, 1fr); }
+    aside { position: sticky; top: 0; height: 100vh; height: 100dvh; padding: 27px 20px; background: var(--surface-raised);
       border-right: 1px solid var(--line); display: flex; flex-direction: column; }
     .brand { display: flex; align-items: center; gap: 14px; padding: 0 8px 27px; }
     .brand-mark { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 18px;
@@ -158,8 +160,9 @@ HTML = r"""<!doctype html>
     .settings-button svg { transition: transform .3s; }
     .settings-button:hover, .settings-button[aria-expanded="true"] { border-color: #d5b6aa; color: var(--accent-dark); }
     .settings-button[aria-expanded="true"] svg { transform: rotate(60deg); }
-    .settings-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; width: 270px; padding: 14px;
-      border: 1px solid var(--line); border-radius: 14px; background: var(--surface-raised); color: var(--ink); box-shadow: 0 16px 40px #29271e22; }
+    .settings-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; width: min(270px, calc(100vw - 24px));
+      padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-raised); color: var(--ink);
+      box-shadow: 0 16px 40px #29271e22; }
     .settings-title { margin-bottom: 10px; font-size: 12px; font-weight: 700; }
     .settings-themes { display: flex; gap: 8px; margin-bottom: 14px; }
     .settings-theme { display: flex; flex: 1; align-items: center; gap: 7px; padding: 9px;
@@ -174,7 +177,8 @@ HTML = r"""<!doctype html>
     .hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 25px; margin-bottom: 12px; padding-right: 48px; }
     .eyebrow { margin-bottom: 10px; color: var(--accent); font-size: 10px; font-weight: 750; letter-spacing: 1.8px; text-transform: uppercase; }
     h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(34px, 3.5vw, 44px); font-weight: 500; letter-spacing: -1.8px; }
-    .layout { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(380px, 1fr); gap: 19px; align-items: stretch; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(360px, 1fr);
+      gap: clamp(14px, 1.3vw, 19px); align-items: stretch; }
     .stack { display: grid; gap: 18px; }
     .card { min-width: 0; padding: 19px; border: 1px solid var(--line); border-radius: 17px; background: var(--white); box-shadow: var(--shadow); }
     .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; margin-bottom: 13px; }
@@ -287,6 +291,7 @@ HTML = r"""<!doctype html>
     .right .input { min-height: 36px; padding: 8px 10px; font-size: 11px; }
     .right .field { margin-bottom: 10px; }
     .right .hint { margin-top: 6px; font-size: 9px; line-height: 1.45; }
+    .field > .field-label + .hint { margin: 0 0 8px; }
     .right #garmentEditorHint { font-size: 10px; }
     textarea.input { resize: vertical; min-height: 74px; line-height: 1.5; }
     .generate { width: 100%; min-height: 46px; margin-top: 1px; border: 0; border-radius: 11px; background: var(--accent);
@@ -332,15 +337,15 @@ HTML = r"""<!doctype html>
       box-shadow: 0 28px 100px #12120f40; }
     .result-dialog[open] { display: flex; flex-direction: column; }
     .result-dialog::backdrop { background: #20211ecc; backdrop-filter: blur(5px); }
-    .results-head { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 19px 23px;
-      border-bottom: 1px solid var(--line); }
+    .results-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 15px;
+      padding: 19px 23px; border-bottom: 1px solid var(--line); }
     .results-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .results-title h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 500; }
     .result-meta { overflow: hidden; margin-top: 3px; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
     .result-filename { width: min(210px, 22vw); min-height: 34px; padding: 7px 9px; border: 1px solid var(--line-strong);
       border-radius: 8px; outline: none; background: var(--surface-raised); color: var(--ink); font-size: 11px; }
     .result-filename:focus { border-color: #d99b85; box-shadow: 0 0 0 3px #c75d3a14; }
-    .result-actions { display: flex; flex: 0 0 auto; gap: 8px; }
+    .result-actions { display: flex; flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
     .result-download { border-color: var(--accent); background: var(--accent); color: white; }
     .result-download:hover { border-color: var(--accent-dark); background: var(--accent-dark); color: white; }
     .result-footer { display: flex; justify-content: flex-end; padding: 0 22px 18px; }
@@ -385,6 +390,7 @@ HTML = r"""<!doctype html>
       .stack.right .input { min-height: 42px; padding: 10px 12px; border-radius: 10px; font-size: 13px; }
       .stack.right textarea.input { min-height: 78px; }
       .stack.right .hint { margin-top: 7px; font-size: 10.5px; line-height: 1.5; }
+      .stack.right .field > .field-label + .hint { margin: 0 0 9px; }
       .stack.right #garmentEditorHint { font-size: 10.5px; }
       .stack.right .swatches { gap: 9px; margin-top: 11px; }
       .stack.right .swatch { width: 26px; height: 26px; }
@@ -398,22 +404,45 @@ HTML = r"""<!doctype html>
       .stack.right .queue-status { font-size: 11px; }
       .stack.right .error { font-size: 12px; }
     }
+    @media (min-width: 1021px) and (max-width: 1240px) {
+      .shell { grid-template-columns: 220px minmax(0, 1fr); }
+      main { padding-right: 38px; }
+      .layout { grid-template-columns: minmax(0, 1.25fr) minmax(340px, 1fr); gap: 14px; }
+      .card { padding: 16px; }
+    }
     .empty-text { display: grid; place-items: center; min-height: 74px; color: var(--text-muted); font-size: 10px; text-align: center; }
     footer { margin-top: 27px; color: var(--text-label); font-size: 10px; text-align: center; }
     .hidden { display: none !important; }
     @media (max-width: 1020px) {
       .shell { grid-template-columns: 205px minmax(0, 1fr); }
-      .layout { grid-template-columns: 1fr; }
+      .layout { grid-template-columns: 1fr; gap: 14px; }
       .stack.right { grid-row: 2; }
+    }
+    @media (max-width: 860px) {
+      /* en tablet la barra lateral pasa a ser una cabecera con el historial en horizontal */
+      .shell { display: block; }
+      aside { position: static; height: auto; padding: 12px 16px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .brand { padding: 0; }
+      .brand-mark { width: 42px; height: 42px; border-radius: 13px; font-size: 25px; }
+      .brand-name { font-size: 25px; }
+      .brand-sub { display: none; }
+      .history-nav { flex: none; margin-top: 12px; min-height: 0; }
+      .history-nav-head { margin-bottom: 6px; }
+      .history-list { display: flex; flex-direction: row; gap: 6px; overflow-x: auto; overflow-y: hidden; padding: 1px 0 5px; }
+      .history-item { flex: 0 0 auto; width: auto; max-width: 190px; }
+      .history-open-button { padding: 7px 9px; }
+      main { padding: 16px clamp(14px, 3vw, 26px) 38px; }
+      .hero { padding-right: 44px; }
     }
     @media (max-width: 680px) {
       .shell { display: block; }
-      aside { position: static; height: auto; padding: 13px 18px; border-right: 0; border-bottom: 1px solid var(--line); }
+      aside { position: static; height: auto; padding: 12px 16px; border-right: 0; border-bottom: 1px solid var(--line); }
       .brand { padding: 0; } .history-nav { display: none; }
-      main { padding: 23px 15px 40px; }
+      main { padding: 18px 14px 36px; }
       .settings-button { width: 30px; height: 30px; }
-      .hero { align-items: flex-start; }
-      .card { padding: 17px; }
+      .hero { align-items: flex-start; margin-bottom: 10px; padding-right: 42px; }
+      h1 { font-size: clamp(30px, 5vw, 36px); }
+      .card { padding: 15px; }
       /* en móvil no cabe en dos columnas: la imagen elegida arriba y los ejemplos debajo en horizontal */
       .picker { grid-template-columns: minmax(0, 1fr); }
       .picker-main { order: -1; }
@@ -430,8 +459,34 @@ HTML = r"""<!doctype html>
       .result-image.featured { min-height: 220px; max-height: 48dvh; }
       .result-image.featured img { min-height: 180px; }
       .history-showcase .result-image.featured { height: min(38dvh, 320px); min-height: 190px; }
-      .result-alternates { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: 95px; }
+      .result-alternates { grid-template-columns: minmax(0, 1fr); grid-template-rows: 95px; }
+      .dev-mode .result-alternates { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .result-alternates .result-image img { min-height: 0; }
+    }
+    @media (max-width: 480px) {
+      main { padding: 14px 11px 32px; }
+      .settings { top: 10px; right: 10px; }
+      .settings-menu { width: calc(100vw - 20px); }
+      .hero { padding-right: 40px; }
+      .card { padding: 13px; border-radius: 14px; }
+      .picker-main .preview { height: 130px; }
+      .gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .thumb { height: 74px; }
+      .generate-split { grid-template-columns: minmax(0, 1fr); }
+      .result-dialog { width: calc(100vw - 14px); max-height: calc(100dvh - 14px); }
+      .results-head { flex-direction: column; align-items: stretch; gap: 10px; padding: 13px; }
+      .result-actions { flex-direction: row; flex-wrap: wrap; width: 100%; }
+      .result-filename { flex: 1 1 130px; width: auto; }
+      .results-title h2 { font-size: 17px; }
+      .result-showcase { padding: 10px; gap: 10px; }
+      .result-image.featured { min-height: 190px; max-height: 42dvh; }
+      .result-image.featured img { min-height: 150px; }
+      .history-showcase .result-image.featured { height: min(34dvh, 280px); min-height: 170px; }
+      .history-segmentation { padding: 0 13px 14px; }
+      .result-footer { padding: 0 13px 14px; }
+      .result-error { margin: 0 13px 14px; }
+      .confirm-body { padding: 19px 18px 0; }
+      .confirm-actions { padding: 16px 18px 18px; }
     }
   </style>
 </head>
@@ -534,18 +589,18 @@ HTML = r"""<!doctype html>
             <div id="defaultStyle">
             <div class="field">
               <label class="field-label" for="color">Color</label>
+              <p class="hint">Elige un color o selecciona «Ninguno» para conservar el original.</p>
               <input class="input" id="color" list="colors" value="black" maxlength="80" placeholder="Escribe un color en inglés">
               <datalist id="colors"></datalist>
               <div class="swatches" id="swatches" aria-label="Colores sugeridos"></div>
-              <p class="hint">Elige un color o selecciona «Ninguno» para conservar el original.</p>
             </div>
             <div class="field">
               <label class="field-label" for="material">Material o textura</label>
+              <p class="hint">Elige o escribe un material. Atelier intentará reproducir su grano, costuras y patrón sobre la prenda, manteniendo el color elegido.</p>
               <div class="material-line">
                 <input class="input" id="material" value="leather" maxlength="80" autocomplete="off" placeholder="Ej. denim, silk, leather">
               </div>
               <div class="material-options" id="materialOptions" role="group" aria-label="Materiales sugeridos"></div>
-              <p class="hint">Elige o escribe un material. Atelier intentará reproducir su grano, costuras y patrón sobre la prenda, manteniendo el color elegido.</p>
             </div>
             <div class="field">
               <label class="field-label" for="extra">Instrucción adicional <span style="color:#999;font-weight:400">(opcional)</span></label>
