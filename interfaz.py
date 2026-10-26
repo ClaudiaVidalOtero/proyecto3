@@ -1350,6 +1350,12 @@ HTML = r"""<!doctype html>
     $("#uploadButton").addEventListener("click", () => $("#fileInput").click());
     $("#fileInput").addEventListener("change", (event) => uploadImage(event.target.files[0]));
     $("#detectGarments").addEventListener("click", detectGarments);
+    // aviso al recargar o cerrar la pestaña mientras hay una generación en curso o en cola
+    window.addEventListener("beforeunload", (event) => {
+      if (!state.pendingJobs.length && !state.submittingJob) return;
+      event.preventDefault();
+      event.returnValue = "";  // hace falta en algunos navegadores para que salga el aviso
+    });
     $("#settingsButton").addEventListener("click", () => {
       const menu = $("#settingsMenu");
       menu.hidden = !menu.hidden;
