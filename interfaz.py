@@ -85,6 +85,16 @@ class SegmentationRequest(BaseModel):
     source_id: str = Field(min_length=1, max_length=100)
 
 
+class HsvRecolorRequest(BaseModel):
+    source_id: str = Field(min_length=1, max_length=100)
+    segmentation_id: str = Field(min_length=1, max_length=100)
+    garment_indices: list[int] = Field(min_length=1, max_length=50)
+    hue: int = Field(ge=0, le=359)          # tono en grados (0=rojo, 120=verde, 240=azul...)
+    saturation: int = Field(ge=0, le=255)
+    value: int = Field(ge=0, le=255)        # brillo del píxel más brillante de la prenda
+
+
+
 class RenameHistoryRequest(BaseModel):
     name: str = Field(min_length=1, max_length=100)
 
@@ -337,6 +347,29 @@ HTML = r"""<!doctype html>
       box-shadow: 0 28px 100px #12120f40; }
     .result-dialog[open] { display: flex; flex-direction: column; }
     .result-dialog::backdrop { background: #20211ecc; backdrop-filter: blur(5px); }
+    .hsv-open { margin-top: 10px; }
+    .hsv-dot { width: 14px; height: 14px; border-radius: 50%; flex: none;
+      background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+    .hsv-dialog { width: min(920px, calc(100vw - 32px)); }
+    .hsv-body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(260px, 1fr); gap: 22px; padding: 22px 23px 24px; }
+    .hsv-preview { display: grid; place-items: center; min-height: 300px; padding: 10px; border-radius: 14px; background: var(--surface-preview); }
+    .hsv-preview canvas { display: block; width: auto; height: auto; max-width: 100%; max-height: min(66dvh, 640px); border-radius: 8px; }
+    .hsv-controls { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+    .hsv-garments { display: flex; flex-wrap: wrap; gap: 6px; }
+    .hsv-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+    .hsv-row .field-label { margin: 0; }
+    .hsv-value { color: var(--accent-dark); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .hsv-strip { position: relative; height: 36px; border: 1px solid var(--line); border-radius: 10px; cursor: ew-resize; touch-action: none;
+      background: linear-gradient(to right, #f00 0%, #ff0 16.667%, #0f0 33.333%, #0ff 50%, #00f 66.667%, #f0f 83.333%, #f00 100%); }
+    .hsv-strip:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .hsv-marker { position: absolute; top: -5px; bottom: -5px; width: 6px; margin-left: -3px; border-radius: 3px;
+      background: #fff; box-shadow: 0 0 0 2px #000b; pointer-events: none; }
+    .hsv-range { width: 100%; accent-color: var(--accent); }
+    .hsv-apply { border-color: var(--accent); background: var(--accent); color: #fff; }
+    .hsv-apply:hover { background: var(--accent-dark); color: #fff; }
+    .hsv-apply:disabled { opacity: .55; cursor: not-allowed; }
+    @media (max-width: 760px) { .hsv-body { grid-template-columns: minmax(0, 1fr); } }
+    @media (min-width: 1021px) { .stack.right .hsv-open { min-height: 34px; font-size: 11px; } }
     .results-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 15px;
       padding: 19px 23px; border-bottom: 1px solid var(--line); }
     .results-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -593,6 +626,7 @@ HTML = r"""<!doctype html>
               <input class="input" id="color" list="colors" value="black" maxlength="80" placeholder="Escribe un color en inglés">
               <datalist id="colors"></datalist>
               <div class="swatches" id="swatches" aria-label="Colores sugeridos"></div>
+              <button class="button small hsv-open" id="openHsv" type="button"><span class="hsv-dot"></span>Recolorear con HSV</button>
             </div>
             <div class="field">
               <label class="field-label" for="material">Material o textura</label>
@@ -657,6 +691,41 @@ HTML = r"""<!doctype html>
               <button class="button small result-delete" id="deleteHistoryButton" type="button" hidden>Eliminar diseño</button>
             </div>
             <div class="result-error" id="resultError" role="alert"></div>
+          </dialog>
+          <dialog class="result-dialog hsv-dialog" id="hsvDialog" aria-labelledby="hsvHeading">
+            <div class="results-head">
+              <div class="results-title"><div>
+                <h2 id="hsvHeading">Recolorear con HSV</h2>
+                <div class="result-meta">Cambia solo el tono y conserva pliegues, sombras y brillos de la prenda.</div>
+              </div></div>
+              <div class="result-actions">
+                <button class="button small" id="hsvCancel" type="button">Cancelar</button>
+                <button class="button small hsv-apply" id="hsvApply" type="button">Aplicar</button>
+              </div>
+            </div>
+            <div class="hsv-body">
+              <div class="hsv-preview"><canvas id="hsvCanvas" aria-label="Vista previa del recoloreado"></canvas></div>
+              <div class="hsv-controls">
+                <div>
+                  <span class="field-label">Prendas a recolorear</span>
+                  <div class="hsv-garments" id="hsvGarments" role="group" aria-label="Prendas a recolorear"></div>
+                </div>
+                <div>
+                  <div class="hsv-row"><span class="field-label">Tono (clic o arrastra)</span><span class="hsv-value" id="hsvHueValue"></span></div>
+                  <div class="hsv-strip" id="hsvStrip" tabindex="0" role="slider" aria-label="Tono"
+                       aria-valuemin="0" aria-valuemax="359"><span class="hsv-marker" id="hsvMarker"></span></div>
+                </div>
+                <div>
+                  <div class="hsv-row"><label class="field-label" for="hsvSat">Saturación</label><span class="hsv-value" id="hsvSatValue"></span></div>
+                  <input class="hsv-range" id="hsvSat" type="range" min="0" max="255" step="1" value="200">
+                </div>
+                <div>
+                  <div class="hsv-row"><label class="field-label" for="hsvVal">Brillo</label><span class="hsv-value" id="hsvValValue"></span></div>
+                  <input class="hsv-range" id="hsvVal" type="range" min="0" max="255" step="1" value="220">
+                </div>
+                <div class="error" id="hsvError"></div>
+              </div>
+            </div>
           </dialog>
           <dialog class="result-dialog confirm-dialog" id="reloadWarning" aria-labelledby="reloadWarningTitle">
             <div class="confirm-body">
@@ -871,6 +940,12 @@ HTML = r"""<!doctype html>
       });
       swatches.append(noColor);
       colorField.append(swatches);
+      const hsvButton = document.createElement("button");
+      hsvButton.type = "button";
+      hsvButton.className = "button small hsv-open";
+      hsvButton.innerHTML = '<span class="hsv-dot"></span>Recolorear con HSV';
+      hsvButton.addEventListener("click", () => openHsvPicker([index]));
+      colorField.append(hsvButton);
       pane.append(colorField);
 
       const materialField = document.createElement("div");
@@ -1290,6 +1365,177 @@ HTML = r"""<!doctype html>
       $("#swatches").querySelectorAll(".swatch").forEach((button) =>
         button.classList.toggle("selected", button.dataset.value === $("#color").value.trim().toLowerCase()));
     }
+    // ---------- recoloreado HSV ----------
+    // Misma idea que recolor_hsv de Python: se cambia solo el tono y se reescalan saturación y brillo
+    // para conservar pliegues y sombras. La vista previa se calcula aquí, en el navegador, sobre una copia
+    // reducida; el resultado final lo genera el servidor con la imagen a resolución completa.
+    const HSV_PREVIEW_MAX = 640;   // lado máximo de la vista previa en píxeles
+    const HSV_MIN_VALUE = 40;      // brillo mínimo para que las sombras no lleguen a negro puro
+    const MASK_OVERLAY_ALPHA = 175; // opacidad con la que el servidor dibuja las máscaras de prenda
+    const hsv = { indices: new Set(), hue: 120, sat: 200, val: 220, width: 0, height: 0,
+                  base: null, layers: new Map(), frame: 0, applying: false };
+
+    function hsvToRgb(hue, saturation, value) {   // hue 0-179 (como OpenCV); saturation y value 0-255
+      const s = saturation / 255, v = value / 255, h = hue * 2 / 60;
+      const c = v * s, x = c * (1 - Math.abs(h % 2 - 1)), m = v - c;
+      const [r, g, b] = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]][Math.floor(h) % 6];
+      return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+    }
+    function hsvLut() {
+      // con tono y saturación fijos, el color final solo depende del brillo: tabla de 256 colores
+      const hueOpenCv = Math.floor(hsv.hue / 2) % 180;
+      const lut = new Uint8ClampedArray(256 * 3);
+      for (let value = 0; value < 256; value++) lut.set(hsvToRgb(hueOpenCv, hsv.sat, value), value * 3);
+      return lut;
+    }
+    function hsvLayer(index) {
+      // píxeles de la prenda (y su máscara suave) a la escala de la vista previa; se calcula una vez por prenda
+      if (hsv.layers.has(index)) return hsv.layers.get(index);
+      const canvas = document.createElement("canvas");
+      canvas.width = hsv.width;
+      canvas.height = hsv.height;
+      const context = canvas.getContext("2d", {willReadFrequently: true});
+      context.drawImage(state.segmentation.items[index].maskImage, 0, 0, hsv.width, hsv.height);
+      const overlay = context.getImageData(0, 0, hsv.width, hsv.height).data;
+      const base = hsv.base.data;
+      const alpha = new Float32Array(hsv.width * hsv.height);
+      const inside = [];
+      let maxValue = 1;
+      for (let p = 0; p < alpha.length; p++) {
+        alpha[p] = Math.min(overlay[p * 4 + 3] / MASK_OVERLAY_ALPHA, 1);
+        if (alpha[p] > 0.5) {
+          inside.push(p);
+          const value = Math.max(base[p * 4], base[p * 4 + 1], base[p * 4 + 2]);
+          if (value > maxValue) maxValue = value;
+        }
+      }
+      const layer = {alpha, pixels: Int32Array.from(inside), maxValue};
+      hsv.layers.set(index, layer);
+      return layer;
+    }
+    function renderHsv() {
+      hsv.frame = 0;
+      const out = new ImageData(new Uint8ClampedArray(hsv.base.data), hsv.width, hsv.height);
+      const data = out.data, base = hsv.base.data, lut = hsvLut();
+      for (const index of hsv.indices) {
+        const {alpha, pixels, maxValue} = hsvLayer(index);
+        const scale = hsv.val / maxValue;
+        for (const p of pixels) {
+          const o = p * 4;
+          // brillo relativo al píxel más brillante de la prenda (conserva pliegues y sombras)
+          let value = Math.floor(Math.max(base[o], base[o + 1], base[o + 2]) * scale);
+          if (value < HSV_MIN_VALUE) value = HSV_MIN_VALUE;
+          const a = alpha[p], k = value * 3;
+          data[o] = lut[k] * a + base[o] * (1 - a);
+          data[o + 1] = lut[k + 1] * a + base[o + 1] * (1 - a);
+          data[o + 2] = lut[k + 2] * a + base[o + 2] * (1 - a);
+        }
+      }
+      $("#hsvCanvas").getContext("2d").putImageData(out, 0, 0);
+    }
+    function scheduleHsv() {
+      if (!hsv.frame) hsv.frame = requestAnimationFrame(renderHsv);  // como mucho un redibujado por fotograma
+    }
+    function updateHsvControls() {
+      $("#hsvHueValue").textContent = `${Math.round(hsv.hue)}°`;
+      $("#hsvSatValue").textContent = hsv.sat;
+      $("#hsvValValue").textContent = hsv.val;
+      $("#hsvSat").value = hsv.sat;
+      $("#hsvVal").value = hsv.val;
+      $("#hsvMarker").style.left = `${hsv.hue / 360 * 100}%`;
+      $("#hsvStrip").setAttribute("aria-valuenow", Math.round(hsv.hue));
+    }
+    function setHsvHue(hue) {
+      hsv.hue = Math.min(359, Math.max(0, hue));
+      // con saturación ~0 (blanco/gris) o brillo ~0 (negro) el tono no se nota: al elegir un color de la barra
+      // se restauran valores que lo dejen ver
+      if (hsv.sat < 40) hsv.sat = 200;
+      if (hsv.val < 60) hsv.val = 220;
+      updateHsvControls();
+      scheduleHsv();
+    }
+    function renderHsvGarments() {
+      const list = $("#hsvGarments");
+      list.replaceChildren();
+      state.segmentation.items.forEach((item, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "garment-choice";
+        button.classList.toggle("selected", hsv.indices.has(index));
+        button.setAttribute("aria-pressed", String(hsv.indices.has(index)));
+        button.textContent = garmentLabel(item);
+        button.addEventListener("click", () => {
+          if (hsv.indices.has(index)) hsv.indices.delete(index); else hsv.indices.add(index);
+          renderHsvGarments();
+          scheduleHsv();
+        });
+        list.append(button);
+      });
+      $("#hsvApply").disabled = hsv.applying || !hsv.indices.size;
+    }
+    async function openHsvPicker(initial = []) {
+      clearError();
+      if (!state.source) { showError("Elige una imagen antes de recolorear con HSV."); return; }
+      if (state.detectingGarments) return;
+      if (!state.segmentation) {
+        // sin las máscaras de las prendas no se puede recolorear: se detectan primero
+        await detectGarments();
+        if (!state.segmentation) return;   // la detección falló (detectGarments ya muestra el motivo)
+      }
+      const {items, selected} = state.segmentation;
+      // prendas marcadas al abrir: las del panel desde el que se pulsó; si no, las seleccionadas; si no, todas
+      const start = initial.length ? initial : selected.size ? [...selected] : items.map((_, index) => index);
+      const maskWidth = items[0].maskImage.naturalWidth, maskHeight = items[0].maskImage.naturalHeight;
+      const scale = Math.min(1, HSV_PREVIEW_MAX / Math.max(maskWidth, maskHeight));
+      hsv.width = Math.max(1, Math.round(maskWidth * scale));
+      hsv.height = Math.max(1, Math.round(maskHeight * scale));
+      const canvas = $("#hsvCanvas");
+      canvas.width = hsv.width;
+      canvas.height = hsv.height;
+      const context = canvas.getContext("2d", {willReadFrequently: true});
+      context.drawImage($("#sourceImage"), 0, 0, hsv.width, hsv.height);
+      hsv.base = context.getImageData(0, 0, hsv.width, hsv.height);
+      hsv.layers.clear();
+      hsv.indices = new Set(start);
+      hsv.applying = false;
+      $("#hsvError").classList.remove("visible");
+      $("#hsvApply").textContent = "Aplicar";
+      renderHsvGarments();
+      updateHsvControls();
+      renderHsv();
+      $("#hsvDialog").showModal();
+    }
+    async function applyHsv() {
+      if (hsv.applying || !hsv.indices.size) return;
+      hsv.applying = true;
+      $("#hsvApply").disabled = true;
+      $("#hsvCancel").disabled = true;
+      $("#hsvApply").textContent = "Aplicando…";
+      $("#hsvError").classList.remove("visible");
+      try {
+        const done = await request("/api/recolor-hsv", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            source_id: state.source,
+            segmentation_id: state.segmentation.id,
+            garment_indices: [...hsv.indices].sort((a, b) => a - b),
+            hue: Math.round(hsv.hue), saturation: hsv.sat, value: hsv.val,
+          }),
+        });
+        const job = await request(`/api/jobs/${done.id}`);
+        $("#hsvDialog").close();
+        loadHistory();
+        displayResult(job, done.id);
+      } catch (error) {
+        $("#hsvError").textContent = error.message;
+        $("#hsvError").classList.add("visible");
+      } finally {
+        hsv.applying = false;
+        $("#hsvCancel").disabled = false;
+        $("#hsvApply").textContent = "Aplicar";
+        renderHsvGarments();
+      }
+    }
     async function uploadImage(file) {
       clearError();
       if (state.detectingGarments) return;
@@ -1623,6 +1869,23 @@ HTML = r"""<!doctype html>
     $("#uploadButton").addEventListener("click", () => $("#fileInput").click());
     $("#fileInput").addEventListener("change", (event) => uploadImage(event.target.files[0]));
     $("#detectGarments").addEventListener("click", detectGarments);
+    $("#openHsv").addEventListener("click", () => openHsvPicker());
+    $("#hsvCancel").addEventListener("click", () => $("#hsvDialog").close());
+    $("#hsvApply").addEventListener("click", applyHsv);
+    $("#hsvSat").addEventListener("input", (event) => { hsv.sat = Number(event.target.value); updateHsvControls(); scheduleHsv(); });
+    $("#hsvVal").addEventListener("input", (event) => { hsv.val = Number(event.target.value); updateHsvControls(); scheduleHsv(); });
+    const hsvStrip = $("#hsvStrip");
+    const hsvHueFromPointer = (event) => {
+      const box = hsvStrip.getBoundingClientRect();
+      setHsvHue((event.clientX - box.left) / box.width * 360);
+    };
+    hsvStrip.addEventListener("pointerdown", (event) => { hsvStrip.setPointerCapture(event.pointerId); hsvHueFromPointer(event); });
+    hsvStrip.addEventListener("pointermove", (event) => { if (hsvStrip.hasPointerCapture(event.pointerId)) hsvHueFromPointer(event); });
+    hsvStrip.addEventListener("keydown", (event) => {
+      const step = event.shiftKey ? 10 : 1;
+      if (event.key === "ArrowRight") { setHsvHue(hsv.hue + step); event.preventDefault(); }
+      if (event.key === "ArrowLeft") { setHsvHue(hsv.hue - step); event.preventDefault(); }
+    });
     $("#settingsButton").addEventListener("click", () => {
       const menu = $("#settingsMenu");
       menu.hidden = !menu.hidden;
@@ -2161,6 +2424,86 @@ def original_size(source, dataset):
         return img.size
 
 
+def run_hsv_recolor(app_state, job_id, source, segmentation, indices, hue, saturation, value):
+    """
+    Aplica recolor_hsv a las prendas elegidas a la resolución de la imagen original, la guarda en el
+    historial (con sus archivos auxiliares, como el resto de resultados) y registra un trabajo ya
+    completado para que el front la muestre igual que cualquier otro. No usa el modelo ni la GPU,
+    así que no pasa por la cola.
+    """
+    import cv2
+    import numpy as np
+    from PIL import Image
+    from utils.recolor_hsv import recolor_hsv
+
+    with Image.open(source) as img:
+        original = np.array(img.convert("RGB"))
+    height, width = original.shape[:2]
+
+    result = original
+    combined = np.zeros((height, width), np.float32)  # unión de las máscaras suaves (vista "Máscara")
+    garment_masks = []
+    for index in indices:
+        garment = segmentation["garments"][index]
+        mask = np.asarray(garment["mask"]).astype(np.uint8)
+        soft = garment.get("alpha")
+        if soft is not None:
+            alpha = np.asarray(soft, dtype=np.float32)
+        else:
+            alpha = cv2.GaussianBlur(mask.astype(np.float32), (0, 0), 1.2)  # borde suave, sin escalón
+        if mask.shape != (height, width):
+            # la detección se hizo a otra resolución: escalamos las máscaras a la de la imagen original
+            mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_NEAREST)
+            alpha = cv2.resize(alpha, (width, height), interpolation=cv2.INTER_LINEAR)
+        result = recolor_hsv(result, mask.astype(bool), hue, saturation, value, alpha=alpha)
+        combined = np.maximum(combined, np.clip(alpha, 0, 1))
+        garment_masks.append(mask.astype(bool))
+
+    names = ", ".join(segmentation["garments"][i]["name"].split(",")[0].strip() for i in indices)
+    label = f"HSV tono {hue} sat {saturation} brillo {value}"
+
+    output_dir = Path(C.PIX2PIX_OUTPUT_DIR)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    safe_label = unique_history_label(re.sub(r"\W+", "_", label).strip("_")[:45] or "diseno")
+    final_path = output_dir / f"{C.PIX2PIX_OUTPUT_PREFIX}{safe_label}_{job_id[:8]}.png"
+    final_image = Image.fromarray(result)
+    mask_image = Image.fromarray((combined * 255).astype(np.uint8))
+    original_image = Image.fromarray(original)
+    save_history_assets(final_path, {
+        "mask": mask_image,
+        "image": original_image,
+        "garments": [
+            {"name": segmentation["garments"][i]["name"], "mask": garment_mask}
+            for i, garment_mask in zip(indices, garment_masks)
+        ],
+    })
+    final_image.save(final_path)
+
+    job_dir = app_state.temp_dir / job_id
+    job_dir.mkdir()
+    paths = {
+        "original": job_dir / "original.png",
+        "mask": job_dir / "mask.png",
+        "edited": job_dir / "edited.png",   # aquí no hay salida del modelo: es el mismo resultado final
+        "final": job_dir / "final.png",
+    }
+    original_image.save(paths["original"])
+    mask_image.save(paths["mask"])
+    final_image.save(paths["edited"])
+    final_image.save(paths["final"])
+    with job_lock:
+        jobs[job_id] = {
+            "status": "completed",
+            "message": "Diseño listo",
+            "error": None,
+            "garment": names,
+            "label": history_label(final_path.stem),
+            "images": paths,
+            "saved_path": str(final_path),
+            "history_filename": final_path.name,
+        }
+
+
 def run_generation(app_state, job_id, source, color, texture, extra, texture_path,
                   segmentation, garment_indices, garment_edits=None):
     with job_lock:
@@ -2342,6 +2685,31 @@ async def generate(request: Request, options: GenerationRequest):
             garment_edits,
         )
     return {"id": job_id, "status": "queued", "queue_position": queue_position}
+
+
+@app.post("/api/recolor-hsv")
+async def recolor_with_hsv(request: Request, options: HsvRecolorRequest):
+    app_state = request.app.state
+    source = source_path(app_state, options.source_id)
+    segmentation = app_state.segmentations.get(options.segmentation_id)
+    if segmentation is None or segmentation["source_id"] != options.source_id:
+        raise HTTPException(status_code=400, detail="Vuelve a detectar las prendas de la imagen seleccionada.")
+    indices = options.garment_indices
+    if any(index < 0 or index >= len(segmentation["garments"]) for index in indices):
+        raise HTTPException(status_code=400, detail="Una de las prendas seleccionadas ya no está disponible.")
+    if len(indices) != len(set(indices)):
+        raise HTTPException(status_code=400, detail="La lista de prendas contiene duplicados.")
+
+    job_id = uuid.uuid4().hex
+    try:
+        await run_in_threadpool(
+            run_hsv_recolor, app_state, job_id, source, segmentation, indices,
+            options.hue, options.saturation, options.value,
+        )
+    except Exception as exc:
+        logger.exception("Falló el recoloreado HSV %s", job_id)
+        raise HTTPException(status_code=500, detail=f"No se pudo recolorear con HSV: {exc}")
+    return {"id": job_id, "status": "completed"}
 
 
 @app.get("/api/jobs/{job_id}")
