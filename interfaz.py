@@ -1436,6 +1436,9 @@ HTML = r"""<!doctype html>
         return;
       }
       for (const entry of hsv.items) {
+        if (!entry.userModified) {
+          continue;
+        }
         if (entry.hue === null || entry.hue === undefined || entry.sat === null || entry.sat === undefined || entry.val === null || entry.val === undefined) {
           continue;
         }
@@ -1481,11 +1484,24 @@ HTML = r"""<!doctype html>
       hsv.hue = Math.min(359, Math.max(0, hue));
       if (hsv.sat < 40) hsv.sat = 200;
       if (hsv.val < 60) hsv.val = 220;
-      const entry = getHsvEntry(hsv.activeIndex);
-      if (entry) {
-        entry.hue = hsv.hue;
-        entry.sat = hsv.sat;
-        entry.val = hsv.val;
+      if (hsv.applySet && hsv.applySet.size > 0) {
+        for (const idx of hsv.applySet) {
+          const entry = getHsvEntry(idx);
+          if (entry) {
+            entry.hue = hsv.hue;
+            entry.sat = hsv.sat;
+            entry.val = hsv.val;
+            entry.userModified = true;
+          }
+        }
+      } else {
+        const entry = getHsvEntry(hsv.activeIndex);
+        if (entry) {
+          entry.hue = hsv.hue;
+          entry.sat = hsv.sat;
+          entry.val = hsv.val;
+          entry.userModified = true;
+        }
       }
       updateHsvControls();
       scheduleHsv();
@@ -1511,7 +1527,7 @@ HTML = r"""<!doctype html>
           if (!hsv.applySet) hsv.applySet = new Set();
           const entryCur = getHsvEntry(index);
           if (!entryCur) {
-            hsv.items.push({index, hue: null, sat: null, val: null});
+            hsv.items.push({index, hue: null, sat: null, val: null, userModified: false});
             hsv.applySet.add(index);
             hsv.activeIndex = index;
             hsv.hue = 120; hsv.sat = 200; hsv.val = 220;
@@ -1547,6 +1563,7 @@ HTML = r"""<!doctype html>
           }
           renderHsvGarments();
           if (typeof updateHsvColorPalette === "function") updateHsvColorPalette();
+          renderHsv();
           scheduleHsv();
         });
         list.append(button);
@@ -1576,7 +1593,7 @@ HTML = r"""<!doctype html>
       hsv.base = context.getImageData(0, 0, hsv.width, hsv.height);
       hsv.layers.clear();
       // No preasignar color: empezar con valores por defecto pero sin mostrar cambio hasta que se ajuste
-      hsv.items = start.map((idx) => ({index: idx, hue: null, sat: null, val: null}));
+      hsv.items = start.map((idx) => ({index: idx, hue: null, sat: null, val: null, userModified: false}));
       if (!hsv.applySet) hsv.applySet = new Set();
       hsv.applySet = new Set(start);
       hsv.activeIndex = hsv.items.length ? hsv.items[0].index : null;
@@ -1596,18 +1613,31 @@ HTML = r"""<!doctype html>
       renderHsv();
       $("#hsvDialog").showModal();
     }
-    async function applyHsv() {
+    async     function applyHsv() {
       if (hsv.applying) return;
       if (!hsv.items || hsv.items.length === 0) return;
       if (!hsv.applySet || hsv.applySet.size === 0) {
         if ($("#hsvError")) { $("#hsvError").textContent = "Selecciona al menos una máscara para aplicar."; $("#hsvError").classList.add("visible"); }
         return;
       }
-      const current = getHsvEntry(hsv.activeIndex);
-      if (current) {
-        current.hue = hsv.hue;
-        current.sat = hsv.sat;
-        current.val = hsv.val;
+      if (hsv.applySet && hsv.applySet.size > 0) {
+        for (const idx of hsv.applySet) {
+          const entry = getHsvEntry(idx);
+          if (entry) {
+            entry.hue = hsv.hue;
+            entry.sat = hsv.sat;
+            entry.val = hsv.val;
+            entry.userModified = true;
+          }
+        }
+      } else {
+        const current = getHsvEntry(hsv.activeIndex);
+        if (current) {
+          current.hue = hsv.hue;
+          current.sat = hsv.sat;
+          current.val = hsv.val;
+          current.userModified = true;
+        }
       }
       hsv.applying = true;
       $("#hsvApply").disabled = true;
@@ -1615,9 +1645,9 @@ HTML = r"""<!doctype html>
       $("#hsvApply").textContent = "Aplicando…";
       $("#hsvError").classList.remove("visible");
       try {
-        const toApply = hsv.items.filter((i) => hsv.applySet.has(i.index) && i.hue !== null && i.hue !== undefined && i.sat !== null && i.sat !== undefined && i.val !== null && i.val !== undefined);
+        const toApply = hsv.items.filter((i) => hsv.applySet.has(i.index) && i.hue !== null && i.hue !== undefined && i.sat !== null && i.sat !== undefined && i.val !== null && i.val !== undefined && i.userModified);
         if (toApply.length === 0) {
-          throw new Error("Elige un tono/saturación/brillo para al menos una máscara antes de aplicar.");
+          throw new Error("Mueve tono/saturación/brillo para cambiar alguna máscara antes de aplicar.");
         }
         const done = await request("/api/recolor-hsv", {
           method: "POST", headers: {"Content-Type": "application/json"},
@@ -1983,18 +2013,28 @@ HTML = r"""<!doctype html>
     $("#hsvApply").addEventListener("click", applyHsv);
     $("#hsvSat").addEventListener("input", (event) => {
       hsv.sat = Number(event.target.value);
-      const current = typeof getHsvEntry === "function" ? getHsvEntry(hsv.activeIndex) : null;
-      if (current) {
-        current.sat = hsv.sat;
+      if (hsv.applySet && hsv.applySet.size > 0) {
+        for (const idx of hsv.applySet) {
+          const current = typeof getHsvEntry === "function" ? getHsvEntry(idx) : null;
+          if (current) { current.sat = hsv.sat; current.userModified = true; }
+        }
+      } else {
+        const current = typeof getHsvEntry === "function" ? getHsvEntry(hsv.activeIndex) : null;
+        if (current) { current.sat = hsv.sat; current.userModified = true; }
       }
       updateHsvControls();
       scheduleHsv();
     });
     $("#hsvVal").addEventListener("input", (event) => {
       hsv.val = Number(event.target.value);
-      const current = typeof getHsvEntry === "function" ? getHsvEntry(hsv.activeIndex) : null;
-      if (current) {
-        current.val = hsv.val;
+      if (hsv.applySet && hsv.applySet.size > 0) {
+        for (const idx of hsv.applySet) {
+          const current = typeof getHsvEntry === "function" ? getHsvEntry(idx) : null;
+          if (current) { current.val = hsv.val; current.userModified = true; }
+        }
+      } else {
+        const current = typeof getHsvEntry === "function" ? getHsvEntry(hsv.activeIndex) : null;
+        if (current) { current.val = hsv.val; current.userModified = true; }
       }
       updateHsvControls();
       scheduleHsv();
@@ -2007,10 +2047,12 @@ HTML = r"""<!doctype html>
           entry.hue = null;
           entry.sat = null;
           entry.val = null;
+          entry.userModified = false;
           hsv.hue = 120; hsv.sat = 200; hsv.val = 220;
           updateHsvControls();
           if (typeof updateHsvColorPalette === "function") updateHsvColorPalette();
           renderHsvGarments();
+          renderHsv();
           scheduleHsv();
         }
       });
