@@ -598,7 +598,7 @@ HTML = r"""<!doctype html>
               <label class="field-label" for="material">Material o textura</label>
               <p class="hint">Elige o escribe un material. Atelier intentará reproducir su grano, costuras y patrón sobre la prenda, manteniendo el color elegido.</p>
               <div class="material-line">
-                <input class="input" id="material" value="leather" maxlength="80" autocomplete="off" placeholder="Ej. denim, silk, leather">
+                <input class="input" id="material" value="none" maxlength="80" autocomplete="off" placeholder="Ej. denim, silk, leather">
               </div>
               <div class="material-options" id="materialOptions" role="group" aria-label="Materiales sugeridos"></div>
             </div>
