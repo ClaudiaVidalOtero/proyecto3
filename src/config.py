@@ -45,8 +45,8 @@ SCORE_OTRAS = 0.3
 
 # ---- Recoloreado con InstructPix2Pix ----
 PIX2PIX_CHECKPOINT = str(Path(CHECKPOINT_DIR) / "best.pth")
-PIX2PIX_IMAGES_DIR = str(DATA_DIR / "provisional_test_no_humans")
-PIX2PIX_ANNOTATIONS_FILE = str(DATA_DIR / "instances_provisional_test_no_humans.json")
+PIX2PIX_IMAGES_DIR = str(DATA_DIR / "train_classified" / "not_human_test")
+PIX2PIX_ANNOTATIONS_FILE = str(DATA_DIR / "instances_test_no_humans.json")
 PIX2PIX_IMAGE_SIZE = 256
 PIX2PIX_OUTPUT_DIR = str(Path(OUTPUT_DIR) / "pix2pix")
 PIX2PIX_OUTPUT_PREFIX = "recoloreado_"
