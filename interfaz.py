@@ -279,6 +279,16 @@ HTML = r"""<!doctype html>
     .material-choice.selected { border-color: var(--accent); background: var(--surface-accent); color: var(--accent-dark); font-weight: 650; }
     .garment-style-editor { display: none; margin-bottom: 14px; }
     .garment-style-editor.visible { display: block; }
+    :root { --empty-hint-size: 17px; }  /* tamaño común de las dos frases de aviso de la tarjeta de estilo */
+    /* aviso "Selecciona una o más prendas...": grande y centrado en el hueco de la tarjeta cuando no hay ninguna seleccionada */
+    .garment-style-editor.visible.no-selection { display: flex; flex-direction: column; justify-content: center; min-height: 220px; }
+    #garmentStyleEditor.no-selection #garmentEditorHint { max-width: 340px; margin: 0 auto; color: var(--text-default);
+      font-size: var(--empty-hint-size); font-weight: 400; line-height: 1.4; text-align: center; }
+    .style-empty { display: none; }
+    .card.blank .style-empty { display: grid; place-items: center; min-height: 140px; padding: 16px; text-align: center;
+      color: var(--muted); font-size: var(--empty-hint-size); line-height: 1.4; }
+    .style-empty p { max-width: 340px; margin: 0; }
+    @media (min-width: 1021px) { .stack.right .card.blank .style-empty { flex: 1; } }
     .garment-tabs { display: flex; gap: 6px; margin: 0 0 12px; overflow-x: auto; padding: 2px 1px 5px; }
     .garment-tab { flex: 0 0 auto; max-width: 180px; padding: 7px 10px; border: 1px solid var(--line);
       border-radius: 9px; background: var(--surface-raised); color: var(--text-default); font-size: 10px; }
@@ -623,11 +633,14 @@ HTML = r"""<!doctype html>
           </section>
         </div>
         <div class="stack right">
-          <section class="card">
+          <section class="card blank" id="styleCard">
             <div class="card-head">
               <div><h2>Define el nuevo estilo</h2><p>Combina un color con el material que prefieras.</p></div>
             </div>
-            <div id="defaultStyle">
+            <div class="style-empty" id="styleEmpty">
+              <p>Elige una imagen y pulsa <b>Detectar prendas</b> para configurar el color y la textura de cada una.</p>
+            </div>
+            <div id="defaultStyle" hidden>
             <div class="field">
               <label class="field-label" for="color">Color</label>
               <p class="hint">Elige un color o selecciona «Ninguno» para conservar el original.</p>
@@ -655,7 +668,7 @@ HTML = r"""<!doctype html>
               <div id="garmentEditorPanes"></div>
               <p class="hint" id="garmentEditorHint"></p>
             </div>
-            <div class="generate-actions">
+            <div class="generate-actions" hidden>
               <button class="generate" id="generateButton" type="button" aria-live="polite">✦ &nbsp; Crear mi diseño</button>
               <div class="generate-split" id="generateSplit" hidden>
                 <button class="generate generate-secondary" id="queueAnotherButton" type="button">＋ &nbsp; Añadir otra a la cola</button>
@@ -830,13 +843,22 @@ HTML = r"""<!doctype html>
       $("#fileInput").disabled = locked;
       document.querySelectorAll(".thumb").forEach((button) => { button.disabled = locked; });
     }
+    function updateStylePanel() {
+      // sin prendas detectadas la tarjeta queda en blanco (solo con un aviso) y sin el botón de crear;
+      // si hay una generación en marcha el botón y la cola se siguen mostrando para poder cancelarla
+      const detected = Boolean(state.segmentation);
+      const busy = state.submittingJob || state.pendingJobs.length > 0;
+      $("#styleCard").classList.toggle("blank", !detected);
+      document.querySelector(".generate-actions").hidden = !detected && !busy;
+    }
     function clearSegmentation(message = "") {
       state.segmentation = null;
       state.garmentEdits.clear();
       state.activeGarmentTab = null;
       state.activePlacement = null;
-      $("#defaultStyle").hidden = false;
+      $("#defaultStyle").hidden = true;  // el panel manual de color/textura ya no se muestra: solo el de cada prenda detectada
       $("#garmentStyleEditor").classList.remove("visible");
+      updateStylePanel();
       const canvas = $("#segmentationOverlay");
       canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
       $("#sourcePreview").classList.remove("has-segmentation");
@@ -941,7 +963,7 @@ HTML = r"""<!doctype html>
       noColor.className = "swatch swatch-none";
       noColor.title = "Ninguno";
       noColor.dataset.value = "none";
-      noColor.textContent = "Ninguno";
+      noColor.textContent = "none";
       noColor.setAttribute("aria-label", "Ninguno: conservar el color original");
       noColor.classList.toggle("selected", edit.color.trim().toLowerCase() === "none");
       noColor.addEventListener("click", () => {
@@ -1057,6 +1079,7 @@ HTML = r"""<!doctype html>
       $("#garmentEditorHint").textContent = selectedIndices.length
         ? ""
         : "Selecciona una o más prendas para mostrar aquí sus opciones de color y textura.";
+      $("#garmentStyleEditor").classList.toggle("no-selection", !selectedIndices.length);
       segmentation.items.forEach((item, index) => {
         if (!segmentation.selected.has(index)) return;
         const tab = document.createElement("button");
@@ -1100,6 +1123,7 @@ HTML = r"""<!doctype html>
       });
       $("#defaultStyle").hidden = true;
       $("#garmentStyleEditor").classList.add("visible");
+      updateStylePanel();
       setActiveGarmentTab(0);
     }
     function toggleGarment(index) {
@@ -1856,6 +1880,7 @@ HTML = r"""<!doctype html>
           : "Aplicando tu cambio…";
         status.hidden = false;
       }
+      updateStylePanel();
     }
     function waitForResultsClose() {
       const dialog = $("#resultsCard");
