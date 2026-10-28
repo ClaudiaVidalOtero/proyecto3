@@ -1429,12 +1429,17 @@ HTML = r"""<!doctype html>
     }
     function renderHsv() {
       hsv.frame = 0;
-      const out = new ImageData(new Uint8ClampedArray(hsv.base.data), hsv.width, hsv.height);
-      const base = hsv.base.data;
-      if (!hsv.items || !hsv.items.length) {
-        $("#hsvCanvas").getContext("2d").putImageData(out, 0, 0);
+      if (!hsv.base) {
         return;
       }
+      const ctx = $("#hsvCanvas").getContext("2d");
+      const hasModified = hsv.items && hsv.items.some((e) => e && e.userModified && e.hue !== null && e.hue !== undefined && e.sat !== null && e.sat !== undefined && e.val !== null && e.val !== undefined);
+      if (!hasModified) {
+        ctx.putImageData(hsv.base, 0, 0);
+        return;
+      }
+      const out = new ImageData(new Uint8ClampedArray(hsv.base.data), hsv.width, hsv.height);
+      const base = hsv.base.data;
       for (const entry of hsv.items) {
         if (!entry.userModified) {
           continue;
@@ -1460,7 +1465,7 @@ HTML = r"""<!doctype html>
           out.data[o + 2] = lut[k + 2] * a + base[o + 2] * (1 - a);
         }
       }
-      $("#hsvCanvas").getContext("2d").putImageData(out, 0, 0);
+      ctx.putImageData(out, 0, 0);
     }
     function scheduleHsv() {
       if (!hsv.frame) hsv.frame = requestAnimationFrame(renderHsv);
@@ -1570,6 +1575,7 @@ HTML = r"""<!doctype html>
       });
       if ($("#hsvApply"))       $("#hsvApply").disabled = hsv.applying || !hsv.applySet || hsv.applySet.size === 0;
       if (typeof updateHsvColorPalette === "function") updateHsvColorPalette();
+      renderHsv();
     }
     async function openHsvPicker(initial = []) {
       clearError();
@@ -1593,24 +1599,22 @@ HTML = r"""<!doctype html>
       hsv.base = context.getImageData(0, 0, hsv.width, hsv.height);
       hsv.layers.clear();
       // No preasignar color: empezar con valores por defecto pero sin mostrar cambio hasta que se ajuste
+      if (hsv.frame) { try { cancelAnimationFrame(hsv.frame); } catch(e) {} hsv.frame = 0; }
       hsv.items = start.map((idx) => ({index: idx, hue: null, sat: null, val: null, userModified: false}));
       if (!hsv.applySet) hsv.applySet = new Set();
       hsv.applySet = new Set(start);
       hsv.activeIndex = hsv.items.length ? hsv.items[0].index : null;
-      if (hsv.activeIndex !== null) {
-        const first = getHsvEntry(hsv.activeIndex);
-        if (first && first.hue !== null && first.hue !== undefined) { hsv.hue = first.hue; hsv.sat = first.sat; hsv.val = first.val; }
-        else { hsv.hue = 120; hsv.sat = 200; hsv.val = 220; }
-      } else {
-        hsv.hue = 120; hsv.sat = 200; hsv.val = 220;
-      }
+      hsv.hue = 120;
+      hsv.sat = 200;
+      hsv.val = 220;
       hsv.applying = false;
       $("#hsvError").classList.remove("visible");
       $("#hsvApply").textContent = "Aplicar";
       renderHsvGarments();
       updateHsvControls();
       if (typeof updateHsvColorPalette === "function") updateHsvColorPalette();
-      renderHsv();
+      const ctx = $("#hsvCanvas").getContext("2d");
+      ctx.putImageData(hsv.base, 0, 0);
       $("#hsvDialog").showModal();
     }
     async     function applyHsv() {
@@ -2042,19 +2046,37 @@ HTML = r"""<!doctype html>
     const hsvResetBtn = $("#hsvResetActive");
     if (hsvResetBtn) {
       hsvResetBtn.addEventListener("click", () => {
-        const entry = getHsvEntry(hsv.activeIndex);
-        if (entry) {
+        const targets = new Set();
+        if (hsv.applySet instanceof Set && hsv.applySet.size > 0) {
+          for (const idx of hsv.applySet) {
+            targets.add(Number(idx));
+          }
+        } else if (typeof hsv.activeIndex === "number" && hsv.activeIndex >= 0) {
+          targets.add(Number(hsv.activeIndex));
+        }
+        if (targets.size === 0) return;
+        for (const idx of targets) {
+          const entry = getHsvEntry(idx);
+          if (!entry) continue;
           entry.hue = null;
           entry.sat = null;
           entry.val = null;
           entry.userModified = false;
-          hsv.hue = 120; hsv.sat = 200; hsv.val = 220;
-          updateHsvControls();
-          if (typeof updateHsvColorPalette === "function") updateHsvColorPalette();
-          renderHsvGarments();
-          renderHsv();
-          scheduleHsv();
+          if (entry._base) delete entry._base;
+          if (entry._applied) delete entry._applied;
         }
+        hsv.hue = 120;
+        hsv.sat = 200;
+        hsv.val = 220;
+        const hs = $("#hsvSat");
+        const hv = $("#hsvVal");
+        if (hs) hs.value = 200;
+        if (hv) hv.value = 220;
+        updateHsvControls();
+        if (typeof updateHsvColorPalette === "function") updateHsvColorPalette();
+        renderHsvGarments();
+        renderHsv();
+        if (typeof scheduleHsv === "function") scheduleHsv();
       });
     }
     const hsvStrip = $("#hsvStrip");
