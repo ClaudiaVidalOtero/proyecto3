@@ -57,18 +57,11 @@ async def lifespan(app):
 app = FastAPI(title="Atelier — recolore prendas", lifespan=lifespan)
 
 
-class PlacementRequest(BaseModel):
-    type: str = Field(pattern="^(pocket|button)$")
-    x: int = Field(ge=0, le=100)
-    y: int = Field(ge=0, le=100)
-
-
 class GarmentEditRequest(BaseModel):
     index: int = Field(ge=0)
     color: str = Field(default="", max_length=80)
     texture: str = Field(default=C.PIX2PIX_NO_TEXTURE, max_length=80)
     extra: str = Field(default="", max_length=2000)
-    placements: list[PlacementRequest] = Field(default_factory=list, max_length=12)
 
 
 class GenerationRequest(BaseModel):
@@ -768,7 +761,7 @@ HTML = r"""<!doctype html>
   </div>
   <script>
     const $ = (selector) => document.querySelector(selector);
-    const state = { source: null, activeJob: null, pendingJobs: [], pollingJobs: false, submittingJob: false, cancelling: false, detectingGarments: false, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null, activePlacement: null, devMode: false, historyItem: null, historyFilename: null, lastResultGarment: "", allowReload: false };
+    const state = { source: null, activeJob: null, pendingJobs: [], pollingJobs: false, submittingJob: false, cancelling: false, detectingGarments: false, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null, devMode: false, historyItem: null, historyFilename: null, lastResultGarment: "", allowReload: false };
     // modo desarrollador: se guarda en el navegador para que se recuerde al recargar la página
     const DEV_MODE_KEY = "atelier-dev-mode";
     const THEME_KEY = "atelier-theme";
@@ -855,7 +848,6 @@ HTML = r"""<!doctype html>
       state.segmentation = null;
       state.garmentEdits.clear();
       state.activeGarmentTab = null;
-      state.activePlacement = null;
       $("#defaultStyle").hidden = true;  // el panel manual de color/textura ya no se muestra: solo el de cada prenda detectada
       $("#garmentStyleEditor").classList.remove("visible");
       updateStylePanel();
@@ -1033,38 +1025,6 @@ HTML = r"""<!doctype html>
       extraField.append(extraLabel, extra);
       pane.append(extraField);
 
-      const placementField = document.createElement("div");
-      placementField.className = "field";
-      const placementLabel = document.createElement("label");
-      placementLabel.className = "field-label";
-      placementLabel.textContent = "Añadir bolsillos o botones";
-      const placementTools = document.createElement("div");
-      placementTools.className = "placement-tools";
-      for (const [type, label] of [["pocket", "＋ Bolsillo"], ["button", "＋ Botón"]]) {
-        const choice = document.createElement("button");
-        choice.type = "button";
-        choice.className = "button small placement-choice";
-        choice.dataset.type = type;
-        choice.setAttribute("aria-pressed", "false");
-        choice.textContent = label;
-        choice.addEventListener("click", () => activatePlacement(index, type));
-        placementTools.append(choice);
-      }
-      const cancelPlacement = document.createElement("button");
-      cancelPlacement.type = "button";
-      cancelPlacement.className = "button small";
-      cancelPlacement.textContent = "Cancelar";
-      cancelPlacement.hidden = true;
-      cancelPlacement.addEventListener("click", cancelActivePlacement);
-      placementTools.append(cancelPlacement);
-      const placementStatus = document.createElement("p");
-      placementStatus.className = "placement-status";
-      placementStatus.textContent = "Elige un elemento y pulsa en su ubicación sobre la prenda detectada. Máximo: 12 puntos por prenda.";
-      const placementList = document.createElement("ul");
-      placementList.className = "placement-list";
-      placementList.setAttribute("aria-label", `Elementos añadidos a ${item.name}`);
-      placementField.append(placementLabel, placementTools, placementStatus, placementList);
-      pane.append(placementField);
       return pane;
     }
     function updateGarmentTabs() {
@@ -1132,7 +1092,6 @@ HTML = r"""<!doctype html>
       else state.segmentation.selected.add(index);
       if (!state.segmentation.selected.has(index) && state.activePlacement?.index === index) {
         state.activePlacement = null;
-        updatePlacementControls();
       }
       drawSegmentationOverlay();
       updateGarmentOptions();
@@ -1140,69 +1099,7 @@ HTML = r"""<!doctype html>
         ? `${state.segmentation.selected.size} prenda(s) incluida(s). Configura cada una en su pestaña.`
         : "Pasa el cursor sobre una prenda de la imagen o elige una abajo.";
     }
-    function updatePlacementControls() {
-      const active = state.activePlacement;
-      $("#sourcePreview").classList.toggle("placing", Boolean(active));
-      document.querySelectorAll(".garment-editor-pane").forEach((pane) => {
-        const index = Number(pane.id.replace("garment-pane-", ""));
-        pane.querySelectorAll(".placement-choice").forEach((button) => {
-          button.setAttribute("aria-pressed", String(active?.index === index && active.type === button.dataset.type));
-        });
-        const cancel = pane.querySelector(".placement-tools button:last-child");
-        if (cancel) cancel.hidden = active?.index !== index;
-        const status = pane.querySelector(".placement-status");
-        if (!status) return;
-        status.textContent = active?.index === index
-          ? `Pulsa sobre ${state.segmentation.items[index].name} para colocar ${active.type === "pocket" ? "el bolsillo" : "el botón"}.`
-          : "Elige un elemento y pulsa en su ubicación sobre la prenda detectada. Máximo: 12 puntos por prenda.";
-      });
-    }
-    function activatePlacement(index, type) {
-      if (!state.segmentation) return;
-      state.segmentation.selected.add(index);
-      state.activeGarmentTab = index;
-      state.activePlacement = {index, type};
-      updateGarmentOptions();
-      updatePlacementControls();
-      drawSegmentationOverlay();
-    }
-    function cancelActivePlacement() {
-      state.activePlacement = null;
-      updatePlacementControls();
-    }
-    function renderPlacementPoints(index) {
-      const edit = state.garmentEdits.get(index);
-      const list = $(`#garment-pane-${index} .placement-list`);
-      if (!edit || !list) return;
-      list.replaceChildren();
-      edit.points.forEach((point, pointIndex) => {
-        const row = document.createElement("li");
-        row.className = "placement-item";
-        const description = document.createElement("span");
-        description.textContent = `${point.type === "pocket" ? "Bolsillo" : "Botón"} · ${point.x}% desde la izquierda, ${point.y}% desde arriba`;
-        const remove = document.createElement("button");
-        remove.type = "button";
-        remove.className = "placement-remove";
-        remove.setAttribute("aria-label", `Quitar ${point.type === "pocket" ? "bolsillo" : "botón"} ${pointIndex + 1}`);
-        remove.textContent = "×";
-        remove.addEventListener("click", () => {
-          edit.points.splice(pointIndex, 1);
-          renderPlacementPoints(index);
-          drawSegmentationOverlay();
-        });
-        row.append(description, remove);
-        list.append(row);
-      });
-    }
-    function canvasPointAt(clientX, clientY) {
-      const canvas = $("#segmentationOverlay");
-      const rect = canvas.getBoundingClientRect();
-      const scale = Math.min(rect.width / canvas.width, rect.height / canvas.height);
-      const x = Math.floor((clientX - rect.left - (rect.width - canvas.width * scale) / 2) / scale);
-      const y = Math.floor((clientY - rect.top - (rect.height - canvas.height * scale) / 2) / scale);
-      if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return null;
-      return {x, y};
-    }
+
     function maskBounds(maskPixels, width, height) {
       let left = width, top = height, right = -1, bottom = -1;
       for (let y = 0; y < height; y += 1) {
@@ -2886,7 +2783,6 @@ async def generate(request: Request, options: GenerationRequest):
                     "texture": edit_texture,
                     "extra": edit_extra,
                     "texture_path": None,
-                    "placements": [placement.model_dump() for placement in edit.placements],
                 }
     elif options.garment_indices is not None:
         raise HTTPException(status_code=400, detail="Primero detecta las prendas de la imagen.")
