@@ -393,6 +393,7 @@ HTML = r"""<!doctype html>
     .result-download { border-color: var(--accent); background: var(--accent); color: white; }
     .result-download:hover { border-color: var(--accent-dark); background: var(--accent-dark); color: white; }
     .result-footer { display: flex; justify-content: flex-end; padding: 0 22px 18px; }
+    .result-footer[hidden], .result-delete[hidden] { display: none; }  /* sin esto display:flex/inline-flex anula el atributo hidden */
     .result-delete { border-color: #e6b6a8; background: var(--surface-accent); color: var(--accent-dark); }
     .result-delete:hover { border-color: #d99b85; background: var(--surface-hover); }
     .result-showcase { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(170px, .7fr); gap: 14px;
@@ -683,7 +684,6 @@ HTML = r"""<!doctype html>
               <div class="results-title"><div><h2 id="resultHeading">Tu resultado</h2><div class="result-meta" id="resultMeta"></div></div></div>
               <div class="result-actions">
                 <input class="result-filename" id="resultFilename" aria-label="Nombre del archivo PNG" maxlength="100" value="atelier" title="Nombre del archivo PNG">
-                <button class="button small" id="saveHistoryName" type="button" hidden>Guardar nombre</button>
                 <a class="button small result-download" id="downloadButton" download>↓ Descargar</a>
                 <button class="button small" id="closeResults" type="button">Cerrar</button>
               </div>
@@ -701,7 +701,7 @@ HTML = r"""<!doctype html>
               <div class="history-segmentation-images" id="historySegmentationImages"></div>
               <p class="history-segmentation-empty" id="historySegmentationEmpty" hidden></p>
             </section>
-            <div class="result-footer">
+            <div class="result-footer" id="resultFooter" hidden>
               <button class="button small result-delete" id="deleteHistoryButton" type="button" hidden>Eliminar diseño</button>
             </div>
             <div class="result-error" id="resultError" role="alert"></div>
@@ -761,7 +761,7 @@ HTML = r"""<!doctype html>
   </div>
   <script>
     const $ = (selector) => document.querySelector(selector);
-    const state = { source: null, activeJob: null, pendingJobs: [], pollingJobs: false, submittingJob: false, cancelling: false, detectingGarments: false, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null, devMode: false, historyItem: null, historyFilename: null, lastResultGarment: "", allowReload: false };
+    const state = { source: null, activeJob: null, pendingJobs: [], pollingJobs: false, submittingJob: false, cancelling: false, detectingGarments: false, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null, devMode: false, historyItem: null, historyFilename: null, savedName: "", lastResultGarment: "", allowReload: false };
     // modo desarrollador: se guarda en el navegador para que se recuerde al recargar la página
     const DEV_MODE_KEY = "atelier-dev-mode";
     const THEME_KEY = "atelier-theme";
@@ -1242,8 +1242,10 @@ HTML = r"""<!doctype html>
       button.disabled = true;
       try {
         await request(`/api/history/${encodeURIComponent(item.filename)}`, {method:"DELETE"});
+        state.historyFilename = null;
         $("#resultsCard").close();
         $("#deleteHistoryButton").hidden = true;
+        $("#resultFooter").hidden = true;
         await loadHistory();
       } catch (error) {
         button.disabled = false;
@@ -1621,7 +1623,7 @@ HTML = r"""<!doctype html>
       state.lastResultGarment = job.garment || "";
       renderHistorySegmentation();
       $("#deleteHistoryButton").hidden = true;
-      $("#saveHistoryName").hidden = !state.historyFilename;
+      $("#resultFooter").hidden = true;
       $("#resultHeading").textContent = "Tu resultado";
       document.querySelector(".result-showcase").classList.remove("history-showcase");
       document.querySelectorAll(".result-alternates .result-image").forEach((figure) => figure.classList.remove("hidden"));
@@ -1631,6 +1633,7 @@ HTML = r"""<!doctype html>
       $("#resultFinal").src = `/api/jobs/${jobId}/image/final${cacheBust}`;
       $("#downloadButton").href = `/api/jobs/${jobId}/image/final?download=1`;
       $("#resultFilename").value = downloadName(job.label || "atelier");
+      state.savedName = $("#resultFilename").value;
       $("#downloadButton").download = `${$("#resultFilename").value}.png`;
       setDownloadFilename();
       $("#resultMeta").textContent = `${job.garment} · ${job.label || "diseño listo"}`;
@@ -1647,13 +1650,14 @@ HTML = r"""<!doctype html>
       state.historyFilename = item.filename;
       $("#deleteHistoryButton").hidden = false;
       $("#deleteHistoryButton").disabled = false;
-      $("#saveHistoryName").hidden = false;
+      $("#resultFooter").hidden = false;
       $("#resultHeading").textContent = "Diseño anterior";
       document.querySelector(".result-showcase").classList.add("history-showcase");
       document.querySelectorAll(".result-alternates .result-image").forEach((figure) => figure.classList.add("hidden"));
       renderHistorySegmentation();
       $("#resultFinal").src = `${imageUrl}${cacheBust}`;
       $("#resultFilename").value = item.label;
+      state.savedName = item.label;
       $("#downloadButton").href = `${imageUrl}?download=1`;
       $("#downloadButton").download = `${$("#resultFilename").value}.png`;
       setDownloadFilename();
@@ -1703,8 +1707,7 @@ HTML = r"""<!doctype html>
     }
     async function saveHistoryName() {
       if (!state.historyFilename) return;
-      const button = $("#saveHistoryName");
-      button.disabled = true;
+      const filename = state.historyFilename;
       $("#resultError").classList.remove("visible");
       try {
         const result = await request(
@@ -1723,6 +1726,7 @@ HTML = r"""<!doctype html>
           $("#downloadButton").href = `/api/history/${encodeURIComponent(result.filename)}?download=1`;
         }
         if (result.label) {
+          state.savedName = result.label;
           $("#resultFilename").value = result.label;
           setDownloadFilename();
           $("#resultMeta").textContent = state.historyItem
@@ -1731,10 +1735,13 @@ HTML = r"""<!doctype html>
         }
         await loadHistory();
       } catch (error) {
+        // El diálogo ya está cerrado: se restaura el nombre guardado y se reabre
+        // una vez para mostrar el error (al volver a cerrar ya no hay cambios).
+        $("#resultFilename").value = state.savedName;
+        setDownloadFilename();
         $("#resultError").textContent = `No se pudo guardar el nombre: ${error.message}`;
         $("#resultError").classList.add("visible");
-      } finally {
-        button.disabled = false;
+        if (state.historyFilename === filename && !$("#resultsCard").open) $("#resultsCard").showModal();
       }
     }
     $("#resultFilename").addEventListener("input", () => {
@@ -2081,12 +2088,16 @@ HTML = r"""<!doctype html>
     $("#queueAnotherButton").addEventListener("click", generate);
     $("#cancelGeneration").addEventListener("click", cancelGeneration);
     $("#closeResults").addEventListener("click", () => $("#resultsCard").close());
-    $("#saveHistoryName").addEventListener("click", saveHistoryName);
     $("#deleteHistoryButton").addEventListener("click", () => {
       if (state.historyItem) deleteHistoryItem(state.historyItem, $("#deleteHistoryButton"));
     });
     $("#resultsCard").addEventListener("click", (event) => {
       if (event.target === $("#resultsCard")) $("#resultsCard").close();
+    });
+    $("#resultsCard").addEventListener("close", () => {
+      if (!state.historyFilename) return;
+      if (downloadName($("#resultFilename").value) === state.savedName) return;
+      saveHistoryName();
     });
     ["resultOriginal", "resultMask", "resultEdited", "resultFinal"].forEach((id) => {
       $(`#${id}`).addEventListener("error", () => {
