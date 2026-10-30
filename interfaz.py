@@ -745,7 +745,7 @@ HTML = r"""<!doctype html>
   </div>
   <script>
     const $ = (selector) => document.querySelector(selector);
-    const state = { source: null, activeJob: null, pendingJobs: [], pollingJobs: false, submittingJob: false, cancelling: false, detectingGarments: false, segmentation: null, garmentEdits: new Map(), activeGarmentTab: null, devMode: false, historyItem: null, historyFilename: null, savedName: "", lastResultGarment: "", allowReload: false };
+    const state = { source: null, activeJob: null, pendingJobs: [], pollingJobs: false, submittingJob: false, cancelling: false, detectingGarments: false, segmentation: null, garmentEdits: new Map(), colorLayers: new Map(), activeGarmentTab: null, activePlacement: null, devMode: false, historyItem: null, historyFilename: null, savedName: "", lastResultGarment: "", allowReload: false };
     // modo desarrollador: se guarda en el navegador para que se recuerde al recargar la página
     const DEV_MODE_KEY = "atelier-dev-mode";
     const THEME_KEY = "atelier-theme";
