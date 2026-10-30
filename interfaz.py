@@ -215,7 +215,7 @@ HTML = r"""<!doctype html>
     .preview-empty .upload-symbol { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px;
       background: var(--surface-raised); color: var(--accent); font-size: 20px; box-shadow: 0 4px 15px #3331; }
     .preview.has-image .preview-empty { display: none; }
-    .source-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 14px 0 13px; }
+    .source-toolbar { display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin: 14px 0 13px; }
     .source-actions { display: flex; flex-wrap: wrap; gap: 7px; }
     .segmentation-status { display: none; margin: 3px 0 6px; color: var(--muted); font-size: 10px; line-height: 1.5; }
     .segmentation-status.visible { display: block; }
@@ -248,6 +248,10 @@ HTML = r"""<!doctype html>
     .picker-main .preview { flex: 1; height: auto; min-height: 300px; }
     .picker-main .source-actions { flex: 1 1 100%; gap: 8px; }
     .picker-main .source-actions .button { flex: 1 1 auto; min-height: 44px; padding: 10px 14px; font-size: 12px; }
+    .gallery-switch { display: grid; grid-template-columns: 46px minmax(0, 1fr) 46px; gap: 8px; }
+    .picker-main .gallery-switch .button { min-height: 44px; padding: 10px 14px; font-size: 12px; }
+    .picker-main .gallery-switch .gallery-nav { padding: 10px; font-size: 16px; line-height: 1; }
+    .picker-main .gallery-switch .gallery-nav:disabled { opacity: .4; cursor: default; }
     .gallery { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; align-content: start; }
     .thumb { position: relative; height: 56px; overflow: hidden; padding: 0; border: 2px solid transparent; border-radius: 8px;
       background: var(--surface-preview); }
@@ -659,7 +663,11 @@ HTML = r"""<!doctype html>
                             aria-valuetext="Detección en curso"></span>
                     </button>
                     <button class="button small" id="uploadButton" type="button">＋ Subir foto</button>
+                  </div>
+                  <div class="gallery-switch" role="group" aria-label="Navegar por las imágenes de ejemplo">
+                    <button class="button small gallery-nav" id="prevImages" type="button" aria-label="Imágenes anteriores" title="Imágenes anteriores" disabled>←</button>
                     <button class="button small" id="refreshImages" type="button">↻ Otras imágenes</button>
+                    <button class="button small gallery-nav" id="nextImages" type="button" aria-label="Imágenes siguientes" title="Imágenes siguientes" disabled>→</button>
                   </div>
                   <input class="hidden" id="fileInput" type="file" accept="image/jpeg,image/png,image/webp,image/bmp">
                 </div>
@@ -758,7 +766,7 @@ HTML = r"""<!doctype html>
   </div>
   <script>
     const $ = (selector) => document.querySelector(selector);
-    const state = { source: null, activeJob: null, pendingJobs: [], pollingJobs: false, submittingJob: false, cancelling: false, detectingGarments: false, segmentation: null, garmentEdits: new Map(), colorLayers: new Map(), activeGarmentTab: null, activePlacement: null, devMode: false, historyItem: null, historyFilename: null, savedName: "", lastResultGarment: "", allowReload: false };
+    const state = { source: null, activeJob: null, pendingJobs: [], pollingJobs: false, submittingJob: false, cancelling: false, detectingGarments: false, segmentation: null, garmentEdits: new Map(), colorLayers: new Map(), activeGarmentTab: null, activePlacement: null, galleryHistory: [], galleryIndex: -1, devMode: false, historyItem: null, historyFilename: null, savedName: "", lastResultGarment: "", allowReload: false };
     // modo desarrollador: se guarda en el navegador para que se recuerde al recargar la página
     const DEV_MODE_KEY = "atelier-dev-mode";
     const THEME_KEY = "atelier-theme";
@@ -832,6 +840,7 @@ HTML = r"""<!doctype html>
       $("#refreshImages").disabled = locked;
       $("#fileInput").disabled = locked;
       document.querySelectorAll(".thumb").forEach((button) => { button.disabled = locked; });
+      updateGalleryNav();
     }
     function updateStylePanel() {
       // sin prendas detectadas la tarjeta queda en blanco (solo con un aviso) y sin el botón de crear;
@@ -1360,25 +1369,47 @@ HTML = r"""<!doctype html>
         setImageSelectionLocked(false);
       }
     }
+    function renderGallery(items) {
+      const gallery = $("#imageGallery");
+      gallery.innerHTML = "";
+      items.forEach((item) => {
+        const button = document.createElement("button");
+        button.type = "button"; button.className = "thumb"; button.title = item.label; button.dataset.id = item.id;
+        const image = document.createElement("img"); image.loading = "lazy"; image.alt = item.label; image.src = item.preview_url;
+        button.append(image);
+        button.disabled = state.detectingGarments;
+        button.addEventListener("click", () => setSource(item.id, item.preview_url));
+        gallery.append(button);
+      });
+      if (!state.source && items.length) setSource(items[0].id, items[0].preview_url);
+      else document.querySelectorAll(".thumb").forEach((el) => el.classList.toggle("selected", el.dataset.id === state.source));
+      updateGalleryNav();
+    }
+    function updateGalleryNav() {
+      const prev = $("#prevImages");
+      const next = $("#nextImages");
+      if (!prev || !next) return;
+      prev.disabled = state.detectingGarments || state.galleryIndex <= 0;
+      next.disabled = state.detectingGarments || state.galleryIndex >= state.galleryHistory.length - 1;
+    }
+    function navigateGallery(step) {
+      if (state.detectingGarments) return;
+      const target = state.galleryIndex + step;
+      if (target < 0 || target >= state.galleryHistory.length) return;
+      state.galleryIndex = target;
+      renderGallery(state.galleryHistory[target]);
+    }
     async function loadImages() {
       if (state.detectingGarments) return;
       const gallery = $("#imageGallery");
       gallery.innerHTML = Array.from({length:10}, () => '<div class="thumb"></div>').join("");
       try {
         const {items} = await request("/api/images");
-        gallery.innerHTML = "";
-        items.forEach((item) => {
-          const button = document.createElement("button");
-          button.type = "button"; button.className = "thumb"; button.title = item.label; button.dataset.id = item.id;
-          const image = document.createElement("img"); image.loading = "lazy"; image.alt = item.label; image.src = item.preview_url;
-          button.append(image);
-          button.disabled = state.detectingGarments;
-          button.addEventListener("click", () => setSource(item.id, item.preview_url));
-          gallery.append(button);
-        });
-        if (!state.source && items.length) setSource(items[0].id, items[0].preview_url);
-        else document.querySelectorAll(".thumb").forEach((el) => el.classList.toggle("selected", el.dataset.id === state.source));
-      } catch (error) { gallery.innerHTML = '<div class="empty-text">No se pudo cargar el catálogo.</div>'; showError(error.message); }
+        state.galleryHistory = state.galleryHistory.slice(0, state.galleryIndex + 1);
+        state.galleryHistory.push(items);
+        state.galleryIndex = state.galleryHistory.length - 1;
+        renderGallery(items);
+      } catch (error) { gallery.innerHTML = '<div class="empty-text">No se pudo cargar el catálogo.</div>'; showError(error.message); updateGalleryNav(); }
     }
     async function loadHistory() {
       const list = $("#historyList");
@@ -2290,6 +2321,8 @@ HTML = r"""<!doctype html>
       }
     }
     $("#refreshImages").addEventListener("click", loadImages);
+    $("#prevImages").addEventListener("click", () => navigateGallery(-1));
+    $("#nextImages").addEventListener("click", () => navigateGallery(1));
     $("#refreshHistory").addEventListener("click", loadHistory);
     $("#uploadButton").addEventListener("click", () => $("#fileInput").click());
     $("#fileInput").addEventListener("change", (event) => uploadImage(event.target.files[0]));
