@@ -57,11 +57,19 @@ async def lifespan(app):
 app = FastAPI(title="Atelier — recolore prendas", lifespan=lifespan)
 
 
+class HsvValue(BaseModel):
+    hue: int = Field(ge=0, le=359)
+    saturation: int = Field(ge=0, le=255)
+    value: int = Field(ge=0, le=255)
+
+
 class GarmentEditRequest(BaseModel):
     index: int = Field(ge=0)
     color: str = Field(default="", max_length=80)
     texture: str = Field(default=C.PIX2PIX_NO_TEXTURE, max_length=80)
     extra: str = Field(default="", max_length=2000)
+    hsv: HsvValue | None = None
+    placements: list[dict] = Field(default_factory=list)
 
 
 class GenerationRequest(BaseModel):
@@ -370,6 +378,7 @@ HTML = r"""<!doctype html>
     .hsv-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
     .hsv-row .field-label { margin: 0; }
     .hsv-value { color: var(--accent-dark); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .hsv-hex-input { width: 132px; padding: 7px 9px; text-align: right; text-transform: lowercase; font-variant-numeric: tabular-nums; }
     .hsv-strip { position: relative; height: 36px; border: 1px solid var(--line); border-radius: 10px; cursor: ew-resize; touch-action: none;
       background: linear-gradient(to right, #f00 0%, #ff0 16.667%, #0f0 33.333%, #0ff 50%, #00f 66.667%, #f0f 83.333%, #f00 100%); }
     .hsv-strip:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
@@ -381,6 +390,20 @@ HTML = r"""<!doctype html>
     .hsv-apply:disabled { opacity: .55; cursor: not-allowed; }
     @media (max-width: 760px) { .hsv-body { grid-template-columns: minmax(0, 1fr); } }
     @media (min-width: 1021px) { .stack.right .hsv-open { min-height: 34px; font-size: 11px; } }
+    .color-hsv-view { display: flex; flex-direction: column; gap: 13px; margin-top: 10px; padding: 13px;
+      border: 1px solid var(--line); border-radius: 12px; background: var(--surface-raised); }
+    .color-hsv-view[hidden], .color-swatches-view[hidden] { display: none; }
+    .hsv-inline-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .hsv-inline-title { color: var(--accent-dark); font-size: 12px; font-weight: 700; }
+    .hsv-inline-color { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+    .hsv-chip { width: 28px; height: 28px; flex: none; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px var(--line-strong); }
+    .hsv-chip-text { color: var(--text-subtle); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .hsv-sep { color: var(--text-subtle); font-size: 11px; }
+    .hsv-numbers { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .hsv-number { display: inline-flex; align-items: center; gap: 3px; color: var(--text-subtle); font-size: 11px; font-weight: 700; }
+    .hsv-number-input { width: 62px; text-align: right; font-variant-numeric: tabular-nums; }
+    .hsv-inline-color span:last-child { color: var(--text-subtle); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .color-mode-hint { margin: 8px 0 0; }
     .results-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 15px;
       padding: 19px 23px; border-bottom: 1px solid var(--line); }
     .results-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -629,7 +652,7 @@ HTML = r"""<!doctype html>
         <div class="stack right">
           <section class="card blank" id="styleCard">
             <div class="card-head">
-              <div><h2>Define el nuevo estilo</h2><p>Combina un color con el material que prefieras.</p></div>
+              <div><h2>Define el nuevo estilo</h2></div>
             </div>
             <div class="style-empty" id="styleEmpty">
               <p>Elige una imagen y pulsa <b>Detectar prendas</b> para configurar el color y la textura de cada una.</p>
@@ -641,7 +664,6 @@ HTML = r"""<!doctype html>
               <input class="input" id="color" list="colors" value="black" maxlength="80" placeholder="Escribe un color en inglés">
               <datalist id="colors"></datalist>
               <div class="swatches" id="swatches" aria-label="Colores sugeridos"></div>
-              <button class="button small hsv-open" id="openHsv" type="button"><span class="hsv-dot"></span>Recolorear con HSV</button>
             </div>
             <div class="field">
               <label class="field-label" for="material">Material o textura</label>
@@ -705,44 +727,6 @@ HTML = r"""<!doctype html>
               <button class="button small result-delete" id="deleteHistoryButton" type="button" hidden>Eliminar diseño</button>
             </div>
             <div class="result-error" id="resultError" role="alert"></div>
-          </dialog>
-          <dialog class="result-dialog hsv-dialog" id="hsvDialog" aria-labelledby="hsvHeading">
-            <div class="results-head">
-              <div class="results-title"><div>
-                <h2 id="hsvHeading">Recolorear con HSV</h2>
-                <div class="result-meta">Cambia solo el tono y conserva pliegues, sombras y brillos de la prenda.</div>
-              </div></div>
-              <div class="result-actions">
-                <button class="button small" id="hsvCancel" type="button">Cancelar</button>
-                <button class="button small hsv-apply" id="hsvApply" type="button">Aplicar</button>
-              </div>
-            </div>
-            <div class="hsv-body">
-              <div class="hsv-preview"><canvas id="hsvCanvas" aria-label="Vista previa del recoloreado"></canvas></div>
-              <div class="hsv-controls">
-                <div>
-                  <span class="field-label">Máscaras a recolorear</span>
-                  <div class="hsv-garments" id="hsvGarments" role="group" aria-label="Máscaras a recolorear"></div>
-                </div>
-                <div>
-                  <div class="hsv-row"><span class="field-label">Tono (clic o arrastra)</span><span class="hsv-value" id="hsvHueValue"></span></div>
-                  <div class="hsv-strip" id="hsvStrip" tabindex="0" role="slider" aria-label="Tono"
-                       aria-valuemin="0" aria-valuemax="359"><span class="hsv-marker" id="hsvMarker"></span></div>
-                </div>
-                <div>
-                  <div class="hsv-row"><label class="field-label" for="hsvSat">Saturación</label><span class="hsv-value" id="hsvSatValue"></span></div>
-                  <input class="hsv-range" id="hsvSat" type="range" min="0" max="255" step="1" value="200">
-                </div>
-                <div>
-                  <div class="hsv-row"><label class="field-label" for="hsvVal">Brillo</label><span class="hsv-value" id="hsvValValue"></span></div>
-                  <input class="hsv-range" id="hsvVal" type="range" min="0" max="255" step="1" value="220">
-                </div>
-                <div>
-                  <button class="button small" id="hsvResetActive" type="button">Quitar color a la máscara activa</button>
-                </div>
-                <div class="error" id="hsvError"></div>
-              </div>
-            </div>
           </dialog>
           <dialog class="result-dialog confirm-dialog" id="reloadWarning" aria-labelledby="reloadWarningTitle">
             <div class="confirm-body">
@@ -847,6 +831,7 @@ HTML = r"""<!doctype html>
     function clearSegmentation(message = "") {
       state.segmentation = null;
       state.garmentEdits.clear();
+      state.colorLayers.clear();
       state.activeGarmentTab = null;
       $("#defaultStyle").hidden = true;  // el panel manual de color/textura ya no se muestra: solo el de cada prenda detectada
       $("#garmentStyleEditor").classList.remove("visible");
@@ -871,6 +856,10 @@ HTML = r"""<!doctype html>
         context.drawImage(item.maskImage, 0, 0, canvas.width, canvas.height);
       });
       context.globalAlpha = 1;
+      segmentation.items.forEach((item, index) => {
+        const layer = state.colorLayers.get(index);
+        if (layer) context.drawImage(layer, 0, 0, canvas.width, canvas.height);
+      });
       segmentation.items.forEach((item, index) => {
         const edit = state.garmentEdits.get(index);
         if (!edit) return;
@@ -919,18 +908,8 @@ HTML = r"""<!doctype html>
       colorField.className = "field";
       const colorLabel = document.createElement("label");
       colorLabel.className = "field-label";
-      colorLabel.textContent = "Color";
-      const color = document.createElement("input");
-      color.className = "input garment-color";
-      color.value = edit.color;
-      color.maxLength = 80;
-      color.placeholder = "Color en inglés o none";
-      color.addEventListener("input", () => {
-        edit.color = color.value;
-        colorField.querySelectorAll(".swatch").forEach((swatch) =>
-          swatch.classList.toggle("selected", swatch.dataset.value === color.value.trim().toLowerCase()));
-      });
-      colorField.append(colorLabel, color);
+      colorLabel.textContent = "Color de ejemplo";
+      const DEFAULT_HEX = "#c75d3a";
       const swatches = document.createElement("div");
       swatches.className = "swatches";
       swatches.setAttribute("aria-label", `Colores para ${item.name}`);
@@ -940,38 +919,289 @@ HTML = r"""<!doctype html>
         swatch.className = "swatch";
         swatch.title = name;
         swatch.dataset.value = name;
-        swatch.setAttribute("aria-label", name);
+        swatch.setAttribute("aria-label", `${name} (ejemplo de color)`);
         swatch.style.background = hex;
         swatch.classList.toggle("selected", edit.color.trim().toLowerCase() === name);
-        swatch.addEventListener("click", () => {
-          edit.color = name;
-          color.value = name;
-          colorField.querySelectorAll(".swatch").forEach((button) => button.classList.toggle("selected", button === swatch));
-        });
+        swatch.addEventListener("click", () => chooseColor(name));
         swatches.append(swatch);
       }
-      const noColor = document.createElement("button");
-      noColor.type = "button";
-      noColor.className = "swatch swatch-none";
-      noColor.title = "Ninguno";
-      noColor.dataset.value = "none";
-      noColor.textContent = "none";
-      noColor.setAttribute("aria-label", "Ninguno: conservar el color original");
-      noColor.classList.toggle("selected", edit.color.trim().toLowerCase() === "none");
-      noColor.addEventListener("click", () => {
-        edit.color = "none";
-        color.value = "none";
-        colorField.querySelectorAll(".swatch").forEach((button) => button.classList.toggle("selected", button === noColor));
+
+      const modeHint = document.createElement("p");
+      modeHint.className = "hint color-mode-hint";
+      modeHint.hidden = true;
+
+      const hsvView = document.createElement("div");
+      hsvView.className = "color-hsv-view";
+      const hsvHead = document.createElement("div");
+      hsvHead.className = "hsv-inline-head";
+      const hsvTitle = document.createElement("span");
+      hsvTitle.className = "hsv-inline-title";
+      hsvTitle.textContent = "Color HSV";
+      hsvHead.append(hsvTitle);
+
+      const hueWrap = document.createElement("div");
+      const hueRow = document.createElement("div");
+      hueRow.className = "hsv-row";
+      const hueLabel = document.createElement("span");
+      hueLabel.className = "field-label";
+      hueLabel.textContent = "Tono (clic o arrastra)";
+      const hueValue = document.createElement("span");
+      hueValue.className = "hsv-value";
+      hueRow.append(hueLabel, hueValue);
+      const hueStrip = document.createElement("div");
+      hueStrip.className = "hsv-strip";
+      hueStrip.tabIndex = 0;
+      hueStrip.setAttribute("role", "slider");
+      hueStrip.setAttribute("aria-label", "Tono");
+      hueStrip.setAttribute("aria-valuemin", "0");
+      hueStrip.setAttribute("aria-valuemax", "359");
+      const hueMarker = document.createElement("span");
+      hueMarker.className = "hsv-marker";
+      hueStrip.append(hueMarker);
+      hueWrap.append(hueRow, hueStrip);
+
+      const satWrap = document.createElement("div");
+      const satRow = document.createElement("div");
+      satRow.className = "hsv-row";
+      const satLabel = document.createElement("span");
+      satLabel.className = "field-label";
+      satLabel.textContent = "Saturación";
+      const satValue = document.createElement("span");
+      satValue.className = "hsv-value";
+      satRow.append(satLabel, satValue);
+      const satRange = document.createElement("input");
+      satRange.className = "hsv-range";
+      satRange.type = "range";
+      satRange.min = "0";
+      satRange.max = "255";
+      satRange.step = "1";
+      satRange.addEventListener("input", () => { edit.hsv.sat = Number(satRange.value); edit.hsvActive = true; updateHsvUi(); });
+      satWrap.append(satRow, satRange);
+
+      const valWrap = document.createElement("div");
+      const valRow = document.createElement("div");
+      valRow.className = "hsv-row";
+      const valLabel = document.createElement("span");
+      valLabel.className = "field-label";
+      valLabel.textContent = "Brillo";
+      const valValue = document.createElement("span");
+      valValue.className = "hsv-value";
+      valRow.append(valLabel, valValue);
+      const valRange = document.createElement("input");
+      valRange.className = "hsv-range";
+      valRange.type = "range";
+      valRange.min = "0";
+      valRange.max = "255";
+      valRange.step = "1";
+      valRange.addEventListener("input", () => { edit.hsv.val = Number(valRange.value); edit.hsvActive = true; updateHsvUi(); });
+      valWrap.append(valRow, valRange);
+
+      function createHsvNumber(labelText, min, max, suffix, ariaLabel) {
+        const label = document.createElement("label");
+        label.className = "hsv-number";
+        const text = document.createElement("span");
+        text.textContent = labelText;
+        const input = document.createElement("input");
+        input.className = "input hsv-number-input";
+        input.type = "number";
+        input.min = String(min);
+        input.max = String(max);
+        input.step = "1";
+        input.setAttribute("aria-label", ariaLabel);
+        label.append(text, input);
+        if (suffix) {
+          const suffixEl = document.createElement("span");
+          suffixEl.textContent = suffix;
+          label.append(suffixEl);
+        }
+        return {label, input};
+      }
+      const hueNumber = createHsvNumber("H", 0, 359, "°", "Tono");
+      const satNumber = createHsvNumber("S", 0, 255, "", "Saturación");
+      const valNumber = createHsvNumber("V", 0, 255, "", "Brillo");
+      const numberWrap = document.createElement("span");
+      numberWrap.className = "hsv-numbers";
+      numberWrap.append(hueNumber.label, satNumber.label, valNumber.label);
+      const chipRow = document.createElement("div");
+      chipRow.className = "hsv-inline-color";
+      const chip = document.createElement("span");
+      chip.className = "hsv-chip";
+      const chipText = document.createElement("span");
+      chipText.className = "hsv-chip-text";
+      const chipSeparator = document.createElement("span");
+      chipSeparator.className = "hsv-sep";
+      chipSeparator.textContent = "·";
+      chipRow.append(chip, chipText, chipSeparator, numberWrap);
+
+      const hexRow = document.createElement("div");
+      hexRow.className = "hsv-row";
+      const hexLabel = document.createElement("span");
+      hexLabel.className = "field-label";
+      hexLabel.textContent = "Código hex";
+      const hexInput = document.createElement("input");
+      hexInput.className = "input hsv-hex-input";
+      hexInput.type = "text";
+      hexInput.maxLength = 7;
+      hexInput.placeholder = "#00ff88";
+      hexInput.setAttribute("aria-label", "Código hexadecimal del color");
+      hexInput.addEventListener("input", () => {
+        const digits = hexInput.value.trim().replace(/^#/, "");
+        if (/^[0-9a-f]{6}$/i.test(digits)) applyHexColor("#" + digits);
       });
-      swatches.append(noColor);
-      colorField.append(swatches);
-      const hsvButton = document.createElement("button");
-      hsvButton.type = "button";
-      hsvButton.className = "button small hsv-open";
-      hsvButton.innerHTML = '<span class="hsv-dot"></span>Recolorear con HSV';
-      hsvButton.addEventListener("click", () => openHsvPicker([index]));
-      colorField.append(hsvButton);
+      hexInput.addEventListener("change", () => {
+        if (!applyHexColor(hexInput.value) && edit.hsv) {
+          const [red, green, blue] = hsvDegreesToRgb(edit.hsv.hue, edit.hsv.sat, edit.hsv.val);
+          hexInput.value = rgbToHex(red, green, blue);
+        }
+      });
+      hexRow.append(hexLabel, hexInput);
+
+      const hsvReset = document.createElement("button");
+      hsvReset.type = "button";
+      hsvReset.className = "button small";
+      hsvReset.textContent = "Volver al color original";
+      hsvReset.addEventListener("click", () => {
+        const original = originalGarmentColor(index);
+        edit.color = "";
+        edit.hsvActive = false;
+        edit.hsv = original ? rgbToHsv(original.red, original.green, original.blue) : hsvFromHex(DEFAULT_HEX);
+        updateColorUi();
+      });
+      const hsvHint = document.createElement("p");
+      hsvHint.className = "hint";
+      hsvHint.textContent = "El color final será el que elijas aquí al pulsar «Crear mi diseño».";
+      hsvView.append(hsvHead, hueWrap, satWrap, valWrap, chipRow, hexRow, hsvReset, hsvHint);
+
+      colorField.append(colorLabel, swatches, modeHint, hsvView);
       pane.append(colorField);
+
+      function updateHsvUi() {
+        if (!edit.hsv) return;
+        const hue = Math.round(edit.hsv.hue);
+        hueValue.textContent = `${hue}°`;
+        satValue.textContent = edit.hsv.sat;
+        valValue.textContent = edit.hsv.val;
+        satRange.value = edit.hsv.sat;
+        valRange.value = edit.hsv.val;
+        hueMarker.style.left = `${edit.hsv.hue / 360 * 100}%`;
+        hueStrip.setAttribute("aria-valuenow", String(hue));
+        const [red, green, blue] = hsvDegreesToRgb(edit.hsv.hue, edit.hsv.sat, edit.hsv.val);
+        const hex = rgbToHex(red, green, blue);
+        if (document.activeElement !== hexInput) hexInput.value = hex;
+        chip.style.background = `rgb(${red}, ${green}, ${blue})`;
+        chipText.textContent = hex;
+        if (document.activeElement !== hueNumber.input) hueNumber.input.value = hue;
+        if (document.activeElement !== satNumber.input) satNumber.input.value = edit.hsv.sat;
+        if (document.activeElement !== valNumber.input) valNumber.input.value = edit.hsv.val;
+        refreshGarmentColorLayer(index, edit);
+      }
+      function applyHexColor(value) {
+        const hex = normalizeHexColor(value);
+        if (!hex) return false;
+        edit.color = hex;
+        edit.hsv = hsvFromHex(hex);
+        edit.hsvActive = true;
+        updateColorUi();
+        return true;
+      }
+      function updateColorUi() {
+        const lower = (edit.color || "").trim().toLowerCase();
+        const customHex = normalizeHexColor(lower);
+        swatches.querySelectorAll(".swatch").forEach((button) =>
+          button.classList.toggle("selected", button.dataset.value === lower));
+        if (customHex) {
+          modeHint.textContent = `Color personalizado ${customHex}. Ajusta el tono HSV si lo necesitas.`;
+          modeHint.hidden = false;
+        } else {
+          modeHint.textContent = "";
+          modeHint.hidden = true;
+        }
+        if (edit.hsv) updateHsvUi();
+      }
+      function chooseColor(value) {
+        const lower = String(value || "").trim().toLowerCase();
+        const hex = normalizeHexColor(lower) || colorHex[lower];
+        if (!hex) return;
+        edit.color = lower;
+        edit.hsv = hsvFromHex(hex);
+        edit.hsvActive = true;
+        updateColorUi();
+      }
+      function setHueFromPointer(event) {
+        const box = hueStrip.getBoundingClientRect();
+        if (!box.width || !edit.hsv) return;
+        edit.hsv.hue = Math.min(359, Math.max(0, (event.clientX - box.left) / box.width * 360));
+        if (edit.hsv.sat < 40) edit.hsv.sat = 200;
+        if (edit.hsv.val < 60) edit.hsv.val = 220;
+        edit.hsvActive = true;
+        updateHsvUi();
+      }
+      hueStrip.addEventListener("pointerdown", (event) => {
+        hueStrip.setPointerCapture(event.pointerId);
+        setHueFromPointer(event);
+      });
+      hueStrip.addEventListener("pointermove", (event) => {
+        if (hueStrip.hasPointerCapture(event.pointerId)) setHueFromPointer(event);
+      });
+      hueStrip.addEventListener("keydown", (event) => {
+        if (!edit.hsv) return;
+        const step = event.shiftKey ? 10 : 1;
+        if (event.key === "ArrowRight") { edit.hsv.hue = Math.min(359, edit.hsv.hue + step); edit.hsvActive = true; updateHsvUi(); event.preventDefault(); }
+        if (event.key === "ArrowLeft") { edit.hsv.hue = Math.max(0, edit.hsv.hue - step); edit.hsvActive = true; updateHsvUi(); event.preventDefault(); }
+      });
+
+      function commitHsvNumber(field, key, min, max) {
+        if (!edit.hsv) return;
+        if (field.input.value.trim() === "") {
+          updateHsvUi();
+          return;
+        }
+        const parsed = Number(field.input.value);
+        if (!Number.isFinite(parsed)) {
+          updateHsvUi();
+          return;
+        }
+        edit.hsv[key] = Math.min(max, Math.max(min, Math.round(parsed)));
+        edit.hsvActive = true;
+        updateHsvUi();
+      }
+      for (const [field, key, min, max] of [
+        [hueNumber, "hue", 0, 359],
+        [satNumber, "sat", 0, 255],
+        [valNumber, "val", 0, 255],
+      ]) {
+        field.input.addEventListener("input", () => {
+          if (!edit.hsv) return;
+          const raw = field.input.value.trim();
+          if (raw === "") return;
+          const parsed = Number(raw);
+          if (!Number.isFinite(parsed) || parsed < min || parsed > max) return;
+          edit.hsv[key] = Math.round(parsed);
+          edit.hsvActive = true;
+          updateHsvUi();
+        });
+        field.input.addEventListener("change", () => commitHsvNumber(field, key, min, max));
+        field.input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            field.input.blur();
+          }
+        });
+      }
+
+      const original = originalGarmentColor(index);
+      const initialLower = (edit.color || "").trim().toLowerCase();
+      const initialHex = normalizeHexColor(initialLower) || colorHex[initialLower];
+      if (initialHex) {
+        if (!edit.hsv) edit.hsv = hsvFromHex(initialHex);
+      } else if (original) {
+        edit.hsv = rgbToHsv(original.red, original.green, original.blue);
+        edit.color = "";
+      } else if (!edit.hsv) {
+        edit.hsv = hsvFromHex(DEFAULT_HEX);
+        edit.color = DEFAULT_HEX;
+      }
+      updateColorUi();
 
       const materialField = document.createElement("div");
       materialField.className = "field";
@@ -1074,9 +1304,11 @@ HTML = r"""<!doctype html>
       state.garmentEdits.clear();
       segmentation.items.forEach((item, index) => {
         state.garmentEdits.set(index, {
-          color: $("#color").value.trim() || "black",
+          color: "",
           texture: $("#material").value.trim() || "none",
           extra: $("#extra").value.trim(),
+          hsv: null,
+          hsvActive: false,
           points: [],
         });
         panes.append(createGarmentEditor(index, item, config));
@@ -1160,6 +1392,7 @@ HTML = r"""<!doctype html>
         const canvas = $("#segmentationOverlay");
         canvas.width = data.width;
         canvas.height = data.height;
+        state.colorLayers.clear();
         state.segmentation = {id:data.id, sourceId, items, selected:new Set(), hovered:-1};
         if (items.length === 1) state.segmentation.selected.add(0);
         $("#sourcePreview").classList.add("has-segmentation");
@@ -1602,6 +1835,158 @@ HTML = r"""<!doctype html>
         renderHsvGarments();
       }
     }
+    // ---------- selector HSV incrustado (sustituye a los círculos de color) ----------
+    function hsvDegreesToRgb(hue, saturation, value) {
+      return hsvToRgb(Math.floor(hue / 2) % 180, saturation, value);
+    }
+    function normalizeHexColor(value) {
+      let text = String(value || "").trim();
+      if (!text) return null;
+      if (!text.startsWith("#")) text = "#" + text;
+      const digits = text.slice(1);
+      if (/^[0-9a-f]{3}$/i.test(digits)) {
+        return "#" + digits.split("").map((character) => character + character).join("").toLowerCase();
+      }
+      if (/^[0-9a-f]{6}$/i.test(digits)) return "#" + digits.toLowerCase();
+      return null;
+    }
+    function rgbToHex(red, green, blue) {
+      return "#" + [red, green, blue]
+        .map((channel) => Math.max(0, Math.min(255, Math.round(channel))).toString(16).padStart(2, "0"))
+        .join("");
+    }
+    function rgbToHsv(red, green, blue) {
+      const r = red / 255, g = green / 255, b = blue / 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const delta = max - min;
+      let hue = 0;
+      if (delta) {
+        if (max === r) hue = ((g - b) / delta) % 6;
+        else if (max === g) hue = (b - r) / delta + 2;
+        else hue = (r - g) / delta + 4;
+        hue *= 60;
+        if (hue < 0) hue += 360;
+      }
+      return {
+        hue: Math.round(hue) % 360,
+        sat: Math.round((max ? delta / max : 0) * 255),
+        val: Math.round(max * 255),
+      };
+    }
+    function hsvFromHex(hex) {
+      let value = String(hex || "").replace("#", "");
+      if (value.length === 3) value = value.split("").map((character) => character + character).join("");
+      const number = parseInt(value, 16);
+      if (!Number.isFinite(number) || value.length !== 6) return {hue: 12, sat: 200, val: 220};
+      return rgbToHsv((number >> 16) & 255, (number >> 8) & 255, number & 255);
+    }
+    function drawGarmentHsvPreview(canvas, index, edit) {
+      if (!canvas || !edit.hsv || !state.segmentation) return;
+      const item = state.segmentation.items[index];
+      const source = $("#sourceImage");
+      if (!item || !source || !source.naturalWidth) return;
+      const maskWidth = item.maskImage.naturalWidth || item.maskImage.width;
+      const maskHeight = item.maskImage.naturalHeight || item.maskImage.height;
+      if (!maskWidth || !maskHeight) return;
+      const scale = Math.min(1, HSV_PREVIEW_MAX / Math.max(maskWidth, maskHeight));
+      const width = Math.max(1, Math.round(maskWidth * scale));
+      const height = Math.max(1, Math.round(maskHeight * scale));
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d", {willReadFrequently: true});
+      context.drawImage(source, 0, 0, width, height);
+      const base = context.getImageData(0, 0, width, height);
+      const maskCanvas = document.createElement("canvas");
+      maskCanvas.width = width;
+      maskCanvas.height = height;
+      const maskContext = maskCanvas.getContext("2d", {willReadFrequently: true});
+      maskContext.drawImage(item.maskImage, 0, 0, width, height);
+      const overlay = maskContext.getImageData(0, 0, width, height).data;
+      const alpha = new Float32Array(width * height);
+      const inside = [];
+      let maxValue = 1;
+      for (let p = 0; p < alpha.length; p += 1) {
+        alpha[p] = Math.min(overlay[p * 4 + 3] / MASK_OVERLAY_ALPHA, 1);
+        if (alpha[p] > 0.5) {
+          inside.push(p);
+          const value = Math.max(base.data[p * 4], base.data[p * 4 + 1], base.data[p * 4 + 2]);
+          if (value > maxValue) maxValue = value;
+        }
+      }
+      const out = new ImageData(new Uint8ClampedArray(base.data), width, height);
+      for (let p = 0; p < alpha.length; p += 1) {
+        out.data[p * 4 + 3] = Math.round(alpha[p] * 255);
+      }
+      const lut = hsvLutFor(edit.hsv.hue, edit.hsv.sat);
+      const valueScale = edit.hsv.val / (maxValue || 1);
+      for (const p of inside) {
+        const offset = p * 4;
+        let value = Math.floor(Math.max(base.data[offset], base.data[offset + 1], base.data[offset + 2]) * valueScale);
+        if (value < HSV_MIN_VALUE) value = HSV_MIN_VALUE;
+        const a = alpha[p], k = value * 3;
+        out.data[offset] = lut[k] * a + base.data[offset] * (1 - a);
+        out.data[offset + 1] = lut[k + 1] * a + base.data[offset + 1] * (1 - a);
+        out.data[offset + 2] = lut[k + 2] * a + base.data[offset + 2] * (1 - a);
+      }
+      context.putImageData(out, 0, 0);
+    }
+    function buildGarmentColorLayer(index, edit) {
+      if (!edit.hsv || !edit.hsvActive || !state.segmentation) return null;
+      const item = state.segmentation.items[index];
+      if (!item) return null;
+      const maskWidth = item.maskImage.naturalWidth || item.maskImage.width;
+      const maskHeight = item.maskImage.naturalHeight || item.maskImage.height;
+      if (!maskWidth || !maskHeight) return null;
+      const scale = Math.min(1, HSV_PREVIEW_MAX / Math.max(maskWidth, maskHeight));
+      const width = Math.max(1, Math.round(maskWidth * scale));
+      const height = Math.max(1, Math.round(maskHeight * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      drawGarmentHsvPreview(canvas, index, edit);
+      return canvas;
+    }
+    function refreshGarmentColorLayer(index, edit) {
+      const layer = buildGarmentColorLayer(index, edit);
+      if (layer) state.colorLayers.set(index, layer);
+      else state.colorLayers.delete(index);
+      drawSegmentationOverlay();
+    }
+    function originalGarmentColor(index) {
+      if (!state.segmentation) return null;
+      const item = state.segmentation.items[index];
+      const source = $("#sourceImage");
+      if (!item || !source || !source.naturalWidth) return null;
+      const maskWidth = item.maskImage.naturalWidth || item.maskImage.width;
+      const maskHeight = item.maskImage.naturalHeight || item.maskImage.height;
+      if (!maskWidth || !maskHeight) return null;
+      const scale = Math.min(1, 160 / Math.max(maskWidth, maskHeight));
+      const width = Math.max(1, Math.round(maskWidth * scale));
+      const height = Math.max(1, Math.round(maskHeight * scale));
+      const baseCanvas = document.createElement("canvas");
+      baseCanvas.width = width;
+      baseCanvas.height = height;
+      const baseContext = baseCanvas.getContext("2d", {willReadFrequently: true});
+      baseContext.drawImage(source, 0, 0, width, height);
+      const base = baseContext.getImageData(0, 0, width, height).data;
+      const maskCanvas = document.createElement("canvas");
+      maskCanvas.width = width;
+      maskCanvas.height = height;
+      const maskContext = maskCanvas.getContext("2d", {willReadFrequently: true});
+      maskContext.drawImage(item.maskImage, 0, 0, width, height);
+      const overlay = maskContext.getImageData(0, 0, width, height).data;
+      let red = 0, green = 0, blue = 0, count = 0;
+      for (let p = 0; p < width * height; p += 1) {
+        if (overlay[p * 4 + 3] > 127) {
+          red += base[p * 4];
+          green += base[p * 4 + 1];
+          blue += base[p * 4 + 2];
+          count += 1;
+        }
+      }
+      if (!count) return null;
+      return {red: red / count, green: green / count, blue: blue / count};
+    }
     async function uploadImage(file) {
       clearError();
       if (state.detectingGarments) return;
@@ -1882,12 +2267,17 @@ HTML = r"""<!doctype html>
               color: editColor.toLowerCase() === "none" ? "" : editColor,
               texture: edit.texture.trim() || "none",
               extra: edit.extra.trim(),
+              hsv: edit.hsv && edit.hsvActive ? {
+                hue: Math.round(edit.hsv.hue) % 360,
+                saturation: Math.round(edit.hsv.sat),
+                value: Math.round(edit.hsv.val),
+              } : null,
               placements: edit.points,
             };
           })
         : null;
       if (garmentEdits && garmentEdits.some((edit) =>
-        !edit.color && edit.texture.toLowerCase() === "none" && !edit.extra && !edit.placements.length)) {
+        !edit.color && !edit.hsv && edit.texture.toLowerCase() === "none" && !edit.extra && !edit.placements.length)) {
         showError("Cada prenda incluida necesita al menos un cambio de color, material o instrucción.");
         return;
       }
@@ -1941,85 +2331,6 @@ HTML = r"""<!doctype html>
     $("#uploadButton").addEventListener("click", () => $("#fileInput").click());
     $("#fileInput").addEventListener("change", (event) => uploadImage(event.target.files[0]));
     $("#detectGarments").addEventListener("click", detectGarments);
-    $("#openHsv").addEventListener("click", () => openHsvPicker());
-    $("#hsvCancel").addEventListener("click", () => $("#hsvDialog").close());
-    $("#hsvApply").addEventListener("click", applyHsv);
-    $("#hsvSat").addEventListener("input", (event) => {
-      hsv.sat = Number(event.target.value);
-      if (hsv.applySet && hsv.applySet.size > 0) {
-        for (const idx of hsv.applySet) {
-          const current = typeof getHsvEntry === "function" ? getHsvEntry(idx) : null;
-          if (current) { current.sat = hsv.sat; current.userModified = true; }
-        }
-      } else {
-        const current = typeof getHsvEntry === "function" ? getHsvEntry(hsv.activeIndex) : null;
-        if (current) { current.sat = hsv.sat; current.userModified = true; }
-      }
-      updateHsvControls();
-      scheduleHsv();
-    });
-    $("#hsvVal").addEventListener("input", (event) => {
-      hsv.val = Number(event.target.value);
-      if (hsv.applySet && hsv.applySet.size > 0) {
-        for (const idx of hsv.applySet) {
-          const current = typeof getHsvEntry === "function" ? getHsvEntry(idx) : null;
-          if (current) { current.val = hsv.val; current.userModified = true; }
-        }
-      } else {
-        const current = typeof getHsvEntry === "function" ? getHsvEntry(hsv.activeIndex) : null;
-        if (current) { current.val = hsv.val; current.userModified = true; }
-      }
-      updateHsvControls();
-      scheduleHsv();
-    });
-    const hsvResetBtn = $("#hsvResetActive");
-    if (hsvResetBtn) {
-      hsvResetBtn.addEventListener("click", () => {
-        const targets = new Set();
-        if (hsv.applySet instanceof Set && hsv.applySet.size > 0) {
-          for (const idx of hsv.applySet) {
-            targets.add(Number(idx));
-          }
-        } else if (typeof hsv.activeIndex === "number" && hsv.activeIndex >= 0) {
-          targets.add(Number(hsv.activeIndex));
-        }
-        if (targets.size === 0) return;
-        for (const idx of targets) {
-          const entry = getHsvEntry(idx);
-          if (!entry) continue;
-          entry.hue = null;
-          entry.sat = null;
-          entry.val = null;
-          entry.userModified = false;
-          if (entry._base) delete entry._base;
-          if (entry._applied) delete entry._applied;
-        }
-        hsv.hue = 120;
-        hsv.sat = 200;
-        hsv.val = 220;
-        const hs = $("#hsvSat");
-        const hv = $("#hsvVal");
-        if (hs) hs.value = 200;
-        if (hv) hv.value = 220;
-        updateHsvControls();
-        if (typeof updateHsvColorPalette === "function") updateHsvColorPalette();
-        renderHsvGarments();
-        renderHsv();
-        if (typeof scheduleHsv === "function") scheduleHsv();
-      });
-    }
-    const hsvStrip = $("#hsvStrip");
-    const hsvHueFromPointer = (event) => {
-      const box = hsvStrip.getBoundingClientRect();
-      setHsvHue((event.clientX - box.left) / box.width * 360);
-    };
-    hsvStrip.addEventListener("pointerdown", (event) => { hsvStrip.setPointerCapture(event.pointerId); hsvHueFromPointer(event); });
-    hsvStrip.addEventListener("pointermove", (event) => { if (hsvStrip.hasPointerCapture(event.pointerId)) hsvHueFromPointer(event); });
-    hsvStrip.addEventListener("keydown", (event) => {
-      const step = event.shiftKey ? 10 : 1;
-      if (event.key === "ArrowRight") { setHsvHue(hsv.hue + step); event.preventDefault(); }
-      if (event.key === "ArrowLeft") { setHsvHue(hsv.hue - step); event.preventDefault(); }
-    });
     $("#settingsButton").addEventListener("click", () => {
       const menu = $("#settingsMenu");
       menu.hidden = !menu.hidden;
@@ -2683,11 +2994,25 @@ def run_generation(app_state, job_id, source, color, texture, extra, texture_pat
         # el modelo trabaja en cuadrado (PIX2PIX_SIZE x PIX2PIX_SIZE) y eso deforma la imagen,
         # así que devolvemos al tamaño de la original para recuperar su proporción
         from PIL import Image
+        import numpy as np
 
         size = original_size(source, dataset)
         for key in ("image", "mask", "edited", "final"):
             if result[key].size != size:
                 result[key] = result[key].resize(size, Image.LANCZOS)
+
+        if segmentation and garment_indices:
+            combined = np.zeros(segmentation["image"].shape[:2], dtype=bool)
+            for index in garment_indices:
+                combined |= segmentation["garments"][index]["mask"]
+            if combined.any():
+                original_pil = Image.fromarray(segmentation["image"]).convert("RGB")
+                clamp_mask = Image.fromarray(combined.astype(np.uint8) * 255)
+                if clamp_mask.size != result["final"].size:
+                    clamp_mask = clamp_mask.resize(result["final"].size, Image.NEAREST)
+                if original_pil.size != result["final"].size:
+                    original_pil = original_pil.resize(result["final"].size, Image.LANCZOS)
+                result["final"] = Image.composite(result["final"], original_pil, clamp_mask)
 
         output_dir = Path(C.PIX2PIX_OUTPUT_DIR)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -2783,16 +3108,20 @@ async def generate(request: Request, options: GenerationRequest):
                     edit_color = ""
                 edit_texture = edit.texture.strip() or C.PIX2PIX_NO_TEXTURE
                 edit_extra = edit.extra.strip()
-                if (not edit_color and edit_texture.lower() == C.PIX2PIX_NO_TEXTURE
+                if (not edit_color and edit.hsv is None and edit_texture.lower() == C.PIX2PIX_NO_TEXTURE
                         and not edit_extra and not edit.placements):
                     raise HTTPException(
                         status_code=400,
                         detail=f"Indica un cambio para la prenda {segmentation['garments'][edit.index]['name']}.",
                     )
+                if not edit_color and edit.hsv is not None:
+                    edit_color = "custom"
                 garment_edits[edit.index] = {
                     "color": edit_color,
                     "texture": edit_texture,
                     "extra": edit_extra,
+                    "hsv": edit.hsv.model_dump() if edit.hsv is not None else None,
+                    "placements": edit.placements,
                     "texture_path": None,
                 }
     elif options.garment_indices is not None:

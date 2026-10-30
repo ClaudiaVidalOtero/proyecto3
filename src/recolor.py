@@ -20,6 +20,7 @@ Uso:
 """
 
 import argparse
+import colorsys
 import json
 import os
 import random
@@ -473,7 +474,7 @@ def load_mask_rcnn(checkpoint_path):
     return model
 
 
-def mask_to_pil(binary_mask, target_size, feather_radius, close_size=0):
+def mask_to_pil(binary_mask, target_size, feather_radius, close_size=0, dilate_size=None):
     """
     Convierte una máscara booleana (H, W) en una imagen PIL en escala de grises
     del tamaño de trabajo del modelo. Blanco = zona donde se usa el resultado
@@ -488,7 +489,8 @@ def mask_to_pil(binary_mask, target_size, feather_radius, close_size=0):
         # (a la resolución de trabajo de Mask R-CNN) sin tocar los más anchos, como el escote
         # (primero dilata con MaxFilter y luego erosiona con MinFilter)
         mask_img = mask_img.filter(ImageFilter.MaxFilter(close_size)).filter(ImageFilter.MinFilter(close_size))
-    dilate_size = C.PIX2PIX_MASK_DILATE_SIZE
+    if dilate_size is None:
+        dilate_size = C.PIX2PIX_MASK_DILATE_SIZE
     if dilate_size > 1:
         mask_img = mask_img.filter(ImageFilter.MaxFilter(dilate_size))
     mask_img = mask_img.resize((target_size, target_size), Image.NEAREST)
@@ -826,6 +828,79 @@ def build_edit_instruction(garment_name, color, texture, extra, has_texture_refe
     return "\n".join(parts)
 
 
+def _hex_to_hsv(value):
+    """Convierte un color hexadecimal en (tono en grados, saturación, brillo)."""
+    value = (value or "").strip().lstrip("#")
+    if len(value) == 3:
+        value = "".join(character * 2 for character in value)
+    try:
+        red, green, blue = (int(value[index:index + 2], 16) / 255 for index in (0, 2, 4))
+    except (TypeError, ValueError):
+        red, green, blue = (0.78, 0.36, 0.23)
+    hue, saturation, brightness = colorsys.rgb_to_hsv(red, green, blue)
+    return int(round(hue * 360)) % 360, int(round(saturation * 255)), int(round(brightness * 255))
+
+
+def _hsv_to_hex(hue, saturation, brightness):
+    """Convierte tono/saturación/brillo en un color hexadecimal."""
+    red, green, blue = colorsys.hsv_to_rgb(
+        (int(hue) % 360) / 360.0,
+        max(0, min(255, int(saturation))) / 255.0,
+        max(0, min(255, int(brightness))) / 255.0,
+    )
+    return f"#{round(red * 255):02x}{round(green * 255):02x}{round(blue * 255):02x}"
+
+
+def _is_model_color(color):
+    return color.strip().lower() in C.PIX2PIX_MODEL_COLORS
+
+
+def _edit_hsv(edit):
+    hsv = edit.get("hsv")
+    if hsv:
+        return int(hsv["hue"]) % 360, int(hsv["saturation"]), int(hsv["value"])
+    color = edit.get("color", "").strip().lower()
+    digits = color.lstrip("#")
+    if len(digits) in (3, 6) and all(character in "0123456789abcdef" for character in digits):
+        return _hex_to_hsv(color)
+    return _hex_to_hsv(C.PIX2PIX_COLOR_HEX.get(color, C.PIX2PIX_DEFAULT_HEX))
+
+
+def _edit_uses_hsv(edit):
+    color = edit.get("color", "").strip()
+    if color.lower() == C.PIX2PIX_NO_TEXTURE:
+        color = ""
+    return bool(color) and (edit.get("hsv") is not None or not _is_model_color(color))
+
+
+def _edit_needs_model(edit):
+    color = edit.get("color", "").strip()
+    if color.lower() == C.PIX2PIX_NO_TEXTURE:
+        color = ""
+    texture = edit.get("texture", "").strip()
+    use_texture = bool(texture) and texture.lower() != C.PIX2PIX_NO_TEXTURE
+    model_color = bool(color) and _is_model_color(color) and edit.get("hsv") is None
+    return model_color or use_texture or bool(edit.get("extra", "").strip())
+
+
+def _apply_hsv_to_garment(image, mask, edit):
+    """Aplica el tono HSV a una prenda conservando pliegues y sombras."""
+    from utils.recolor_hsv import recolor_hsv
+
+    hue, saturation, value = _edit_hsv(edit)
+    binary = np.asarray(mask) > 127
+    alpha = np.asarray(mask, dtype=np.float32) / 255.0
+    recolored = recolor_hsv(
+        np.asarray(image.convert("RGB"), dtype=np.uint8),
+        binary,
+        hue,
+        saturation,
+        value,
+        alpha=alpha,
+    )
+    return Image.fromarray(recolored)
+
+
 def generate(source, color, texture, extra, texture_path, dataset, device, progress=print,
              segmentation=None, garment_indices=None, garment_edits=None):
     """
@@ -868,18 +943,21 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
         edit.get("texture_path")
         for edit in (garment_edits or {}).values()
     ]
-    needs_pix2pix = garment_edits is None or any(
-        (
-            bool(edit["color"].strip())
-            and edit["color"].strip().lower() != C.PIX2PIX_NO_TEXTURE
+    if garment_edits is None:
+        global_hsv_color = bool(color) and not _is_model_color(color)
+        needs_pix2pix = (
+            (bool(color) and not global_hsv_color)
+            or (bool(texture) and texture.lower() != C.PIX2PIX_NO_TEXTURE)
+            or bool(extra)
+            or bool(texture_path)
         )
-        or (
-            bool(edit["texture"].strip())
-            and edit["texture"].strip().lower() != C.PIX2PIX_NO_TEXTURE
+    else:
+        global_hsv_color = False
+        needs_pix2pix = (
+            any(_edit_needs_model(edit) for edit in garment_edits.values())
+            or bool(texture_path)
+            or any(edit_texture_paths)
         )
-        or edit["extra"].strip()
-        for edit in garment_edits.values()
-    )
     pipe = None
     if needs_pix2pix:
         progress("Cargando InstructPix2Pix (puede tardar la primera vez)...")
@@ -907,7 +985,7 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
     use_texture = bool(texture) and texture.lower() != C.PIX2PIX_NO_TEXTURE
     instruction = build_edit_instruction(
         garment_name,
-        color,
+        "" if global_hsv_color else color,
         texture if use_texture else "",
         extra,
         has_texture_reference=texture_image is not None,
@@ -941,9 +1019,11 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
                         f"No se pudo abrir la muestra seleccionada para "
                         f"{garment['name']}: {exc}"
                     ) from exc
+            use_hsv_color = _edit_uses_hsv(edit)
+            model_color = "" if use_hsv_color else edit_color
             garment_prompt = build_edit_instruction(
                 garment["name"].split(",")[0].strip(),
-                edit_color,
+                model_color,
                 edit_texture if use_garment_texture else "",
                 edit["extra"].strip(),
                 has_texture_reference=reference_image is not None,
@@ -968,13 +1048,23 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
             garment_mask = mask_to_pil(
                 garment["mask"], C.PIX2PIX_SIZE, C.PIX2PIX_FEATHER_RADIUS,
                 C.PIX2PIX_MASK_CLOSE_SIZE,
+                dilate_size=0 if use_hsv_color else None,
             )
+            if use_hsv_color:
+                hue, _, _ = _edit_hsv(edit)
+                print(f"Recoloreando {garment['name']} con HSV (tono {hue}°)")
+                garment_result = _apply_hsv_to_garment(garment_result, garment_mask, edit)
             final = Image.composite(garment_result, final, garment_mask)
             edited_composite = Image.composite(garment_result, edited_composite, garment_mask)
             selected_mask = np.logical_or(selected_mask, garment["mask"])
             sample_id = pathlib.Path(edit_texture_path).stem if reference_image is not None else ""
+            if use_hsv_color:
+                hue, saturation, brightness = _edit_hsv(edit)
+                color_label = f"{_hsv_to_hex(hue, saturation, brightness)} (HSV {hue}°)"
+            else:
+                color_label = edit_color
             edit_labels.append(", ".join(
-                part for part in [edit_color, edit_texture if use_garment_texture else "",
+                part for part in [color_label, edit_texture if use_garment_texture else "",
                                   edit["extra"].strip(), sample_id] if part
             ))
         mask_pil = mask_to_pil(
@@ -987,21 +1077,32 @@ def generate(source, color, texture, extra, texture_path, dataset, device, progr
             for position, index in enumerate(indices)
         )
     else:
-        call_kwargs = dict(
-            prompt=instruction or "keep the image as it is",
-            image=image_pil,
-            num_inference_steps=C.PIX2PIX_NUM_INFERENCE_STEPS,
-            guidance_scale=C.PIX2PIX_GUIDANCE_SCALE,
-            image_guidance_scale=C.PIX2PIX_IMAGE_GUIDANCE_SCALE,
-            generator=torch.Generator(device=device).manual_seed(C.PIX2PIX_SEED),
-        )
-        if texture_image is not None:
-            call_kwargs["ip_adapter_image"] = texture_image
+        if needs_pix2pix:
+            call_kwargs = dict(
+                prompt=instruction or "keep the image as it is",
+                image=image_pil,
+                num_inference_steps=C.PIX2PIX_NUM_INFERENCE_STEPS,
+                guidance_scale=C.PIX2PIX_GUIDANCE_SCALE,
+                image_guidance_scale=C.PIX2PIX_IMAGE_GUIDANCE_SCALE,
+                generator=torch.Generator(device=device).manual_seed(C.PIX2PIX_SEED),
+            )
+            if texture_image is not None:
+                call_kwargs["ip_adapter_image"] = texture_image
 
-        progress("Generando la imagen con InstructPix2Pix...")
-        edited = pipe(**call_kwargs).images[0].convert("RGB")
-        edited = preserve_garment_folds(image_pil, edited)
-        final = Image.composite(edited, image_pil, mask_pil)
+            progress("Generando la imagen con InstructPix2Pix...")
+            edited = pipe(**call_kwargs).images[0].convert("RGB")
+            edited = preserve_garment_folds(image_pil, edited)
+        else:
+            edited = image_pil.copy()
+        if global_hsv_color:
+            color_mask_pil = mask_to_pil(
+                binary_mask, C.PIX2PIX_SIZE, C.PIX2PIX_FEATHER_RADIUS,
+                C.PIX2PIX_MASK_CLOSE_SIZE, dilate_size=0,
+            )
+            edited = _apply_hsv_to_garment(edited, color_mask_pil, {"color": color, "hsv": None})
+            final = Image.composite(edited, image_pil, color_mask_pil)
+        else:
+            final = Image.composite(edited, image_pil, mask_pil)
         sample_id = pathlib.Path(texture_path).stem if texture_image is not None else ""
         label = ", ".join(p for p in [color, texture if use_texture else "", extra, sample_id] if p)
 
