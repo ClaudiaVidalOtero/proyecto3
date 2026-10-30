@@ -7,8 +7,9 @@ DATA_DIR = REPO / "dataset"
 
 TRAIN_IMAGES_DIR = str(DATA_DIR / "train_classified" / "not_human")
 TRAIN_ANNOTATIONS = str(DATA_DIR / "instances_no_humans.json")
-TEST_IMAGES_DIR = str(DATA_DIR / "provisional_test_no_human_test")
-TEST_ANNOTATIONS = str(DATA_DIR / "instances_provisional_test_no_humans.json")
+TEST_IMAGES_DIR = str(DATA_DIR / "train_classified" / "not_human_test")
+TEST_ANNOTATIONS = str(DATA_DIR / "instances_test_no_humans.json")
+
 
 CHECKPOINT_DIR = str(REPO / "checkpoints")   # best.pth y last.pth
 OUTPUT_DIR = str(REPO / "outputs")           # gráficas y resultados
@@ -87,6 +88,15 @@ PIX2PIX_COLOR_OPTIONS = [
     "black", "white", "red", "blue", "navy blue", "green", "dark green",
     "yellow", "pink", "purple", "orange", "brown", "gray", "beige",
 ]
+# Colores que se generan con el modelo; el resto se recolorea por tono HSV.
+PIX2PIX_MODEL_COLORS = ("black", "white")
+PIX2PIX_COLOR_HEX = {
+    "black": "#252525", "white": "#ffffff", "red": "#c94843", "blue": "#466ca5",
+    "navy blue": "#293650", "green": "#66866a", "dark green": "#345343",
+    "yellow": "#e9c44e", "pink": "#dc91a4", "purple": "#886c9f",
+    "orange": "#e29150", "brown": "#866044", "gray": "#91938e", "beige": "#d5c4a2",
+}
+PIX2PIX_DEFAULT_HEX = "#c75d3a"
 PIX2PIX_TEXTURE_OPTIONS = [
     PIX2PIX_NO_TEXTURE, "leather", "denim", "silk", "velvet", "wool",
     "cotton", "satin",

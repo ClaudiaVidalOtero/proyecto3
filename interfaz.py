@@ -260,6 +260,7 @@ HTML = r"""<!doctype html>
     .history-showcase .result-image.featured { width: 100%; height: min(48dvh, 460px); min-height: 260px; max-height: none; }
     .history-showcase .result-image.featured img { min-height: 0; }
     .field-label { display: block; margin: 0 0 8px; color: var(--text-strong); font-size: 11px; font-weight: 700; }
+    .field-label-lg { font-size: 13px; }
     .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
     .field { min-width: 0; margin-bottom: 12px; }
     .input { width: 100%; min-height: 40px; padding: 9px 11px; border: 1px solid var(--line-strong); border-radius: 9px;
@@ -297,6 +298,8 @@ HTML = r"""<!doctype html>
     .garment-tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .garment-editor-pane { display: none; }
     .garment-editor-pane.active { display: block; }
+    .garment-editor-pane .field + .field,
+    #defaultStyle .field + .field { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
     .garment-editor-pane .texture-grid { margin-top: 8px; }
     .placement-tools { display: flex; flex-wrap: wrap; gap: 7px; }
     .placement-choice[aria-pressed="true"] { border-color: var(--accent); background: var(--surface-accent); color: var(--accent-dark); }
@@ -317,6 +320,7 @@ HTML = r"""<!doctype html>
     .right .card-head p { font-size: 10px; }
     .right .step { font-size: 10px; }
     .right .field-label { margin-bottom: 6px; font-size: 10px; }
+    .right .field-label-lg { font-size: 12px; }
     .right .input { min-height: 36px; padding: 8px 10px; font-size: 11px; }
     .right .field { margin-bottom: 10px; }
     .right .hint { margin-top: 6px; font-size: 9px; line-height: 1.45; }
@@ -379,6 +383,7 @@ HTML = r"""<!doctype html>
     .hsv-row .field-label { margin: 0; }
     .hsv-value { color: var(--accent-dark); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
     .hsv-hex-input { width: 132px; padding: 7px 9px; text-align: right; text-transform: lowercase; font-variant-numeric: tabular-nums; }
+    .hex-row { margin: 16px 0 0; }
     .hsv-strip { position: relative; height: 36px; border: 1px solid var(--line); border-radius: 10px; cursor: ew-resize; touch-action: none;
       background: linear-gradient(to right, #f00 0%, #ff0 16.667%, #0f0 33.333%, #0ff 50%, #00f 66.667%, #f0f 83.333%, #f00 100%); }
     .hsv-strip:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
@@ -458,11 +463,15 @@ HTML = r"""<!doctype html>
       .stack.right .card-head { margin-bottom: 15px; }
       .stack.right .card-head h2 { font-size: 15px; }
       .stack.right .card-head p { margin-top: 5px; font-size: 11px; }
-      .stack.right #defaultStyle { display: flex; flex: 1; flex-direction: column; justify-content: space-between; }
+      .stack.right #defaultStyle { display: flex; flex: 0 0 auto; flex-direction: column; }
       .stack.right #defaultStyle[hidden] { display: none; }  /* sin esto el display:flex anularía el atributo hidden */
-      .stack.right .garment-style-editor.visible { flex: 1; }
+      .stack.right .garment-style-editor.visible { display: flex; flex-direction: column; gap: 14px; }
+      .stack.right .garment-editor-pane.active { display: flex; flex-direction: column; }
+      .stack.right .garment-editor-pane .field,
+      .stack.right #defaultStyle .field { margin-bottom: 0; }
       .stack.right .field { margin-bottom: 12px; }
       .stack.right .field-label { margin-bottom: 7px; font-size: 12px; }
+      .stack.right .field-label-lg { font-size: 14px; }
       .stack.right .input { min-height: 42px; padding: 10px 12px; border-radius: 10px; font-size: 13px; }
       .stack.right textarea.input { min-height: 78px; }
       .stack.right .hint { margin-top: 7px; font-size: 10.5px; line-height: 1.5; }
@@ -471,10 +480,11 @@ HTML = r"""<!doctype html>
       .stack.right .swatches { gap: 9px; margin-top: 11px; }
       .stack.right .swatch { width: 26px; height: 26px; }
       .stack.right .swatch-none { padding: 0 11px; font-size: 10px; }
+      .stack.right .hex-row { margin-top: 20px; }
       .stack.right .material-options { gap: 7px; margin-top: 9px; }
       .stack.right .material-choice { padding: 6px 11px; font-size: 11px; }
       .stack.right .garment-tab { padding: 8px 12px; font-size: 11px; }
-      .stack.right .generate-actions { margin-top: 16px; }
+      .stack.right .generate-actions { margin-top: 30px; }
       .stack.right .generate { min-height: 52px; margin-top: 0; border-radius: 12px; font-size: 14px; }
       .stack.right .generate-cancel { min-height: 40px; font-size: 12px; }
       .stack.right .queue-status { font-size: 11px; }
@@ -674,7 +684,7 @@ HTML = r"""<!doctype html>
               <div class="swatches" id="swatches" aria-label="Colores sugeridos"></div>
             </div>
             <div class="field">
-              <label class="field-label" for="material">Material o textura</label>
+              <label class="field-label field-label-lg" for="material">Material o textura</label>
               <p class="hint">Elige o escribe un material. Atelier intentará reproducir su grano, costuras y patrón sobre la prenda, manteniendo el color elegido.</p>
               <div class="material-line">
                 <input class="input" id="material" value="none" maxlength="80" autocomplete="off" placeholder="Ej. denim, silk, leather">
@@ -906,7 +916,7 @@ HTML = r"""<!doctype html>
       const colorField = document.createElement("div");
       colorField.className = "field";
       const colorLabel = document.createElement("label");
-      colorLabel.className = "field-label";
+      colorLabel.className = "field-label field-label-lg";
       colorLabel.textContent = "Color de ejemplo";
       const DEFAULT_HEX = "#c75d3a";
       const swatches = document.createElement("div");
@@ -1025,9 +1035,9 @@ HTML = r"""<!doctype html>
       chipRow.append(chip, chipText);
 
       const hexRow = document.createElement("div");
-      hexRow.className = "hsv-row";
+      hexRow.className = "hsv-row hex-row";
       const hexLabel = document.createElement("span");
-      hexLabel.className = "field-label";
+      hexLabel.className = "field-label field-label-lg";
       hexLabel.textContent = "Código hex";
       const hexInput = document.createElement("input");
       hexInput.className = "input hsv-hex-input";
@@ -1060,10 +1070,10 @@ HTML = r"""<!doctype html>
       });
       const hsvHint = document.createElement("p");
       hsvHint.className = "hint";
-      hsvBody.append(hueWrap, satWrap, valWrap, chipRow, hexRow, hsvReset, hsvHint);
+      hsvBody.append(hueWrap, satWrap, valWrap, chipRow, hsvReset, hsvHint);
       hsvView.append(hsvHead, hsvBody);
 
-      colorField.append(colorLabel, swatches, modeHint, hsvView);
+      colorField.append(colorLabel, swatches, hexRow, modeHint, hsvView);
       pane.append(colorField);
 
       function updateHsvUi() {
@@ -1156,7 +1166,7 @@ HTML = r"""<!doctype html>
       const materialField = document.createElement("div");
       materialField.className = "field";
       const materialLabel = document.createElement("label");
-      materialLabel.className = "field-label";
+      materialLabel.className = "field-label field-label-lg";
       materialLabel.textContent = "Material o textura";
       const materialLine = document.createElement("div");
       materialLine.className = "material-line";
@@ -2100,10 +2110,11 @@ HTML = r"""<!doctype html>
         statusText.textContent = `Tu cambio está en la cola, puesto ${currentJob.queue_position || count}${count > 1 ? ` · ${count} trabajos pendientes` : ""}.`;
         status.hidden = false;
       } else {
-        statusText.textContent = count > 1
-          ? `Aplicando tu cambio · ${count - 1} ${count === 2 ? "trabajo pendiente" : "trabajos pendientes"}.`
-          : "Aplicando tu cambio…";
-        status.hidden = false;
+        const pending = count - 1;
+        statusText.textContent = pending > 0
+          ? `${pending} ${pending === 1 ? "trabajo pendiente" : "trabajos pendientes"}.`
+          : "";
+        status.hidden = pending === 0;
       }
       updateStylePanel();
     }
