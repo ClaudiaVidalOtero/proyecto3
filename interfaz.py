@@ -123,7 +123,7 @@ HTML = r"""<!doctype html>
       --accent-mid: #89c34b; --accent-soft: #becc66;
       --green: #4a7728; --green-dark: #24541c; --lime: #89c34b; --lime-soft: #becc66;
       --plum: #732670; --plum-mid: #862d67; --plum-dark: #5c1f59; --lavender: #c8afe4;
-      --plum-surface: #f2ebf8;
+      --plum-surface: #f2ebf8; --generate-text: #c8afe4;
       --shadow: 0 12px 36px #29271e0b;
       --surface-raised: #fff; --surface-soft: #fbfbf8; --surface-muted: #f4f3ef;
       --surface-hover: #f4f7ec; --surface-accent: #ecf2df; --surface-preview: #f1f4ea;
@@ -139,7 +139,7 @@ HTML = r"""<!doctype html>
       --accent-mid: #becc66; --accent-soft: #4a7728;
       --green: #89c34b; --green-dark: #becc66; --lime: #becc66; --lime-soft: #89c34b;
       --plum: #c8afe4; --plum-mid: #c8afe4; --plum-dark: #c8afe4; --lavender: #c8afe4;
-      --plum-surface: #35213a;
+      --plum-surface: #35213a; --generate-text: #5c1f59;
       --shadow: 0 12px 36px #0005;
       --surface-raised: #242521; --surface-soft: #20211e; --surface-muted: #2c2d29;
       --surface-hover: #343c2c; --surface-accent: #26331d; --surface-preview: #262d20;
@@ -149,8 +149,6 @@ HTML = r"""<!doctype html>
     }
     :root[data-theme="dark"] .brand-mark,
     :root[data-theme="dark"] .thumb.selected::after,
-    :root[data-theme="dark"] .generate,
-    :root[data-theme="dark"] .generate:hover:not(:disabled),
     :root[data-theme="dark"] .hsv-apply,
     :root[data-theme="dark"] .hsv-apply:hover,
     :root[data-theme="dark"] .result-download,
@@ -171,7 +169,8 @@ HTML = r"""<!doctype html>
     .brand-sub { margin-top: 1px; color: var(--lime); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
     .history-nav { display: flex; flex: 1; flex-direction: column; min-height: 0; margin-top: 28px; }
     .history-nav-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 9px; }
-    .history-nav-title { padding-left: 10px; color: var(--plum-dark); font-size: 10px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; }
+    .history-nav-title { padding-left: 10px; color: #5c1f59; font-size: 10px; font-weight: 700;
+      letter-spacing: 1.1px; text-transform: uppercase; }
     .history-refresh { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid var(--line);
       border-radius: 8px; background: var(--surface-raised); color: var(--text-subtle); font-size: 12px; }
     .history-refresh:hover { border-color: var(--accent-mid); color: var(--accent-dark); }
@@ -185,6 +184,24 @@ HTML = r"""<!doctype html>
       text-overflow: ellipsis; white-space: nowrap; }
     .history-open { flex: 0 0 auto; color: var(--accent); font-size: 14px; }
     :root:not([data-theme="dark"]) .history-open { color: var(--green-dark); }
+    .history-open-button.history-tone-0 { --pill-rgb: 36, 84, 28; }
+    .history-open-button.history-tone-1 { --pill-rgb: 74, 119, 40; }
+    .history-open-button.history-tone-2 { --pill-rgb: 137, 195, 75; }
+    .history-open-button.history-tone-3 { --pill-rgb: 190, 204, 102; }
+    .history-open-button[class*="history-tone-"] { background: var(--surface-raised); border-color: var(--line);
+      transition: background .18s ease, border-color .18s ease; }
+    .history-open-button[class*="history-tone-"]:hover { background: rgba(var(--pill-rgb), .12);
+      border-color: rgb(var(--pill-rgb)); }
+    .history-open-button.history-tone-0:hover .history-item-name,
+    .history-open-button.history-tone-0:hover .history-open { color: #c8afe4; }
+    .history-open-button.history-tone-1:hover .history-item-name,
+    .history-open-button.history-tone-1:hover .history-open { color: #862d67; }
+    .history-open-button.history-tone-2:hover .history-item-name,
+    .history-open-button.history-tone-2:hover .history-open { color: #732670; }
+    .history-open-button.history-tone-3:hover .history-item-name,
+    .history-open-button.history-tone-3:hover .history-open { color: #5c1f59; }
+    :root[data-theme="dark"] .history-open-button[class*="history-tone-"]:hover .history-item-name,
+    :root[data-theme="dark"] .history-open-button[class*="history-tone-"]:hover .history-open { color: var(--lavender); }
     main { min-width: 0; max-width: 1700px; width: 100%; margin: 0 auto; padding: 20px clamp(20px, 4vw, 58px) 60px clamp(12px, 1.5vw, 24px); }
     .dev-mode-indicator { display: none; padding: 8px 11px; border: 1px solid var(--lavender);
       border-radius: 99px; background: var(--surface-accent); color: var(--accent-dark); font-size: 10px; font-weight: 650; cursor: pointer; }
@@ -212,6 +229,8 @@ HTML = r"""<!doctype html>
     body:not(.dev-mode) .result-alternates { grid-template-rows: minmax(0, 1fr); }
     .hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 25px; margin-bottom: 12px; padding-right: 48px; }
     .eyebrow { margin-bottom: 10px; color: var(--green); font-size: 10px; font-weight: 750; letter-spacing: 1.8px; text-transform: uppercase; }
+    .hero-plum { color: #5c1f59; }
+    .hero-green { color: var(--accent); }
     h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(34px, 3.5vw, 44px); font-weight: 500; letter-spacing: -1.8px; }
     .layout { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(360px, 1fr);
       gap: clamp(14px, 1.3vw, 19px); align-items: stretch; }
@@ -219,6 +238,8 @@ HTML = r"""<!doctype html>
     .card { min-width: 0; padding: 19px; border: 1px solid var(--line); border-radius: 17px; background: var(--white); box-shadow: var(--shadow); }
     .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; margin-bottom: 13px; }
     .card-head h2 { margin: 0; font-size: 14px; font-weight: 700; letter-spacing: -.15px; }
+    #styleCard .card-head h2 { color: var(--plum); }
+    #styleCard .card-head[hidden] { display: none; }
     .card-head p { margin: 5px 0 0; color: var(--lime); font-size: 11px; }
     .step { display: grid; place-items: center; flex: 0 0 25px; width: 25px; height: 25px; border-radius: 50%;
       color: var(--accent-dark); background: var(--surface-accent); font-size: 11px; font-weight: 700; }
@@ -234,7 +255,7 @@ HTML = r"""<!doctype html>
     .preview.has-image .preview-empty { display: none; }
     .source-toolbar { display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin: 14px 0 13px; }
     .source-actions { display: flex; flex-wrap: wrap; gap: 7px; }
-    .segmentation-status { display: none; margin: 12px 0 9px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .segmentation-status { display: none; margin: 12px 0 9px; color: var(--muted); font-size: 12px; line-height: 1.5; white-space: pre-line; }
     .segmentation-status.visible { display: block; }
     .garment-options { display: flex; flex-wrap: wrap; gap: 7px; margin: 0 0 12px; }
     .garment-choice { padding: 7px 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-raised);
@@ -283,7 +304,7 @@ HTML = r"""<!doctype html>
     .history-showcase .result-image.featured { width: 100%; height: min(48dvh, 460px); min-height: 260px; max-height: none; }
     .history-showcase .result-image.featured img { min-height: 0; }
     .field-label { display: block; margin: 0 0 8px; color: var(--text-strong); font-size: 11px; font-weight: 700; }
-    .field-label-lg { color: var(--green); font-size: 13px; }
+    .field-label-lg { color: var(--accent); font-size: 13px; }
     .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
     .field { min-width: 0; margin-bottom: 12px; }
     .input { width: 100%; min-height: 40px; padding: 9px 11px; border: 1px solid var(--line-strong); border-radius: 9px;
@@ -351,7 +372,7 @@ HTML = r"""<!doctype html>
     .right #garmentEditorHint { font-size: 10px; }
     textarea.input { resize: vertical; min-height: 74px; line-height: 1.5; }
     .generate { width: 100%; min-height: 46px; margin-top: 1px; border: 0; border-radius: 11px; background: var(--accent);
-      color: white; font-size: 12px; font-weight: 700; transition: background .2s, transform .2s; }
+      color: var(--generate-text); font-size: 12px; font-weight: 700; transition: background .2s, transform .2s; }
     .generate:hover:not(:disabled) { transform: translateY(-1px); background: var(--accent-dark); }
     .generate:disabled { cursor: wait; opacity: .65; }
     .generate-actions { margin-top: 1px; }
@@ -652,7 +673,7 @@ HTML = r"""<!doctype html>
       </div>
       <header class="hero">
         <div>
-          <h1>Un nuevo tono. La misma esencia.</h1>
+          <h1><span class="hero-plum">Un nuevo tono.</span> <span class="hero-green">La misma esencia.</span></h1>
         </div>
       </header>
       <div class="layout">
@@ -696,7 +717,7 @@ HTML = r"""<!doctype html>
         </div>
         <div class="stack right">
           <section class="card blank" id="styleCard">
-            <div class="card-head">
+            <div class="card-head" hidden>
               <div><h2> Modifica las prendas seleccionadas</h2></div>
             </div>
             <div class="style-empty" id="styleEmpty">
@@ -868,6 +889,7 @@ HTML = r"""<!doctype html>
       const selected = Boolean(state.segmentation && state.segmentation.selected.size > 0);
       const busy = state.submittingJob || state.pendingJobs.length > 0;
       $("#styleCard").classList.toggle("blank", !detected);
+      document.querySelector("#styleCard .card-head").hidden = !selected;
       document.querySelector(".generate-actions").hidden = !(selected || busy);
     }
     function clearSegmentation(message = "") {
@@ -1341,7 +1363,7 @@ HTML = r"""<!doctype html>
       if (!state.source) { showError("Elige una imagen antes de detectar las prendas."); return; }
       setImageSelectionLocked(true);
       clearSegmentation("Detectando prendas y afinando sus bordes. Puede tardar un poco…");
-      $("#segmentationStatus").textContent += " No se puede cambiar la imagen hasta que termine.";
+      $("#segmentationStatus").textContent += "\nNo se puede cambiar la imagen hasta que termine.";
       const button = $("#detectGarments");
       button.disabled = true;
       button.classList.add("detecting");
@@ -1446,10 +1468,10 @@ HTML = r"""<!doctype html>
           list.innerHTML = '<div class="empty-text">Aún no hay diseños guardados.<br>Cuando generes uno, aparecerá aquí.</div>';
           return;
         }
-        items.forEach((item) => {
+        items.forEach((item, index) => {
           const openButton = document.createElement("button");
           openButton.type = "button";
-          openButton.className = "history-open-button history-item";
+          openButton.className = `history-open-button history-item history-tone-${index % 4}`;
           openButton.title = `Ver ${item.label}`;
           const name = document.createElement("span");
           name.className = "history-item-name";
