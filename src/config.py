@@ -96,7 +96,7 @@ PIX2PIX_COLOR_HEX = {
     "yellow": "#e9c44e", "pink": "#dc91a4", "purple": "#886c9f",
     "orange": "#e29150", "brown": "#866044", "gray": "#91938e", "beige": "#d5c4a2",
 }
-PIX2PIX_DEFAULT_HEX = "#c75d3a"
+PIX2PIX_DEFAULT_HEX = "#4a7728"
 PIX2PIX_TEXTURE_OPTIONS = [
     PIX2PIX_NO_TEXTURE, "leather", "denim", "silk", "velvet", "wool",
     "cotton", "satin",
