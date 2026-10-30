@@ -399,11 +399,19 @@ HTML = r"""<!doctype html>
     .hsv-chip { width: 28px; height: 28px; flex: none; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px var(--line-strong); }
     .hsv-chip-text { color: var(--text-subtle); font-size: 11px; font-variant-numeric: tabular-nums; }
     .hsv-sep { color: var(--text-subtle); font-size: 11px; }
-    .hsv-numbers { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .hsv-number { display: inline-flex; align-items: center; gap: 3px; color: var(--text-subtle); font-size: 11px; font-weight: 700; }
-    .hsv-number-input { width: 62px; text-align: right; font-variant-numeric: tabular-nums; }
     .hsv-inline-color span:last-child { color: var(--text-subtle); font-size: 11px; font-variant-numeric: tabular-nums; }
     .color-mode-hint { margin: 8px 0 0; }
+    .hsv-toggle { display: flex; align-items: center; gap: 9px; width: 100%; padding: 0; border: 0; background: none;
+      color: inherit; font: inherit; text-align: left; cursor: pointer; }
+    .hsv-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+    .hsv-triangle { flex: none; width: 0; height: 0; border-style: solid; border-width: 5px 0 5px 8px;
+      border-color: transparent transparent transparent var(--accent-dark); transition: transform .15s ease; }
+    .hsv-toggle[aria-expanded="true"] .hsv-triangle { transform: rotate(90deg); }
+    .hsv-mini-chip { flex: none; width: 14px; height: 14px; margin-left: auto; border: 1px solid var(--line-strong); border-radius: 50%; }
+    .hsv-toggle[aria-expanded="true"] .hsv-mini-chip { display: none; }
+    .hsv-inline-body { display: flex; flex-direction: column; gap: 13px; }
+    .hsv-inline-body[hidden] { display: none; }
+    @media (prefers-reduced-motion: reduce) { .hsv-triangle { transition: none; } }
     .results-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 15px;
       padding: 19px 23px; border-bottom: 1px solid var(--line); }
     .results-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -673,11 +681,6 @@ HTML = r"""<!doctype html>
               </div>
               <div class="material-options" id="materialOptions" role="group" aria-label="Materiales sugeridos"></div>
             </div>
-            <div class="field">
-              <label class="field-label" for="extra">Instrucción adicional <span style="color:#999;font-weight:400">(opcional)</span></label>
-              <textarea class="input" id="extra" maxlength="500" placeholder="Ej. make the buttons gold"></textarea>
-              <p class="hint">Escribe la instrucción en inglés para obtener mejores resultados; se combinará con los cambios de color y material.</p>
-            </div>
             </div>
             <div class="garment-style-editor" id="garmentStyleEditor" aria-live="polite">
               <div class="garment-tabs" id="garmentTabs" role="tablist" aria-label="Configurar cada prenda"></div>
@@ -851,14 +854,10 @@ HTML = r"""<!doctype html>
       const canvas = $("#segmentationOverlay");
       const context = canvas.getContext("2d");
       context.clearRect(0, 0, canvas.width, canvas.height);
-      segmentation.items.forEach((item, index) => {
-        context.globalAlpha = index === segmentation.hovered ? 0.8 : segmentation.selected.has(index) ? 0.6 : 0.25;
-        context.drawImage(item.maskImage, 0, 0, canvas.width, canvas.height);
-      });
-      context.globalAlpha = 1;
+      // Sin tinte de máscara: la foto se ve tal cual y solo se dibuja encima el color elegido de cada prenda.
       segmentation.items.forEach((item, index) => {
         const layer = state.colorLayers.get(index);
-        if (layer) context.drawImage(layer, 0, 0, canvas.width, canvas.height);
+        if (layer && segmentation.selected.has(index)) context.drawImage(layer, 0, 0, canvas.width, canvas.height);
       });
       segmentation.items.forEach((item, index) => {
         const edit = state.garmentEdits.get(index);
@@ -934,10 +933,31 @@ HTML = r"""<!doctype html>
       hsvView.className = "color-hsv-view";
       const hsvHead = document.createElement("div");
       hsvHead.className = "hsv-inline-head";
+      const hsvToggle = document.createElement("button");
+      hsvToggle.type = "button";
+      hsvToggle.className = "hsv-toggle";
+      hsvToggle.setAttribute("aria-expanded", "false");   // empieza plegado
+      hsvToggle.setAttribute("aria-controls", `hsv-body-${index}`);
+      const hsvTriangle = document.createElement("span");
+      hsvTriangle.className = "hsv-triangle";
+      hsvTriangle.setAttribute("aria-hidden", "true");
       const hsvTitle = document.createElement("span");
       hsvTitle.className = "hsv-inline-title";
       hsvTitle.textContent = "Color HSV";
-      hsvHead.append(hsvTitle);
+      const hsvMiniChip = document.createElement("span");   // color actual, visible solo con el panel plegado
+      hsvMiniChip.className = "hsv-mini-chip";
+      hsvMiniChip.setAttribute("aria-hidden", "true");
+      hsvToggle.append(hsvTriangle, hsvTitle, hsvMiniChip);
+      hsvHead.append(hsvToggle);
+      const hsvBody = document.createElement("div");
+      hsvBody.className = "hsv-inline-body";
+      hsvBody.id = `hsv-body-${index}`;
+      hsvBody.hidden = true;
+      hsvToggle.addEventListener("click", () => {
+        const open = hsvToggle.getAttribute("aria-expanded") !== "true";
+        hsvToggle.setAttribute("aria-expanded", String(open));
+        hsvBody.hidden = !open;
+      });
 
       const hueWrap = document.createElement("div");
       const hueRow = document.createElement("div");
@@ -996,42 +1016,13 @@ HTML = r"""<!doctype html>
       valRange.addEventListener("input", () => { edit.hsv.val = Number(valRange.value); edit.hsvActive = true; updateHsvUi(); });
       valWrap.append(valRow, valRange);
 
-      function createHsvNumber(labelText, min, max, suffix, ariaLabel) {
-        const label = document.createElement("label");
-        label.className = "hsv-number";
-        const text = document.createElement("span");
-        text.textContent = labelText;
-        const input = document.createElement("input");
-        input.className = "input hsv-number-input";
-        input.type = "number";
-        input.min = String(min);
-        input.max = String(max);
-        input.step = "1";
-        input.setAttribute("aria-label", ariaLabel);
-        label.append(text, input);
-        if (suffix) {
-          const suffixEl = document.createElement("span");
-          suffixEl.textContent = suffix;
-          label.append(suffixEl);
-        }
-        return {label, input};
-      }
-      const hueNumber = createHsvNumber("H", 0, 359, "°", "Tono");
-      const satNumber = createHsvNumber("S", 0, 255, "", "Saturación");
-      const valNumber = createHsvNumber("V", 0, 255, "", "Brillo");
-      const numberWrap = document.createElement("span");
-      numberWrap.className = "hsv-numbers";
-      numberWrap.append(hueNumber.label, satNumber.label, valNumber.label);
       const chipRow = document.createElement("div");
       chipRow.className = "hsv-inline-color";
       const chip = document.createElement("span");
       chip.className = "hsv-chip";
       const chipText = document.createElement("span");
       chipText.className = "hsv-chip-text";
-      const chipSeparator = document.createElement("span");
-      chipSeparator.className = "hsv-sep";
-      chipSeparator.textContent = "·";
-      chipRow.append(chip, chipText, chipSeparator, numberWrap);
+      chipRow.append(chip, chipText);
 
       const hexRow = document.createElement("div");
       hexRow.className = "hsv-row";
@@ -1069,8 +1060,8 @@ HTML = r"""<!doctype html>
       });
       const hsvHint = document.createElement("p");
       hsvHint.className = "hint";
-      hsvHint.textContent = "El color final será el que elijas aquí al pulsar «Crear mi diseño».";
-      hsvView.append(hsvHead, hueWrap, satWrap, valWrap, chipRow, hexRow, hsvReset, hsvHint);
+      hsvBody.append(hueWrap, satWrap, valWrap, chipRow, hexRow, hsvReset, hsvHint);
+      hsvView.append(hsvHead, hsvBody);
 
       colorField.append(colorLabel, swatches, modeHint, hsvView);
       pane.append(colorField);
@@ -1089,10 +1080,8 @@ HTML = r"""<!doctype html>
         const hex = rgbToHex(red, green, blue);
         if (document.activeElement !== hexInput) hexInput.value = hex;
         chip.style.background = `rgb(${red}, ${green}, ${blue})`;
+        hsvMiniChip.style.background = `rgb(${red}, ${green}, ${blue})`;
         chipText.textContent = hex;
-        if (document.activeElement !== hueNumber.input) hueNumber.input.value = hue;
-        if (document.activeElement !== satNumber.input) satNumber.input.value = edit.hsv.sat;
-        if (document.activeElement !== valNumber.input) valNumber.input.value = edit.hsv.val;
         refreshGarmentColorLayer(index, edit);
       }
       function applyHexColor(value) {
@@ -1150,45 +1139,6 @@ HTML = r"""<!doctype html>
         if (event.key === "ArrowLeft") { edit.hsv.hue = Math.max(0, edit.hsv.hue - step); edit.hsvActive = true; updateHsvUi(); event.preventDefault(); }
       });
 
-      function commitHsvNumber(field, key, min, max) {
-        if (!edit.hsv) return;
-        if (field.input.value.trim() === "") {
-          updateHsvUi();
-          return;
-        }
-        const parsed = Number(field.input.value);
-        if (!Number.isFinite(parsed)) {
-          updateHsvUi();
-          return;
-        }
-        edit.hsv[key] = Math.min(max, Math.max(min, Math.round(parsed)));
-        edit.hsvActive = true;
-        updateHsvUi();
-      }
-      for (const [field, key, min, max] of [
-        [hueNumber, "hue", 0, 359],
-        [satNumber, "sat", 0, 255],
-        [valNumber, "val", 0, 255],
-      ]) {
-        field.input.addEventListener("input", () => {
-          if (!edit.hsv) return;
-          const raw = field.input.value.trim();
-          if (raw === "") return;
-          const parsed = Number(raw);
-          if (!Number.isFinite(parsed) || parsed < min || parsed > max) return;
-          edit.hsv[key] = Math.round(parsed);
-          edit.hsvActive = true;
-          updateHsvUi();
-        });
-        field.input.addEventListener("change", () => commitHsvNumber(field, key, min, max));
-        field.input.addEventListener("keydown", (event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            field.input.blur();
-          }
-        });
-      }
-
       const original = originalGarmentColor(index);
       const initialLower = (edit.color || "").trim().toLowerCase();
       const initialHex = normalizeHexColor(initialLower) || colorHex[initialLower];
@@ -1241,20 +1191,6 @@ HTML = r"""<!doctype html>
       materialField.append(materialOptions);  // los tags van justo debajo de la barra de escritura
       pane.append(materialField);
 
-      const extraField = document.createElement("div");
-      extraField.className = "field";
-      const extraLabel = document.createElement("label");
-      extraLabel.className = "field-label";
-      extraLabel.textContent = "Instrucción adicional";
-      const extra = document.createElement("textarea");
-      extra.className = "input";
-      extra.maxLength = 500;
-      extra.placeholder = "Ej. make the buttons gold";
-      extra.value = edit.extra;
-      extra.addEventListener("input", () => { edit.extra = extra.value; });
-      extraField.append(extraLabel, extra);
-      pane.append(extraField);
-
       return pane;
     }
     function updateGarmentTabs() {
@@ -1306,7 +1242,7 @@ HTML = r"""<!doctype html>
         state.garmentEdits.set(index, {
           color: "",
           texture: $("#material").value.trim() || "none",
-          extra: $("#extra").value.trim(),
+          extra: "",
           hsv: null,
           hsvActive: false,
           points: [],
@@ -2247,13 +2183,29 @@ HTML = r"""<!doctype html>
         updateQueueStatus();
       }
     }
+    // Negro y blanco → InstructPix2Pix. Cualquier otro color de la paleta, y los colores
+    // personalizados (sliders HSV o código HEX), incluido un negro/blanco retocado a mano → recolor_hsv.
+    const PIX2PIX_COLORS = new Set(["black", "white"]);
+    function sameHsv(a, b) {
+      return Math.round(a.hue) % 360 === b.hue && Math.round(a.sat) === b.sat && Math.round(a.val) === b.val;
+    }
+    function colorRoute(edit) {
+      const name = (edit.color || "").trim().toLowerCase();
+      if (PIX2PIX_COLORS.has(name) && (!edit.hsv || !edit.hsvActive || sameHsv(edit.hsv, hsvFromHex(colorHex[name])))) {
+        return {color: name, hsv: null};
+      }
+      if (edit.hsv && edit.hsvActive) return {color: "", hsv: edit.hsv};
+      const hexValue = colorHex[name] || normalizeHexColor(name);   // p. ej. el color por defecto si no se pudo leer el original
+      if (hexValue) return {color: "", hsv: edit.hsv || hsvFromHex(hexValue)};
+      return {color: "", hsv: null};
+    }
     async function generate() {
       clearError();
       if (!state.source) { showError("Elige una imagen antes de crear el diseño."); return; }
       const colorValue = $("#color").value.trim();
       const color = colorValue.toLowerCase() === "none" ? "" : colorValue;
       const material = $("#material").value.trim();
-      const extra = $("#extra").value.trim();
+      const extra = "";
       if (state.segmentation && state.segmentation.selected.size === 0) {
         showError("Selecciona al menos una de las prendas detectadas.");
         return;
@@ -2261,28 +2213,28 @@ HTML = r"""<!doctype html>
       const garmentEdits = state.segmentation
         ? [...state.segmentation.selected].map((index) => {
             const edit = state.garmentEdits.get(index);
-            const editColor = edit.color.trim();
+            const route = colorRoute(edit);
             return {
               index,
-              color: editColor.toLowerCase() === "none" ? "" : editColor,
+              color: route.color,
               texture: edit.texture.trim() || "none",
-              extra: edit.extra.trim(),
-              hsv: edit.hsv && edit.hsvActive ? {
-                hue: Math.round(edit.hsv.hue) % 360,
-                saturation: Math.round(edit.hsv.sat),
-                value: Math.round(edit.hsv.val),
+              extra: "",
+              hsv: route.hsv ? {
+                hue: Math.round(route.hsv.hue) % 360,
+                saturation: Math.round(route.hsv.sat),
+                value: Math.round(route.hsv.val),
               } : null,
               placements: edit.points,
             };
           })
         : null;
       if (garmentEdits && garmentEdits.some((edit) =>
-        !edit.color && !edit.hsv && edit.texture.toLowerCase() === "none" && !edit.extra && !edit.placements.length)) {
-        showError("Cada prenda incluida necesita al menos un cambio de color, material o instrucción.");
+        !edit.color && !edit.hsv && edit.texture.toLowerCase() === "none" && !edit.placements.length)) {
+        showError("Cada prenda incluida necesita al menos un cambio de color o de material.");
         return;
       }
       if (!state.segmentation && !color && (!material || material.toLowerCase() === "none") && !extra) {
-        showError("Indica un color, material o instrucción antes de generar.");
+        showError("Indica un color o un material antes de generar.");
         return;
       }
       if (state.submittingJob) return;
@@ -2873,6 +2825,94 @@ def original_size(source, dataset):
         return img.size
 
 
+def apply_hsv_garments(image, segmentation, garment_settings):
+    """
+    Aplica recolor_hsv a las prendas indicadas sobre `image` (array RGB uint8). Devuelve
+    (imagen recoloreada, unión de las máscaras suaves en 0-1, máscaras booleanas de cada prenda).
+    """
+    import cv2
+    import numpy as np
+    from utils.recolor_hsv import recolor_hsv
+
+    height, width = image.shape[:2]
+    result = image
+    combined = np.zeros((height, width), np.float32)  # unión de las máscaras suaves (vista "Máscara")
+    garment_masks = []
+    for settings in garment_settings:
+        garment = segmentation["garments"][settings["index"]]
+        mask = np.asarray(garment["mask"]).astype(np.uint8)
+        soft = garment.get("alpha")
+        if soft is not None:
+            alpha = np.asarray(soft, dtype=np.float32)
+        else:
+            alpha = cv2.GaussianBlur(mask.astype(np.float32), (0, 0), 1.2)  # borde suave, sin escalón
+        if mask.shape != (height, width):
+            # la detección se hizo a otra resolución: escalamos las máscaras a la de la imagen original
+            mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_NEAREST)
+            alpha = cv2.resize(alpha, (width, height), interpolation=cv2.INTER_LINEAR)
+        result = recolor_hsv(result, mask.astype(bool), settings["hue"], settings["saturation"], settings["value"], alpha=alpha)
+        combined = np.maximum(combined, np.clip(alpha, 0, 1))
+        garment_masks.append(mask.astype(bool))
+    return result, combined, garment_masks
+
+
+def hsv_names(segmentation, garment_indices):
+    return ", ".join(segmentation["garments"][i]["name"].split(",")[0].strip() for i in garment_indices)
+
+
+def hsv_label(segmentation, garment_settings):
+    if len(garment_settings) == 1:
+        s0 = garment_settings[0]
+        return f"HSV tono {s0['hue']} sat {s0['saturation']} brillo {s0['value']}"
+    label_parts = [f"{segmentation['garments'][s['index']]['name'].split(',')[0].strip()} H{s['hue']}°" for s in garment_settings]
+    return " | ".join(label_parts)
+
+
+def hsv_only_result(source, segmentation, hsv_settings):
+    """Resultado con el mismo formato que generate_recolor cuando todas las prendas van solo con recolor_hsv."""
+    import numpy as np
+    from PIL import Image
+
+    with Image.open(source) as img:
+        original = img.convert("RGB")
+    array, combined, masks = apply_hsv_garments(np.array(original), segmentation, hsv_settings)
+    final = Image.fromarray(array)
+    indices = [s["index"] for s in hsv_settings]
+    return {
+        "image": original,
+        "mask": Image.fromarray((np.clip(combined, 0, 1) * 255).astype(np.uint8)),
+        "edited": final,
+        "final": final.copy(),
+        "label": hsv_label(segmentation, hsv_settings),
+        "prenda_name": hsv_names(segmentation, indices),
+        "garments": [
+            {"name": segmentation["garments"][i]["name"], "mask": mask}
+            for i, mask in zip(indices, masks)
+        ],
+    }
+
+
+def add_hsv_to_result(result, segmentation, hsv_settings):
+    """Aplica recolor_hsv por encima del resultado de InstructPix2Pix (ya a tamaño original)."""
+    import numpy as np
+    from PIL import Image
+
+    combined = None
+    masks = []
+    for key in ("edited", "final"):
+        array, combined, masks = apply_hsv_garments(np.array(result[key].convert("RGB")), segmentation, hsv_settings)
+        result[key] = Image.fromarray(array)
+    base_mask = np.asarray(result["mask"].convert("L"), dtype=np.float32) / 255
+    result["mask"] = Image.fromarray((np.maximum(base_mask, np.clip(combined, 0, 1)) * 255).astype(np.uint8))
+    indices = [s["index"] for s in hsv_settings]
+    result["garments"] = list(result["garments"]) + [
+        {"name": segmentation["garments"][i]["name"], "mask": mask} for i, mask in zip(indices, masks)
+    ]
+    result["label"] = f"{result['label']} | {hsv_label(segmentation, hsv_settings)}"
+    result["prenda_name"] = f"{result['prenda_name']}, {hsv_names(segmentation, indices)}"
+    return result
+
+
 def run_hsv_recolor(app_state, job_id, source, segmentation, garment_settings):
     """
     Aplica recolor_hsv a las prendas elegidas a la resolución de la imagen original, la guarda en el
@@ -2889,35 +2929,10 @@ def run_hsv_recolor(app_state, job_id, source, segmentation, garment_settings):
         original = np.array(img.convert("RGB"))
     height, width = original.shape[:2]
 
-    result = original
-    combined = np.zeros((height, width), np.float32)  # unión de las máscaras suaves (vista "Máscara")
-    garment_masks = []
     garment_indices = [s["index"] for s in garment_settings]
-
-    for settings in garment_settings:
-        index = settings["index"]
-        garment = segmentation["garments"][index]
-        mask = np.asarray(garment["mask"]).astype(np.uint8)
-        soft = garment.get("alpha")
-        if soft is not None:
-            alpha = np.asarray(soft, dtype=np.float32)
-        else:
-            alpha = cv2.GaussianBlur(mask.astype(np.float32), (0, 0), 1.2)  # borde suave, sin escalón
-        if mask.shape != (height, width):
-            # la detección se hizo a otra resolución: escalamos las máscaras a la de la imagen original
-            mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_NEAREST)
-            alpha = cv2.resize(alpha, (width, height), interpolation=cv2.INTER_LINEAR)
-        result = recolor_hsv(result, mask.astype(bool), settings["hue"], settings["saturation"], settings["value"], alpha=alpha)
-        combined = np.maximum(combined, np.clip(alpha, 0, 1))
-        garment_masks.append(mask.astype(bool))
-
-    names = ", ".join(segmentation["garments"][i]["name"].split(",")[0].strip() for i in garment_indices)
-    if len(garment_settings) == 1:
-        s0 = garment_settings[0]
-        label = f"HSV tono {s0['hue']} sat {s0['saturation']} brillo {s0['value']}"
-    else:
-        label_parts = [f"{segmentation['garments'][s['index']]['name'].split(',')[0].strip()} H{s['hue']}°" for s in garment_settings]
-        label = " | ".join(label_parts)
+    result, combined, garment_masks = apply_hsv_garments(original, segmentation, garment_settings)
+    names = hsv_names(segmentation, garment_indices)
+    label = hsv_label(segmentation, garment_settings)
 
     output_dir = Path(C.PIX2PIX_OUTPUT_DIR)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -2962,7 +2977,7 @@ def run_hsv_recolor(app_state, job_id, source, segmentation, garment_settings):
 
 
 def run_generation(app_state, job_id, source, color, texture, extra, texture_path,
-                  segmentation, garment_indices, garment_edits=None):
+                  segmentation, garment_indices, garment_edits=None, hsv_settings=None):
     with job_lock:
         if jobs[job_id]["status"] == "cancelled" or jobs[job_id].get("cancel_requested"):
             jobs[job_id].update({"status": "cancelled", "message": "Generación cancelada"})
@@ -2974,16 +2989,25 @@ def run_generation(app_state, job_id, source, color, texture, extra, texture_pat
             jobs[job_id]["message"] = message
 
     try:
-        import torch
-        from src.recolor import generate as generate_recolor
+        # Negro y blanco (y texturas, instrucciones o elementos) → InstructPix2Pix.
+        # Resto de colores de la paleta y colores personalizados HSV/HEX → recolor_hsv.
+        # Si hay prendas de ambos tipos, primero se ejecuta el modelo y después se aplica el color HSV.
+        hsv_settings = hsv_settings or []
+        hsv_only = bool(hsv_settings) and not garment_indices
+        if hsv_only:
+            progress("Recoloreando con HSV…")
+            result = hsv_only_result(source, segmentation, hsv_settings)
+        else:
+            import torch
+            from src.recolor import generate as generate_recolor
 
-        dataset = get_dataset(app_state)
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        result = generate_recolor(
-            source, color, texture, extra, texture_path, dataset, device, progress,
-            segmentation=segmentation, garment_indices=garment_indices,
-            garment_edits=garment_edits,
-        )
+            dataset = get_dataset(app_state)
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            result = generate_recolor(
+                source, color, texture, extra, texture_path, dataset, device, progress,
+                segmentation=segmentation, garment_indices=garment_indices,
+                garment_edits=garment_edits,
+            )
         with job_lock:
             if jobs[job_id].get("cancel_requested"):
                 jobs[job_id].update({"status": "cancelled", "message": "Generación cancelada"})
@@ -2991,28 +3015,33 @@ def run_generation(app_state, job_id, source, color, texture, extra, texture_pat
         if result is None:
             raise RuntimeError("No se detectó ninguna prenda clara. Prueba con otra imagen.")
 
-        # el modelo trabaja en cuadrado (PIX2PIX_SIZE x PIX2PIX_SIZE) y eso deforma la imagen,
-        # así que devolvemos al tamaño de la original para recuperar su proporción
-        from PIL import Image
-        import numpy as np
+        if not hsv_only:
+            # el modelo trabaja en cuadrado (PIX2PIX_SIZE x PIX2PIX_SIZE) y eso deforma la imagen,
+            # así que devolvemos al tamaño de la original para recuperar su proporción
+            from PIL import Image
+            import numpy as np
 
-        size = original_size(source, dataset)
-        for key in ("image", "mask", "edited", "final"):
-            if result[key].size != size:
-                result[key] = result[key].resize(size, Image.LANCZOS)
+            size = original_size(source, dataset)
+            for key in ("image", "mask", "edited", "final"):
+                if result[key].size != size:
+                    result[key] = result[key].resize(size, Image.LANCZOS)
 
-        if segmentation and garment_indices:
-            combined = np.zeros(segmentation["image"].shape[:2], dtype=bool)
-            for index in garment_indices:
-                combined |= segmentation["garments"][index]["mask"]
-            if combined.any():
-                original_pil = Image.fromarray(segmentation["image"]).convert("RGB")
-                clamp_mask = Image.fromarray(combined.astype(np.uint8) * 255)
-                if clamp_mask.size != result["final"].size:
-                    clamp_mask = clamp_mask.resize(result["final"].size, Image.NEAREST)
-                if original_pil.size != result["final"].size:
-                    original_pil = original_pil.resize(result["final"].size, Image.LANCZOS)
-                result["final"] = Image.composite(result["final"], original_pil, clamp_mask)
+            if segmentation and garment_indices:
+                combined = np.zeros(segmentation["image"].shape[:2], dtype=bool)
+                for index in garment_indices:
+                    combined |= segmentation["garments"][index]["mask"]
+                if combined.any():
+                    original_pil = Image.fromarray(segmentation["image"]).convert("RGB")
+                    clamp_mask = Image.fromarray(combined.astype(np.uint8) * 255)
+                    if clamp_mask.size != result["final"].size:
+                        clamp_mask = clamp_mask.resize(result["final"].size, Image.NEAREST)
+                    if original_pil.size != result["final"].size:
+                        original_pil = original_pil.resize(result["final"].size, Image.LANCZOS)
+                    result["final"] = Image.composite(result["final"], original_pil, clamp_mask)
+
+            if hsv_settings:   # después del recorte, para que no borre las prendas recoloreadas con HSV
+                progress("Aplicando los colores HSV…")
+                result = add_hsv_to_result(result, segmentation, hsv_settings)
 
         output_dir = Path(C.PIX2PIX_OUTPUT_DIR)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -3083,6 +3112,7 @@ async def generate(request: Request, options: GenerationRequest):
     segmentation = None
     garment_indices = None
     garment_edits = None
+    hsv_settings = []
     if options.segmentation_id:
         segmentation = request.app.state.segmentations.get(options.segmentation_id)
         if segmentation is None or segmentation["source_id"] != options.source_id:
@@ -3114,16 +3144,30 @@ async def generate(request: Request, options: GenerationRequest):
                         status_code=400,
                         detail=f"Indica un cambio para la prenda {segmentation['garments'][edit.index]['name']}.",
                     )
-                if not edit_color and edit.hsv is not None:
-                    edit_color = "custom"
-                garment_edits[edit.index] = {
-                    "color": edit_color,
-                    "texture": edit_texture,
-                    "extra": edit_extra,
-                    "hsv": edit.hsv.model_dump() if edit.hsv is not None else None,
-                    "placements": edit.placements,
-                    "texture_path": None,
-                }
+                if edit.hsv is not None:
+                    # color de la paleta (salvo negro/blanco) o personalizado: lo aplica recolor_hsv, no el modelo
+                    hsv_settings.append({
+                        "index": edit.index,
+                        "hue": edit.hsv.hue,
+                        "saturation": edit.hsv.saturation,
+                        "value": edit.hsv.value,
+                    })
+                    edit_color = ""
+                needs_model = bool(
+                    edit_color or edit_texture.lower() != C.PIX2PIX_NO_TEXTURE
+                    or edit_extra or edit.placements
+                )
+                if needs_model:
+                    garment_edits[edit.index] = {
+                        "color": edit_color,
+                        "texture": edit_texture,
+                        "extra": edit_extra,
+                        "hsv": None,
+                        "placements": edit.placements,
+                        "texture_path": None,
+                    }
+            # al modelo solo van las prendas que lo necesitan; el resto se recolorea con HSV
+            garment_indices = [index for index in garment_indices if index in garment_edits]
     elif options.garment_indices is not None:
         raise HTTPException(status_code=400, detail="Primero detecta las prendas de la imagen.")
     elif options.garment_edits is not None:
@@ -3157,6 +3201,7 @@ async def generate(request: Request, options: GenerationRequest):
             segmentation,
             garment_indices,
             garment_edits,
+            hsv_settings,
         )
     return {"id": job_id, "status": "queued", "queue_position": queue_position}
 
