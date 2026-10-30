@@ -217,9 +217,9 @@ HTML = r"""<!doctype html>
     .preview.has-image .preview-empty { display: none; }
     .source-toolbar { display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin: 14px 0 13px; }
     .source-actions { display: flex; flex-wrap: wrap; gap: 7px; }
-    .segmentation-status { display: none; margin: 3px 0 6px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .segmentation-status { display: none; margin: 12px 0 9px; color: var(--muted); font-size: 12px; line-height: 1.5; }
     .segmentation-status.visible { display: block; }
-    .garment-options { display: flex; flex-wrap: wrap; gap: 7px; margin: -2px 0 12px; }
+    .garment-options { display: flex; flex-wrap: wrap; gap: 7px; margin: 0 0 12px; }
     .garment-choice { padding: 7px 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-raised);
       color: var(--text-default); font-size: 10px; }
     .garment-choice:hover { border-color: #d5b6aa; }
@@ -1282,9 +1282,10 @@ HTML = r"""<!doctype html>
       }
       drawSegmentationOverlay();
       updateGarmentOptions();
-      $("#segmentationStatus").textContent = state.segmentation.selected.size
-        ? `${state.segmentation.selected.size} prenda(s) incluida(s). Configura cada una en su pestaña.`
-        : "Pasa el cursor sobre una prenda de la imagen o elige una abajo.";
+      const count = state.segmentation.selected.size;
+      $("#segmentationStatus").textContent = count
+        ? `${count} ${count === 1 ? "prenda seleccionada" : "prendas seleccionadas"}. Solo las prendas seleccionadas se pueden editar; pulsa otra para incluirla o quitarla.`
+        : "Ninguna prenda seleccionada. Pulsa una prenda de la imagen o de la lista para poder editarla.";
     }
 
     function maskBounds(maskPixels, width, height) {
@@ -1356,7 +1357,7 @@ HTML = r"""<!doctype html>
         drawSegmentationOverlay();
         const status = $("#segmentationStatus");
         status.textContent = items.length === 1
-          ? "Prenda detectada y seleccionada. Configura el estilo y añade bolsillos o botones pulsando en su ubicación."
+          ? "Prenda detectada y seleccionada.  Sólo las prendas seleccionadas podrán ser editadas."
           : `${items.length} prenda(s) detectada(s). Pasa el cursor por encima para identificarlas y haz clic para seleccionarlas; puedes marcar varias.`;
         status.classList.add("visible");
       } catch (error) {
