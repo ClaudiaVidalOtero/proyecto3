@@ -360,6 +360,8 @@ HTML = r"""<!doctype html>
     .texture-tile span { display: block; overflow: hidden; padding: 0 3px; text-overflow: ellipsis; white-space: nowrap; }
     .texture-tile.selected { border-color: var(--plum); background: var(--plum-surface); color: var(--plum-dark); }
     .hint { margin: 8px 0 0; color: var(--text-muted); font-size: 10px; line-height: 1.5; }
+    .model-color-hint { margin: 10px 0 0; padding: 9px 11px; border: 1px solid var(--accent-mid); border-radius: 9px;
+      background: var(--surface-accent); color: var(--accent-dark); font-size: 11px; line-height: 1.5; }
     .right .card-head h2 { font-size: 13px; }
     .right .card-head p { font-size: 10px; }
     .right .step { font-size: 10px; }
@@ -990,6 +992,10 @@ HTML = r"""<!doctype html>
       modeHint.className = "hint color-mode-hint";
       modeHint.hidden = true;
 
+      const modelColorHint = document.createElement("p");
+      modelColorHint.className = "hint model-color-hint";
+      modelColorHint.hidden = true;
+
       const hsvView = document.createElement("div");
       hsvView.className = "color-hsv-view";
       const hsvHead = document.createElement("div");
@@ -1124,7 +1130,7 @@ HTML = r"""<!doctype html>
       hsvBody.append(hueWrap, satWrap, valWrap, chipRow, hsvReset, hsvHint);
       hsvView.append(hsvHead, hsvBody);
 
-      colorField.append(colorLabel, swatches, hexRow, modeHint, hsvView);
+      colorField.append(colorLabel, swatches, hexRow, modeHint, modelColorHint, hsvView);
       pane.append(colorField);
 
       function updateHsvUi() {
@@ -1144,6 +1150,10 @@ HTML = r"""<!doctype html>
         hsvMiniChip.style.background = `rgb(${red}, ${green}, ${blue})`;
         chipText.textContent = hex;
         refreshGarmentColorLayer(index, edit);
+        if (modelColorHint) {
+          const color = (edit.color || "").trim().toLowerCase();
+          modelColorHint.hidden = !((color === "black" || color === "white") && !edit.hsvActive);
+        }
       }
       function applyHexColor(value) {
         const hex = normalizeHexColor(value);
@@ -1159,6 +1169,15 @@ HTML = r"""<!doctype html>
         const customHex = normalizeHexColor(lower);
         swatches.querySelectorAll(".swatch").forEach((button) =>
           button.classList.toggle("selected", button.dataset.value === lower));
+        if (modelColorHint) {
+          if ((lower === "black" || lower === "white") && !edit.hsvActive) {
+            const colorName = lower === "black" ? "negro" : "blanco";
+            modelColorHint.textContent = `El color ${colorName} se generará con el modelo y se verá al pulsar «Crear mi diseño».`;
+            modelColorHint.hidden = false;
+          } else {
+            modelColorHint.hidden = true;
+          }
+        }
         if (customHex) {
           modeHint.textContent = `Color personalizado ${customHex}. Ajusta el tono HSV si lo necesitas.`;
           modeHint.hidden = false;
@@ -1173,8 +1192,12 @@ HTML = r"""<!doctype html>
         const hex = normalizeHexColor(lower) || colorHex[lower];
         if (!hex) return;
         edit.color = lower;
-        edit.hsv = hsvFromHex(hex);
-        edit.hsvActive = true;
+        if (lower === "black" || lower === "white") {
+          edit.hsvActive = false;
+        } else {
+          edit.hsv = hsvFromHex(hex);
+          edit.hsvActive = true;
+        }
         updateColorUi();
       }
       function setHueFromPointer(event) {
@@ -2270,19 +2293,16 @@ HTML = r"""<!doctype html>
       }
     }
     // Negro y blanco → InstructPix2Pix. Cualquier otro color de la paleta, y los colores
-    // personalizados (sliders HSV o código HEX), incluido un negro/blanco retocado a mano → recolor_hsv.
+    // personalizados (sliders HSV o código HEX) → recolor_hsv.
     const PIX2PIX_COLORS = new Set(["black", "white"]);
-    function sameHsv(a, b) {
-      return Math.round(a.hue) % 360 === b.hue && Math.round(a.sat) === b.sat && Math.round(a.val) === b.val;
-    }
     function colorRoute(edit) {
       const name = (edit.color || "").trim().toLowerCase();
-      if (PIX2PIX_COLORS.has(name) && (!edit.hsv || !edit.hsvActive || sameHsv(edit.hsv, hsvFromHex(colorHex[name])))) {
+      if (PIX2PIX_COLORS.has(name) && !edit.hsvActive) {
         return {color: name, hsv: null};
       }
       if (edit.hsv && edit.hsvActive) return {color: "", hsv: edit.hsv};
       const hexValue = colorHex[name] || normalizeHexColor(name);   // p. ej. el color por defecto si no se pudo leer el original
-      if (hexValue) return {color: "", hsv: edit.hsv || hsvFromHex(hexValue)};
+      if (hexValue) return {color: "", hsv: hsvFromHex(hexValue)};
       return {color: "", hsv: null};
     }
     async function generate() {
