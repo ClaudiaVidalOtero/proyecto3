@@ -326,7 +326,7 @@ textarea.input { resize: vertical; min-height: 74px; line-height: 1.5; }
 .color-hsv-view { display: flex; flex-direction: column; gap: 13px; margin-top: 10px; padding: 13px;
   border: 1px solid var(--lavender); border-radius: 12px; background: var(--plum-surface); }
 .color-hsv-view[hidden], .color-swatches-view[hidden] { display: none; }
-.color-hsv-reset { margin-top: 10px; }
+.color-hsv-reset { margin-top: 4px; min-height: 28px; padding: 4px 9px; }
 .hsv-inline-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .hsv-inline-title { color: var(--plum-mid); font-size: 12px; font-weight: 700; }
 .hsv-inline-color { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
@@ -394,7 +394,7 @@ textarea.input { resize: vertical; min-height: 74px; line-height: 1.5; }
   .stack.right .card-head p { margin-top: 5px; font-size: 11px; }
   .stack.right #defaultStyle { display: flex; flex: 0 0 auto; flex-direction: column; }
   .stack.right #defaultStyle[hidden] { display: none; }  /* sin esto el display:flex anularía el atributo hidden */
-  .stack.right .garment-style-editor.visible { display: flex; flex-direction: column; gap: 14px; }
+  .stack.right .garment-style-editor.visible { display: flex; flex-direction: column; gap: 10px; }
   .stack.right .garment-editor-pane.active { display: flex; flex-direction: column; }
   .stack.right .garment-editor-pane .field,
   .stack.right #defaultStyle .field { margin-bottom: 0; }
@@ -409,11 +409,11 @@ textarea.input { resize: vertical; min-height: 74px; line-height: 1.5; }
   .stack.right .swatches { gap: 9px; margin-top: 11px; }
   .stack.right .swatch { width: 26px; height: 26px; }
   .stack.right .swatch-none { padding: 0 11px; font-size: 10px; }
-  .stack.right .hex-row { margin-top: 20px; }
+  .stack.right .hex-row { margin-top: 14px; }
   .stack.right .material-options { gap: 7px; margin-top: 9px; }
   .stack.right .material-choice { padding: 6px 11px; font-size: 11px; }
   .stack.right .garment-tab { padding: 8px 12px; font-size: 11px; }
-  .stack.right .generate-actions { margin-top: 30px; }
+  .stack.right .generate-actions { margin-top: 8px; }
   .stack.right .generate { min-height: 52px; margin-top: 0; border-radius: 12px; font-size: 14px; }
   .stack.right .generate-cancel { min-height: 40px; font-size: 12px; }
   .stack.right .queue-status { font-size: 11px; }
