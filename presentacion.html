@@ -1,0 +1,2139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Atelier: probador digital de color y material para prendas. Prueba variantes sobre tu catálogo sin fabricar muestras.">
+<title>Atelier · Un nuevo tono. La misma esencia.</title>
+<script>document.documentElement.classList.add("js");</script>
+<style>
+  :root {
+    --paper: #f7f7f4;
+    --paper-2: #efeee7;
+    --white: #ffffff;
+    --ink: #1f211d;
+    --muted: #686b61;
+    --plum: #732670;
+    --plum-2: #5b1e58;
+    --plum-ink: #732670;
+    --plum-soft: #f1e8f5;
+    --lavender: #c8afe4;
+    --green: #4a7728;
+    --green-ink: #4a7728;
+    --lime: #89c34b;
+    --lime-soft: #dfeac8;
+    --line: #dedcd2;
+    --shadow: 0 24px 70px rgba(45, 30, 48, .10);
+    --shadow-soft: 0 12px 34px rgba(45, 30, 48, .07);
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+    --bar: 64px;
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    color: var(--ink);
+    background:
+      radial-gradient(900px 520px at 90% -10%, rgba(200, 175, 228, .26), transparent 62%),
+      radial-gradient(760px 480px at -8% 25%, rgba(137, 195, 75, .13), transparent 62%),
+      var(--paper);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--plum-ink); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  img { display: block; max-width: 100%; }
+  button { font: inherit; }
+  p { margin: 0 0 1em; }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .skip {
+    position: fixed;
+    left: -999px;
+    top: 8px;
+    z-index: 100;
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: var(--plum);
+    color: #fff;
+  }
+  .skip:focus { left: 16px; }
+
+  .deck-bar {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    height: var(--bar);
+    padding: 0 clamp(18px, 4vw, 48px);
+    border-bottom: 1px solid rgba(222, 220, 210, .8);
+    background: rgba(247, 247, 244, .84);
+    backdrop-filter: blur(16px);
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex: 0 0 auto;
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 23px;
+    letter-spacing: -.03em;
+    text-decoration: none;
+  }
+  .brand:hover { text-decoration: none; }
+
+  .brand-mark {
+    display: grid;
+    place-items: center;
+    width: 31px;
+    height: 31px;
+    border-radius: 9px;
+    background: var(--plum);
+    color: #fff;
+    font-family: var(--serif);
+    font-size: 20px;
+    line-height: 1;
+    transform: rotate(-4deg);
+  }
+
+  .deck-center {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    color: var(--muted);
+  }
+
+  .deck-title {
+    overflow: hidden;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .11em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .deck-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 0 0 auto;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 19px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.1;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform .18s ease, background .18s ease, border-color .18s ease;
+  }
+  .btn:hover { transform: translateY(-2px); text-decoration: none; }
+  .btn-primary { background: var(--plum); color: #fff; }
+  .btn-primary:hover { background: var(--plum-2); }
+  .btn-ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--plum); color: var(--plum-ink); }
+  .btn-small { padding: 8px 13px; font-size: 11px; }
+
+  .progress-track {
+    position: fixed;
+    inset: var(--bar) 0 auto;
+    z-index: 71;
+    height: 3px;
+    background: rgba(222, 220, 210, .8);
+  }
+  .progress-track span {
+    display: block;
+    width: 0;
+    height: 100%;
+    background: linear-gradient(90deg, var(--green), var(--lime) 55%, var(--plum));
+    transition: width .35s ease;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: block;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: calc(var(--bar) + 20px) clamp(20px, 5vw, 64px) 80px;
+    outline: none;
+  }
+  .js .slide { display: none; }
+  .js .slide.is-active { display: block; }
+
+  .slide-inner {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: min(1180px, 100%);
+    min-height: calc(100svh - var(--bar) - 100px);
+    margin: 0 auto;
+  }
+
+  .js .slide.is-active .slide-inner {
+    animation: rise .42s ease both;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .deck-nav {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    z-index: 72;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .9);
+    box-shadow: 0 10px 30px rgba(45, 30, 48, .12);
+    backdrop-filter: blur(14px);
+    transform: translateX(-50%);
+  }
+
+  .nav-btn {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 16px;
+    cursor: pointer;
+    transition: background .18s ease, color .18s ease, border-color .18s ease;
+  }
+  .nav-btn:hover { border-color: var(--plum); background: var(--plum-soft); color: var(--plum-ink); }
+  .nav-btn:disabled { cursor: default; opacity: .3; }
+  .nav-btn:disabled:hover { border-color: var(--line); background: var(--paper); color: var(--ink); }
+
+  .dots {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 4px;
+  }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--line);
+    cursor: pointer;
+    transition: background .18s ease, transform .18s ease;
+  }
+  .dot:hover { background: var(--lavender); }
+  .dot.is-active { background: var(--plum); transform: scale(1.45); }
+
+  .nav-count {
+    min-width: 54px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 12px;
+    color: var(--plum-ink);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+  }
+  .kicker::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--lime);
+    box-shadow: 0 0 0 4px rgba(137, 195, 75, .18);
+  }
+
+  h1, h2, h3 {
+    font-family: var(--serif);
+    font-weight: 400;
+    color: var(--ink);
+  }
+
+  h1 {
+    margin: 0 0 20px;
+    font-size: clamp(38px, 5.8vw, 76px);
+    line-height: .98;
+    letter-spacing: -.045em;
+  }
+  h1 em { color: var(--plum-ink); font-style: italic; }
+
+  h2 {
+    max-width: 22ch;
+    margin: 0;
+    font-size: clamp(30px, 4vw, 54px);
+    line-height: 1.04;
+    letter-spacing: -.04em;
+  }
+
+  h3 {
+    margin: 0 0 7px;
+    font-size: 21px;
+    line-height: 1.12;
+    letter-spacing: -.02em;
+  }
+
+  .lead {
+    max-width: 60ch;
+    margin: 0;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .slide-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+    gap: 30px;
+    align-items: end;
+    margin-bottom: 22px;
+  }
+
+  .slide-head .lead { padding-bottom: 4px; }
+
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .66);
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    white-space: nowrap;
+  }
+
+  .card-grid { display: grid; gap: 16px; }
+  .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+  .card {
+    padding: 21px 20px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--white);
+    box-shadow: var(--shadow-soft);
+  }
+  .card p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .card-tag {
+    display: inline-block;
+    margin-bottom: 26px;
+    color: var(--plum-ink);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+  }
+
+  .pain-card {
+    position: relative;
+    min-height: 190px;
+    overflow: hidden;
+    padding: 24px 22px;
+  }
+  .pain-card .ghost-num {
+    position: absolute;
+    top: 4px;
+    right: 14px;
+    color: var(--paper-2);
+    font-family: var(--serif);
+    font-size: 82px;
+    line-height: 1;
+    letter-spacing: -.06em;
+    pointer-events: none;
+  }
+  .pain-card h3 { position: relative; margin-bottom: 10px; }
+  .pain-card p { position: relative; }
+
+  .statement {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 18px;
+    padding: 20px 26px;
+    border-radius: 18px;
+    background:
+      radial-gradient(600px 220px at 100% 0%, rgba(200, 175, 228, .3), transparent 70%),
+      var(--plum-2);
+    color: #fff;
+    box-shadow: var(--shadow);
+  }
+  .statement p {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: clamp(20px, 2.2vw, 29px);
+    line-height: 1.2;
+    letter-spacing: -.02em;
+  }
+  .statement span {
+    flex: 0 0 auto;
+    color: var(--lavender);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+  }
+
+  .split-2 {
+    display: grid;
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+    gap: 18px;
+    align-items: stretch;
+  }
+
+  .manifesto {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 26px;
+    border-radius: 20px;
+    background:
+      radial-gradient(520px 260px at 0% 0%, rgba(137, 195, 75, .24), transparent 68%),
+      var(--plum-2);
+    color: #fff;
+    box-shadow: var(--shadow);
+  }
+  .manifesto .label {
+    color: var(--lavender);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+  }
+  .manifesto h3 {
+    max-width: 13ch;
+    margin: 18px 0;
+    color: #fff;
+    font-size: clamp(28px, 3vw, 40px);
+    line-height: 1.05;
+  }
+  .manifesto p {
+    max-width: 38ch;
+    margin: 0;
+    color: rgba(255, 255, 255, .7);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .audience {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .audience .card { padding: 18px 17px; }
+  .audience .card h3 { font-size: 19px; }
+  .audience .card p { font-size: 12px; }
+
+  .solution-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 14px 0 12px;
+  }
+
+  .solution-step {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--white);
+    box-shadow: var(--shadow-soft);
+  }
+  .solution-step b {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: var(--plum-soft);
+    color: var(--plum-ink);
+    font-family: var(--serif);
+    font-size: 14px;
+    font-weight: 400;
+  }
+  .solution-step strong {
+    display: block;
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 400;
+    line-height: 1.15;
+  }
+  .solution-step span {
+    display: block;
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .demo-figure {
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--white);
+    box-shadow: var(--shadow-soft);
+  }
+  .demo-figure .image-box {
+    display: grid;
+    place-items: center;
+    height: 130px;
+    padding: 8px;
+    background: var(--paper-2);
+  }
+  .demo-figure img {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 8px;
+    object-fit: contain;
+  }
+  .demo-figure figcaption {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 11px 15px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .demo-figure figcaption strong { color: var(--ink); font-size: 11px; }
+
+  .steps-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+    margin: 24px 0 16px;
+  }
+
+  .use-step {
+    padding: 18px 16px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--white);
+    box-shadow: var(--shadow-soft);
+  }
+  .use-step b {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    margin-bottom: 28px;
+    border-radius: 50%;
+    background: var(--plum-soft);
+    color: var(--plum-ink);
+    font-family: var(--serif);
+    font-size: 13px;
+    font-weight: 400;
+  }
+  .use-step h3 { font-size: 16px; }
+  .use-step p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+
+  .callout-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .callout-row span {
+    padding: 7px 11px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--white);
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 24px;
+  }
+
+  .feature-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 240px;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--white);
+    box-shadow: var(--shadow-soft);
+  }
+  .feature-card h3 { margin-top: auto; font-size: 20px; }
+  .feature-card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+  .mini {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 6px;
+    min-height: 92px;
+    margin-bottom: 20px;
+    padding: 12px;
+    border-radius: 12px;
+    background: var(--paper-2);
+  }
+  .mini-swatch {
+    width: 26px;
+    height: 26px;
+    border: 2px solid var(--white);
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px var(--line);
+  }
+  .mini-hex {
+    align-self: center;
+    margin-left: 2px;
+    padding: 4px 7px;
+    border-radius: 6px;
+    background: var(--white);
+    color: var(--muted);
+    font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 9px;
+  }
+  .mini-pill {
+    align-self: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: var(--white);
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .mini-tab {
+    padding: 5px 8px;
+    border-radius: 7px;
+    background: var(--white);
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .mini-tab.active { background: var(--plum); color: #fff; }
+  .mini-dot {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--white);
+    color: var(--plum-ink);
+    font-family: var(--serif);
+    font-size: 12px;
+    box-shadow: 0 0 0 1px var(--line);
+  }
+
+  .benefit-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+    gap: 18px;
+    align-items: stretch;
+    margin-top: 24px;
+  }
+
+  .benefit-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .benefit {
+    padding: 18px 17px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--white);
+    box-shadow: var(--shadow-soft);
+  }
+  .benefit strong {
+    display: block;
+    margin-bottom: 5px;
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 1.08;
+    letter-spacing: -.02em;
+  }
+  .benefit span { color: var(--muted); font-size: 11px; line-height: 1.45; }
+
+  .compare {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 22px;
+    border-radius: 18px;
+    background:
+      radial-gradient(460px 220px at 100% 0%, rgba(200, 175, 228, .28), transparent 70%),
+      var(--plum-2);
+    color: #fff;
+    box-shadow: var(--shadow);
+  }
+  .compare .label {
+    margin-bottom: 18px;
+    color: var(--lavender);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+  }
+  .compare-row { padding: 11px 0; border-top: 1px solid rgba(255, 255, 255, .14); }
+  .compare-row:first-of-type { border-top: 0; }
+  .compare-row small {
+    display: block;
+    margin-bottom: 3px;
+    color: rgba(255, 255, 255, .5);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+  }
+  .compare-row span {
+    display: block;
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.25;
+  }
+  .compare-row.now span { color: var(--lime); }
+
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 24px;
+  }
+
+  .shot {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--white);
+    box-shadow: var(--shadow-soft);
+  }
+  .shot-img {
+    display: grid;
+    place-items: center;
+    height: 180px;
+    padding: 9px;
+    background:
+      linear-gradient(45deg, rgba(0, 0, 0, .024) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, .024) 75%),
+      linear-gradient(45deg, rgba(0, 0, 0, .024) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, .024) 75%),
+      var(--paper-2);
+    background-position: 0 0, 9px 9px;
+    background-size: 18px 18px;
+  }
+  .shot-img img {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 6px;
+    object-fit: contain;
+  }
+  .shot figcaption {
+    padding: 11px 13px 13px;
+    border-top: 1px solid var(--line);
+  }
+  .shot figcaption strong {
+    display: block;
+    margin-bottom: 2px;
+    font-family: var(--serif);
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.2;
+  }
+  .shot figcaption span {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.35;
+  }
+
+  .quality-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+    gap: 20px;
+    align-items: center;
+    margin-top: 18px;
+  }
+
+  .quality-left { display: flex; flex-direction: column; gap: 14px; }
+
+  .quality-list { display: grid; gap: 10px; }
+  .quality-item {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+  }
+  .quality-item b {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    background: var(--plum-soft);
+    color: var(--plum-ink);
+    font-family: var(--serif);
+    font-size: 14px;
+    font-weight: 400;
+  }
+  .quality-item h3 { margin-bottom: 3px; font-size: 17px; }
+  .quality-item p { margin: 0; color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+
+  .quality-figure {
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--white);
+    box-shadow: var(--shadow-soft);
+  }
+  .quality-figure .image-box {
+    display: grid;
+    place-items: center;
+    height: 210px;
+    padding: 10px;
+    background: var(--paper-2);
+  }
+  .quality-figure img {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 8px;
+  }
+  .quality-figure figcaption {
+    padding: 10px 14px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .stat-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 18px;
+    padding: 17px 20px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--white);
+  }
+  .stat-strip strong {
+    display: block;
+    font-family: var(--serif);
+    font-size: 26px;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: -.04em;
+  }
+  .stat-strip span {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 9px;
+    line-height: 1.35;
+  }
+  .stat-strip.compact {
+    margin-top: 0;
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .stat-strip.compact strong { font-size: 21px; }
+  .stat-strip.compact span { font-size: 8px; }
+
+  .process-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 22px 0 16px;
+  }
+
+  .process-card {
+    position: relative;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--white);
+    box-shadow: var(--shadow-soft);
+  }
+  .process-card .num {
+    display: inline-block;
+    margin-bottom: 22px;
+    color: var(--plum-ink);
+    font-family: var(--serif);
+    font-size: 13px;
+  }
+  .process-card h3 { font-size: 18px; }
+  .process-card p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+
+  .route-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .route {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--white);
+    box-shadow: var(--shadow-soft);
+  }
+  .route.hsv { border-left: 4px solid var(--lime); }
+  .route.gen { border-left: 4px solid var(--plum); }
+  .route h3 { font-size: 18px; }
+  .route p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+  .route .tag {
+    flex: 0 0 auto;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: var(--paper-2);
+    color: var(--muted);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: .05em;
+    white-space: nowrap;
+  }
+
+  .spec-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  .spec {
+    padding: 15px 17px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--white);
+    box-shadow: var(--shadow-soft);
+  }
+  .spec-label {
+    display: inline-block;
+    margin-bottom: 7px;
+    color: var(--plum-ink);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  .spec p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .spec strong { color: var(--ink); }
+
+  .note-line {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .two-panels {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 24px;
+  }
+  .panel {
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--white);
+    box-shadow: var(--shadow-soft);
+  }
+  .panel h3 { margin-bottom: 14px; font-size: 23px; }
+  .list { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+  .list li {
+    position: relative;
+    padding-left: 18px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .list li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: .55em;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--lavender);
+  }
+  .list.green li::before { background: var(--lime); }
+  .list li strong { color: var(--ink); font-weight: 700; }
+
+  .roadmap {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 24px;
+  }
+  .roadmap .card { padding: 20px; }
+  .roadmap .card h3 { margin-bottom: 12px; font-size: 21px; }
+  .roadmap .card ul { display: grid; gap: 7px; margin: 0; padding: 0 0 0 15px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+  .roadmap .card.now { border-top: 4px solid var(--lime); }
+  .roadmap .card.next { border-top: 4px solid var(--lavender); }
+  .roadmap .card.later { border-top: 4px solid var(--plum); }
+  .roadmap .stage {
+    display: inline-block;
+    margin-bottom: 8px;
+    color: var(--plum-ink);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+  }
+  .roadmap-note {
+    margin-top: 18px;
+    color: var(--muted);
+    font-family: var(--serif);
+    font-size: 17px;
+    font-style: italic;
+    text-align: center;
+  }
+
+  .cover-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr);
+    gap: 46px;
+    align-items: center;
+  }
+
+  .cover-lead {
+    max-width: 48ch;
+    margin-bottom: 20px;
+    color: var(--muted);
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  .cover-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+    margin-bottom: 18px;
+  }
+  .cover-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+  .cover-hint {
+    margin-top: 20px;
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: .06em;
+  }
+
+  .cover-visual {
+    position: relative;
+    padding: 16px 0 16px 16px;
+  }
+  .cover-visual::before {
+    content: "";
+    position: absolute;
+    inset: 0 14px 0 0;
+    border-radius: 34px;
+    background:
+      radial-gradient(120% 80% at 20% 0%, rgba(255, 255, 255, .86), transparent 60%),
+      linear-gradient(145deg, var(--lavender), var(--lime-soft) 70%, var(--paper));
+    opacity: .82;
+    transform: rotate(2.5deg);
+  }
+
+  .cover-device {
+    position: relative;
+    z-index: 1;
+    max-width: 320px;
+    margin-inline: auto;
+    padding: 11px;
+    border: 1px solid rgba(255, 255, 255, .72);
+    border-radius: 24px;
+    background: var(--white);
+    box-shadow: var(--shadow);
+    transform: rotate(-1.5deg);
+  }
+  .cover-device-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 2px 4px 10px;
+  }
+  .cover-device-bar strong {
+    font-family: var(--serif);
+    font-size: 19px;
+    font-weight: 400;
+    letter-spacing: -.03em;
+  }
+  .cover-device-bar span {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: var(--lime-soft);
+    color: var(--green-ink);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+  }
+  .cover-image {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 4 / 4.05;
+    border-radius: 15px;
+    background: var(--paper-2);
+  }
+  .cover-image img {
+    width: 100%;
+    height: 100%;
+    padding: 7px;
+    object-fit: contain;
+  }
+  .cover-label {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: rgba(31, 33, 29, .74);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    backdrop-filter: blur(8px);
+  }
+  .cover-device-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 4px 2px;
+  }
+  .cover-swatches { display: flex; gap: 5px; }
+  .cover-swatches span {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--white);
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px var(--line);
+  }
+  .cover-device-foot b {
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--plum);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .float-tag {
+    position: absolute;
+    z-index: 2;
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--white);
+    box-shadow: var(--shadow-soft);
+    color: var(--muted);
+    font-size: 9px;
+    line-height: 1.3;
+  }
+  .float-tag strong {
+    display: block;
+    color: var(--plum-ink);
+    font-family: var(--serif);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.1;
+  }
+  .float-tag.one { top: 36px; right: -8px; transform: rotate(2deg); }
+  .float-tag.two { bottom: 34px; left: -8px; transform: rotate(-2deg); }
+
+  .closing-panel {
+    padding: clamp(26px, 4vw, 44px);
+    border-radius: 26px;
+    background:
+      radial-gradient(700px 320px at 12% 0%, rgba(200, 175, 228, .24), transparent 70%),
+      radial-gradient(600px 300px at 100% 100%, rgba(137, 195, 75, .2), transparent 70%),
+      var(--plum-2);
+    color: #fff;
+    box-shadow: var(--shadow);
+  }
+  .closing-panel .kicker { color: var(--lavender); }
+  .closing-panel .kicker::before { background: var(--lime); box-shadow: 0 0 0 4px rgba(137, 195, 75, .2); }
+  .closing-panel h2 {
+    max-width: 16ch;
+    color: #fff;
+    font-size: clamp(34px, 4.2vw, 58px);
+  }
+  .closing-panel p {
+    max-width: 54ch;
+    margin: 14px 0 20px;
+    color: rgba(255, 255, 255, .7);
+    font-size: 14.5px;
+    line-height: 1.55;
+  }
+  .closing-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+  .closing-panel .btn-primary { background: var(--lime); color: #17200c; }
+  .closing-panel .btn-primary:hover { background: var(--lime-soft); }
+  .closing-panel .btn-ghost { border-color: rgba(255, 255, 255, .26); color: #fff; }
+  .closing-panel .btn-ghost:hover { border-color: var(--lavender); color: var(--lavender); }
+  .closing-foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 26px;
+    padding-top: 13px;
+    border-top: 1px solid rgba(255, 255, 255, .15);
+    color: rgba(255, 255, 255, .45);
+    font-size: 10px;
+  }
+
+  .noscript {
+    position: fixed;
+    inset: auto 20px 20px;
+    z-index: 90;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: var(--plum-2);
+    color: #fff;
+    font-size: 12px;
+  }
+
+  @media (max-width: 980px) {
+    .cover-grid { grid-template-columns: minmax(0, 1fr) minmax(250px, .7fr); gap: 30px; }
+    .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .result-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .slide-head { grid-template-columns: 1fr; gap: 16px; }
+    .slide-head h2 { max-width: 24ch; }
+    .steps-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .quality-layout { grid-template-columns: 1fr; }
+    .quality-figure .image-box { height: 240px; }
+    .quality-figure { max-width: 460px; }
+  }
+
+  @media (max-width: 860px) {
+    :root { --bar: 58px; }
+    body { overflow: hidden; }
+    .deck-center { display: none; }
+    .deck-bar { justify-content: space-between; }
+    .brand { font-size: 21px; }
+    .brand-mark { width: 28px; height: 28px; border-radius: 8px; font-size: 18px; }
+    .cover-grid { grid-template-columns: 1fr; gap: 34px; }
+    .cover-visual { width: min(360px, 100%); margin-inline: auto; }
+    .cover-hint { display: none; }
+    .split-2, .benefit-layout, .two-panels { grid-template-columns: 1fr; }
+    .cols-3, .cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .process-row { grid-template-columns: 1fr; }
+    .route-row { grid-template-columns: 1fr; }
+    .spec-grid { grid-template-columns: 1fr; }
+    .roadmap { grid-template-columns: 1fr; }
+    .stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dots { display: none; }
+    .card { padding: 18px; }
+    .feature-card { min-height: 0; }
+    .feature-card h3 { margin-top: 4px; }
+  }
+
+  @media (max-width: 560px) {
+    .slide { padding-left: 18px; padding-right: 18px; }
+    h1 { font-size: clamp(38px, 11.5vw, 56px); }
+    h2 { font-size: clamp(29px, 8.2vw, 42px); }
+    .cover-lead { font-size: 15px; }
+    .cover-actions .btn { flex: 1 1 auto; }
+    .cols-2, .cols-3, .cols-4, .audience, .benefit-grid, .steps-row, .solution-strip, .result-grid { grid-template-columns: 1fr; }
+    .solution-step { padding: 12px 14px; }
+    .use-step b { margin-bottom: 16px; }
+    .pain-card { min-height: 0; }
+    .statement { align-items: flex-start; flex-direction: column; gap: 8px; }
+    .statement span { align-self: flex-start; }
+    .quality-figure { max-width: none; }
+    .quality-figure .image-box { height: 220px; }
+    .feature-grid { grid-template-columns: 1fr; }
+    .shot-img { height: 220px; }
+    .result-grid { gap: 10px; }
+    .deck-nav { width: min(calc(100% - 28px), 340px); justify-content: space-between; }
+    .nav-count { min-width: 50px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+
+  @media print {
+    @page { size: landscape; margin: 12mm; }
+    body { overflow: visible; background: #fff; color: #000; font-size: 10pt; }
+    .deck-bar, .deck-nav, .progress-track, .skip, .noscript, .float-tag { display: none !important; }
+    .slide, .js .slide {
+      position: static;
+      display: block !important;
+      overflow: visible;
+      min-height: 0;
+      padding: 0;
+      break-after: page;
+    }
+    .slide:last-child { break-after: auto; }
+    .slide-inner { min-height: 0; padding: 6mm 0; }
+    .card, .pain-card, .statement, .manifesto, .solution-step, .demo-figure, .use-step,
+    .feature-card, .benefit, .compare, .shot, .quality-figure, .stat-strip, .process-card,
+    .route, .spec, .panel, .roadmap .card, .closing-panel, .cover-device {
+      box-shadow: none;
+    }
+    .js .slide.is-active .slide-inner { animation: none; }
+    .closing-panel { background: #f0e8ef; color: #000; }
+    .closing-panel h2, .closing-panel .kicker { color: #000; }
+    .closing-panel p, .closing-foot { color: #555; }
+    a { color: inherit; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#portada">Saltar al contenido</a>
+
+<header class="deck-bar">
+  <a class="brand" href="#portada" aria-label="Atelier, ir a la portada">
+    <span class="brand-mark" aria-hidden="true">a</span>
+    atelier
+  </a>
+  <div class="deck-center">
+    <span class="deck-title" id="deckTitle">Portada</span>
+  </div>
+  <div class="deck-actions">
+    <button class="btn btn-ghost btn-small" id="presentButton" type="button">Presentar</button>
+  </div>
+</header>
+<div class="progress-track" aria-hidden="true"><span id="progressBar"></span></div>
+
+<p class="sr-only" id="deckStatus" aria-live="polite"></p>
+
+<main>
+  <section class="slide is-active" id="portada" data-title="Portada" aria-label="Portada">
+    <div class="slide-inner cover-grid">
+      <div>
+        <p class="kicker">Atelier · Probador digital de moda</p>
+        <h1>Un nuevo tono.<br><em>La misma esencia.</em></h1>
+        <p class="cover-lead">Prueba colores y materiales en tu catálogo sin fabricar una sola muestra. Una foto, todas las variantes.</p>
+        <div class="cover-actions">
+          <button class="btn btn-primary" type="button" data-next>Empezar recorrido →</button>
+          <a class="btn btn-ghost" href="http://127.0.0.1:8000" target="_blank" rel="noopener">Abrir la app</a>
+        </div>
+        <div class="cover-tags">
+          <span class="chip">Sin muestras físicas</span>
+          <span class="chip">Resultados en local</span>
+          <span class="chip">Catálogo listo para vender</span>
+        </div>
+        <p class="cover-hint">Usa ← → o desliza para navegar</p>
+      </div>
+
+      <aside class="cover-visual" aria-label="Vista previa de Atelier">
+        <div class="float-tag one"><strong>Color exacto</strong>paleta, HEX y HSV</div>
+        <div class="cover-device">
+          <div class="cover-device-bar">
+            <strong>atelier</strong>
+            <span>probador</span>
+          </div>
+          <div class="cover-image">
+            <img src="outputs/pix2pix/recoloreado_dress_blue_denim_9b8314a4.png" alt="Vestido recoloreado en denim azul con Atelier" fetchpriority="high">
+            <span class="cover-label">Vestido · denim azul</span>
+          </div>
+          <div class="cover-device-foot">
+            <div class="cover-swatches" aria-hidden="true">
+              <span style="background:#732670"></span>
+              <span style="background:#89c34b"></span>
+              <span style="background:#c8afe4"></span>
+              <span style="background:#b83b3b"></span>
+              <span style="background:#1f211d"></span>
+              <span style="background:#f0eee6"></span>
+            </div>
+            <b>Crear diseño</b>
+          </div>
+        </div>
+        <div class="float-tag two"><strong>Material</strong>cuero, denim, seda</div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="slide" id="problema" data-title="El problema" aria-label="El problema">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <div>
+          <p class="kicker">01 · El problema</p>
+          <h2>Probar una idea no debería costar una prenda.</h2>
+        </div>
+        <p class="lead">Cambiar el color o el material de una prenda es una decisión visual. Hoy se prueba comprando muestras, fabricando prototipos o editando la foto a mano. Tres caminos lentos, caros y difíciles de repetir.</p>
+      </div>
+
+      <div class="card-grid cols-3">
+        <article class="card pain-card">
+          <span class="ghost-num" aria-hidden="true">01</span>
+          <span class="card-tag">Coste</span>
+          <h3>Probar es caro</h3>
+          <p>Cada combinación de color o tejido exige muestras físicas, pruebas de taller o compras a ciegas. La idea se enfría antes de verla.</p>
+        </article>
+        <article class="card pain-card">
+          <span class="ghost-num" aria-hidden="true">02</span>
+          <span class="card-tag">Tiempo</span>
+          <h3>Editar a mano no escala</h3>
+          <p>Recortar la prenda, reconstruir el tejido y conservar pliegues en un editor gráfico lleva minutos por imagen. Multiplicarlo por un catálogo es inviable.</p>
+        </article>
+        <article class="card pain-card">
+          <span class="ghost-num" aria-hidden="true">03</span>
+          <span class="card-tag">Riesgo</span>
+          <h3>Decidir sin verlo</h3>
+          <p>Elegir un color sobre una muestra pequeña no es lo mismo que verlo en la prenda, con su luz, su caída y su volumen.</p>
+        </article>
+      </div>
+
+      <div class="statement">
+        <p>El catálogo no puede esperar a la fábrica.</p>
+        <span>La decisión visual va primero</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="oportunidad" data-title="La oportunidad" aria-label="La oportunidad">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <div>
+          <p class="kicker">02 · La oportunidad</p>
+          <h2>Del prototipo físico al probador digital.</h2>
+        </div>
+        <p class="lead">Las marcas ya no necesitan producir para imaginar. Necesitan una forma rápida de ver la prenda terminada, comparar variantes y decidir con seguridad antes de fabricar.</p>
+      </div>
+
+      <div class="split-2">
+        <article class="manifesto">
+          <span class="label">Una nueva forma de decidir</span>
+          <h3>Menos pruebas. Más criterio.</h3>
+          <p>Atelier está pensado para equipos que trabajan con catálogo: diseño, producto, e-commerce, contenido y fotografía.</p>
+        </article>
+
+        <div class="audience">
+          <article class="card">
+            <h3>Marcas emergentes</h3>
+            <p>Valida la paleta de la colección antes de comprometer producción.</p>
+          </article>
+          <article class="card">
+            <h3>E-commerce</h3>
+            <p>Publica variantes de color sin repetir la sesión de fotos.</p>
+          </article>
+          <article class="card">
+            <h3>Estudios de diseño</h3>
+            <p>Presenta propuestas visuales a clientes y equipos en minutos.</p>
+          </article>
+          <article class="card">
+            <h3>Foto de producto</h3>
+            <p>Amplía el catálogo con nuevos estilos sobre una base ya fotografiada.</p>
+          </article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="solucion" data-title="La solución" aria-label="La solución">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <div>
+          <p class="kicker">03 · La solución</p>
+          <h2>Una foto. Un probador de color y material.</h2>
+        </div>
+        <p class="lead">Sin Photoshop. Sin muestras. Sin tocar el fondo. Atelier detecta cada prenda y te deja probar sobre ella, conservando la luz y los pliegues de la foto original.</p>
+      </div>
+
+      <div class="solution-strip">
+        <div class="solution-step">
+          <b>1</b>
+          <div><strong>Sube una foto</strong><span>del catálogo o una propia</span></div>
+        </div>
+        <div class="solution-step">
+          <b>2</b>
+          <div><strong>Elige la prenda</strong><span>una o varias a la vez</span></div>
+        </div>
+        <div class="solution-step">
+          <b>3</b>
+          <div><strong>Prueba y descarga</strong><span>color, material y variantes</span></div>
+        </div>
+      </div>
+
+      <figure class="demo-figure">
+        <div class="image-box">
+          <img src="outputs/recolor/0b0a12e8640472681f93e31d44f68e5d_h120_compare.png" alt="Comparativa de una prenda recoloreada: original, máscara y resultado final" loading="lazy">
+        </div>
+        <figcaption><strong>Original, máscara y resultado.</strong><span>El color cambia. La prenda, sus pliegues y la escena siguen siendo los mismos.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="slide" id="como-se-usa" data-title="Cómo se usa" aria-label="Cómo se usa">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <div>
+          <p class="kicker">04 · Cómo se usa</p>
+          <h2>De la foto al diseño en cinco pasos.</h2>
+        </div>
+        <p class="lead">Todo ocurre en una sola pantalla. No hay que preparar capas ni saber edición: la app te guía desde la foto hasta el archivo final.</p>
+      </div>
+
+      <div class="steps-row">
+        <article class="use-step">
+          <b>1</b>
+          <h3>Carga</h3>
+          <p>Elige una imagen del catálogo o sube la tuya.</p>
+        </article>
+        <article class="use-step">
+          <b>2</b>
+          <h3>Detecta</h3>
+          <p>Pulsa «Detectar prendas» y revisa lo que encuentra.</p>
+        </article>
+        <article class="use-step">
+          <b>3</b>
+          <h3>Selecciona</h3>
+          <p>Activa solo las prendas que quieres cambiar.</p>
+        </article>
+        <article class="use-step">
+          <b>4</b>
+          <h3>Ajusta</h3>
+          <p>Color, HEX, HSV o material, prenda a prenda.</p>
+        </article>
+        <article class="use-step">
+          <b>5</b>
+          <h3>Genera</h3>
+          <p>Pulsa «Crear mi diseño», compara y descarga.</p>
+        </article>
+      </div>
+
+      <div class="callout-row">
+        <span>Cada prenda guarda su propia configuración</span>
+        <span>Historial de hasta 100 diseños</span>
+        <span>Descarga en PNG</span>
+        <span>Todo en local</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="que-puedes-cambiar" data-title="Qué puedes cambiar" aria-label="Qué puedes cambiar">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <div>
+          <p class="kicker">05 · Qué puedes cambiar</p>
+          <h2>El control, prenda a prenda.</h2>
+        </div>
+        <p class="lead">Una misma foto puede convertirse en varias propuestas. Cambia solo lo que necesitas y deja el resto intacto.</p>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature-card">
+          <div class="mini" aria-hidden="true">
+            <span class="mini-swatch" style="background:#732670"></span>
+            <span class="mini-swatch" style="background:#89c34b"></span>
+            <span class="mini-swatch" style="background:#c8afe4"></span>
+            <span class="mini-swatch" style="background:#b83b3b"></span>
+            <span class="mini-hex">#732670</span>
+          </div>
+          <h3>Color exacto</h3>
+          <p>Paleta, código HEX y ajuste fino de tono, saturación y brillo con HSV.</p>
+        </article>
+
+        <article class="feature-card">
+          <div class="mini" aria-hidden="true">
+            <span class="mini-pill">denim</span>
+            <span class="mini-pill">leather</span>
+            <span class="mini-pill">silk</span>
+            <span class="mini-pill">velvet</span>
+            <span class="mini-pill">wool</span>
+          </div>
+          <h3>Materiales</h3>
+          <p>Prueba acabados como denim, cuero, seda, terciopelo o lana sobre la prenda.</p>
+        </article>
+
+        <article class="feature-card">
+          <div class="mini" aria-hidden="true">
+            <span class="mini-tab active">Vestido</span>
+            <span class="mini-tab">Chaqueta</span>
+            <span class="mini-tab">Camisa</span>
+          </div>
+          <h3>Varias prendas</h3>
+          <p>Configura cada prenda por separado dentro de la misma fotografía.</p>
+        </article>
+
+        <article class="feature-card">
+          <div class="mini" aria-hidden="true">
+            <span class="mini-dot">P</span>
+            <span class="mini-dot">B</span>
+            <span class="mini-pill">bolsillo</span>
+            <span class="mini-pill">botón</span>
+          </div>
+          <h3>Detalles</h3>
+          <p>Añade bolsillos o botones y colócalos sobre la zona de la prenda que elijas.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="casos-de-uso" data-title="Casos de uso" aria-label="Casos de uso">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <div>
+          <p class="kicker">06 · Casos de uso</p>
+          <h2>Una herramienta para cada etapa del catálogo.</h2>
+        </div>
+        <p class="lead">Atelier no sustituye la producción: acelera las decisiones que ocurren antes. Cuanto más visual es el proceso, más útil es probar sobre la prenda real.</p>
+      </div>
+
+      <div class="card-grid cols-4">
+        <article class="card">
+          <span class="card-tag">Vender</span>
+          <h3>E-commerce</h3>
+          <p>Publica variantes de color y material sin repetir la sesión de fotos ni pedir nuevas muestras.</p>
+        </article>
+        <article class="card">
+          <span class="card-tag">Diseñar</span>
+          <h3>Colección</h3>
+          <p>Valida paletas y acabados antes de comprometer tejido, taller o producción.</p>
+        </article>
+        <article class="card">
+          <span class="card-tag">Comunicar</span>
+          <h3>Contenido</h3>
+          <p>Genera variantes visuales para campañas, redes y presentaciones de producto.</p>
+        </article>
+        <article class="card">
+          <span class="card-tag">Cuidar</span>
+          <h3>Sostenibilidad</h3>
+          <p>Reduce muestras físicas y residuos en la fase en la que todavía se puede cambiar de idea.</p>
+        </article>
+      </div>
+
+      <div class="callout-row" style="margin-top:18px">
+        <span>Marcas emergentes</span>
+        <span>Estudios de diseño</span>
+        <span>Equipos de e-commerce</span>
+        <span>Fotografía de producto</span>
+        <span>Estilismo</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="beneficios" data-title="Beneficios" aria-label="Beneficios">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <div>
+          <p class="kicker">07 · Por qué Atelier</p>
+          <h2>Menos fricción. Más decisiones.</h2>
+        </div>
+        <p class="lead">El valor no está en generar una imagen bonita: está en poder comparar, elegir y avanzar sin depender de una muestra física.</p>
+      </div>
+
+      <div class="benefit-layout">
+        <div class="benefit-grid">
+          <article class="benefit">
+            <strong>Minutos, no semanas</strong>
+            <span>Prueba variantes mientras la idea sigue fresca.</span>
+          </article>
+          <article class="benefit">
+            <strong>Menos coste</strong>
+            <span>Reduce muestras, pruebas y sesiones extra.</span>
+          </article>
+          <article class="benefit">
+            <strong>Más catálogo</strong>
+            <span>Un mismo producto, muchos estilos posibles.</span>
+          </article>
+          <article class="benefit">
+            <strong>Privacidad local</strong>
+            <span>Las fotos se procesan en tu equipo, no en la nube.</span>
+          </article>
+        </div>
+
+        <article class="compare">
+          <span class="label">El cambio de flujo</span>
+          <div class="compare-row">
+            <small>Antes</small>
+            <span>brief → muestra → sesión → corrección → producción</span>
+          </div>
+          <div class="compare-row now">
+            <small>Con Atelier</small>
+            <span>foto → probar → decidir → producir</span>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="resultados" data-title="Resultados" aria-label="Resultados">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <div>
+          <p class="kicker">08 · Resultados</p>
+          <h2>La prenda cambia. La escena no.</h2>
+        </div>
+        <p class="lead">Cambios de color, materiales y comparativas reales generadas con Atelier. El fondo, la piel y el resto de la fotografía se mantienen.</p>
+      </div>
+
+      <div class="result-grid">
+        <figure class="shot">
+          <div class="shot-img">
+            <img src="outputs/recolor/0b0a12e8640472681f93e31d44f68e5d_h120_compare.png" alt="Comparativa de recoloreado HSV: original, máscara y resultado" loading="lazy">
+          </div>
+          <figcaption><strong>Color exacto</strong><span>Pliegues y sombras conservados.</span></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot-img">
+            <img src="outputs/pix2pix/recoloreado_black_leather.png" alt="Prenda transformada a cuero negro con Atelier" loading="lazy">
+          </div>
+          <figcaption><strong>Cuero negro</strong><span>Material generado sobre la prenda.</span></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot-img">
+            <img src="outputs/pix2pix/recoloreado_blue_denim_7b3b0acf.png" alt="Prenda transformada a denim azul con Atelier" loading="lazy">
+          </div>
+          <figcaption><strong>Denim azul</strong><span>Color y material en una sola prueba.</span></figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="shot-img">
+            <img src="outputs/recolored/0cc70556e13abb3219c14ac881ee511b_purple_comparativa.png" alt="Comparativa original y resultado de una prenda recoloreada en violeta" loading="lazy">
+          </div>
+          <figcaption><strong>Antes y después</strong><span>Comparativa directa del resultado.</span></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="calidad" data-title="Calidad" aria-label="Calidad">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <div>
+          <p class="kicker">09 · Calidad</p>
+          <h2>Resultados que respetan la prenda.</h2>
+        </div>
+        <p class="lead">La edición se limita a la prenda detectada. El resto de la imagen no se toca, y la luz original se usa para que el cambio parezca real.</p>
+      </div>
+
+      <div class="quality-layout">
+        <div class="quality-left">
+          <div class="quality-list">
+            <div class="quality-item">
+              <b>01</b>
+              <div>
+                <h3>Solo la prenda</h3>
+                <p>La máscara aísla la prenda y respeta la piel, el fondo y las demás prendas de la foto.</p>
+              </div>
+            </div>
+            <div class="quality-item">
+              <b>02</b>
+              <div>
+                <h3>Pliegues y sombras</h3>
+                <p>El color se integra con la luminancia original para conservar volumen, costuras y caída.</p>
+              </div>
+            </div>
+            <div class="quality-item">
+              <b>03</b>
+              <div>
+                <h3>Varias prendas</h3>
+                <p>Cada prenda se detecta y se configura por separado, incluso dentro de la misma imagen.</p>
+              </div>
+            </div>
+          </div>
+          <div class="stat-strip compact">
+            <div><strong>46</strong><span>categorías de prenda</span></div>
+            <div><strong>420+</strong><span>pruebas guardadas</span></div>
+            <div><strong>100</strong><span>diseños en el historial</span></div>
+            <div><strong>Local</strong><span>sin subir las fotos</span></div>
+          </div>
+        </div>
+
+        <figure class="quality-figure">
+          <div class="image-box">
+            <img src="outputs/segmentation/sam/0e7104825dd0092bbd62d8c2245c21b5_overlay.png" alt="Máscaras de segmentación coloreadas sobre una fotografía con varias prendas" loading="lazy">
+          </div>
+          <figcaption>Cada color es una prenda detectada y editable por separado.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="como-funciona" data-title="Cómo funciona" aria-label="Cómo funciona">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <div>
+          <p class="kicker">10 · Cómo funciona</p>
+          <h2>Simple por fuera. Preciso por dentro.</h2>
+        </div>
+        <p class="lead">No necesitas saber de modelos para usarlo. Pero esto es lo que ocurre cuando pulsas «Crear mi diseño».</p>
+      </div>
+
+      <div class="process-row">
+        <article class="process-card">
+          <span class="num">01</span>
+          <h3>Detecta</h3>
+          <p>Localiza cada prenda en la foto y afina su contorno para separarla del resto.</p>
+        </article>
+        <article class="process-card">
+          <span class="num">02</span>
+          <h3>Edita</h3>
+          <p>Aplica un color directo o genera un material nuevo solo sobre la prenda elegida.</p>
+        </article>
+        <article class="process-card">
+          <span class="num">03</span>
+          <h3>Recompone</h3>
+          <p>Devuelve la prenda a la foto conservando pliegues, sombras y tamaño original.</p>
+        </article>
+      </div>
+
+      <div class="route-row">
+        <article class="route hsv">
+          <div>
+            <h3>Cambio de color</h3>
+            <p>Rápido, fiel y sin GPU. Ideal para paletas y colores exactos.</p>
+          </div>
+          <span class="tag">directo</span>
+        </article>
+        <article class="route gen">
+          <div>
+            <h3>Cambio de material</h3>
+            <p>IA generativa para cuero, denim, seda y acabados complejos.</p>
+          </div>
+          <span class="tag">GPU recomendada</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="ficha-tecnica" data-title="Ficha técnica" aria-label="Ficha técnica">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <div>
+          <p class="kicker">11 · Ficha técnica</p>
+          <h2>La base que hace posible el probador.</h2>
+        </div>
+        <p class="lead">Atelier es un prototipo funcional, local y auditable. Combina segmentación, edición generativa y composición de imagen.</p>
+      </div>
+
+      <div class="spec-grid">
+        <article class="spec">
+          <span class="spec-label">Visión</span>
+          <p><strong>Mask R-CNN ResNet50-FPN v2 + SAM 2.1.</strong> 46 categorías de prenda más fondo. Segmentación medida en validación: mAP 36,5 % · AP50 45,3 %.</p>
+        </article>
+        <article class="spec">
+          <span class="spec-label">Generación</span>
+          <p><strong>InstructPix2Pix</strong> para materiales y colores complejos. Composición alfa con conservación de luminancia para integrar el resultado.</p>
+        </article>
+        <article class="spec">
+          <span class="spec-label">Aplicación</span>
+          <p><strong>FastAPI + HTML, CSS y JavaScript.</strong> Cola de generación, historial local, comparativas y descarga en PNG.</p>
+        </article>
+        <article class="spec">
+          <span class="spec-label">Datos y entrenamiento</span>
+          <p><strong>Fashionpedia en formato COCO.</strong> 10 épocas con aumento de datos y precisión mixta. Ejecución local; GPU recomendada para material.</p>
+        </article>
+      </div>
+
+      <p class="note-line">La ruta de color funciona sin GPU. La ruta generativa es más lenta en CPU y está pensada para equipos con GPU.</p>
+    </div>
+  </section>
+
+  <section class="slide" id="limites" data-title="Límites y buenas prácticas" aria-label="Límites y buenas prácticas">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <div>
+          <p class="kicker">12 · Uso responsable</p>
+          <h2>Lo que conviene saber antes de publicar.</h2>
+        </div>
+        <p class="lead">La IA propone; tú decides. Para un catálogo profesional, revisa siempre el resultado y compara con la prenda real.</p>
+      </div>
+
+      <div class="two-panels">
+        <article class="panel">
+          <h3>Límites</h3>
+          <ul class="list">
+            <li><strong>Oclusiones:</strong> brazos, bolsos o pliegues pueden ocultar parte de la prenda.</li>
+            <li><strong>Categorías poco frecuentes:</strong> la detección puede fallar en prendas raras o ángulos inusuales.</li>
+            <li><strong>Material generativo:</strong> a veces inventa costuras o detalles que no estaban.</li>
+            <li><strong>Resolución de trabajo:</strong> la edición generativa parte de 512 px y luego se recompone.</li>
+            <li><strong>Detalles aproximados:</strong> la posición de bolsillos y botones es una estimación visual.</li>
+          </ul>
+        </article>
+        <article class="panel">
+          <h3>Buenas prácticas</h3>
+          <ul class="list green">
+            <li><strong>Foto clara y frontal:</strong> buena luz, prenda visible y poco ruido alrededor.</li>
+            <li><strong>Una decisión por prueba:</strong> compara color y material por separado si buscas precisión.</li>
+            <li><strong>Revisa los bordes:</strong> amplía la zona del cuello, mangas y cierres antes de descargar.</li>
+            <li><strong>Usa el color directo</strong> cuando necesites un HEX exacto de marca.</li>
+            <li><strong>Valida el material</strong> con el equipo de producto antes de publicarlo.</li>
+          </ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="roadmap" data-title="Próximos pasos" aria-label="Próximos pasos">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <div>
+          <p class="kicker">13 · Próximos pasos</p>
+          <h2>De probador a plataforma de catálogo.</h2>
+        </div>
+        <p class="lead">Atelier ya resuelve la prueba individual. El siguiente salto es convertirla en una herramienta de trabajo para equipos y catálogos completos.</p>
+      </div>
+
+      <div class="roadmap">
+        <article class="card now">
+          <span class="stage">Ahora</span>
+          <h3>Probador local</h3>
+          <ul>
+            <li>Color y material por prenda.</li>
+            <li>Varias prendas en una foto.</li>
+            <li>Historial, comparativas y descarga.</li>
+          </ul>
+        </article>
+        <article class="card next">
+          <span class="stage">Siguiente</span>
+          <h3>Escala de equipo</h3>
+          <ul>
+            <li>Procesamiento por lotes.</li>
+            <li>Perfiles de marca y paletas guardadas.</li>
+            <li>Más materiales y categorías.</li>
+          </ul>
+        </article>
+        <article class="card later">
+          <span class="stage">Después</span>
+          <h3>Integración</h3>
+          <ul>
+            <li>Conexión con e-commerce y PIM.</li>
+            <li>Try-on y previsualización sobre modelo.</li>
+            <li>Cuentas y trabajo multiusuario.</li>
+          </ul>
+        </article>
+      </div>
+
+      <p class="roadmap-note">El objetivo: que probar una colección sea tan rápido como cambiar una foto.</p>
+    </div>
+  </section>
+
+  <section class="slide" id="cierre" data-title="Cierre" aria-label="Cierre">
+    <div class="slide-inner">
+      <div class="closing-panel">
+        <p class="kicker">Atelier · Proyecto 3</p>
+        <h2>Tu próximo catálogo empieza con una foto.</h2>
+        <p>Prueba Atelier con una prenda real: detecta, cambia el color o el material y decide en minutos. Sin muestras, sin editar a mano y sin sacar tus fotos del equipo.</p>
+        <div class="closing-actions">
+          <a class="btn btn-primary" href="http://127.0.0.1:8000" target="_blank" rel="noopener">Abrir la app</a>
+          <button class="btn btn-ghost" type="button" data-goto="0">Volver al inicio</button>
+        </div>
+        <div class="closing-foot">
+          <span>Un nuevo tono. La misma esencia.</span>
+          <span>Visión artificial + IA generativa + composición de imagen</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav class="deck-nav" aria-label="Navegación de diapositivas">
+  <button class="nav-btn" id="prevButton" type="button" aria-label="Diapositiva anterior">←</button>
+  <div class="dots" id="dots" aria-label="Ir a una diapositiva"></div>
+  <span class="nav-count" id="slideCounter">01 / 15</span>
+  <button class="nav-btn" id="nextButton" type="button" aria-label="Diapositiva siguiente">→</button>
+</nav>
+
+<noscript><div class="noscript">Activa JavaScript para navegar como diapositivas. Sin JavaScript, todo el contenido se muestra en orden vertical.</div></noscript>
+
+<script>
+(() => {
+  const slides = [...document.querySelectorAll(".slide")];
+  const dots = document.getElementById("dots");
+  const counter = document.getElementById("slideCounter");
+  const title = document.getElementById("deckTitle");
+  const progress = document.getElementById("progressBar");
+  const status = document.getElementById("deckStatus");
+  const prevButton = document.getElementById("prevButton");
+  const nextButton = document.getElementById("nextButton");
+  const presentButton = document.getElementById("presentButton");
+  let current = 0;
+
+  slides.forEach((slide, index) => {
+    const dot = document.createElement("button");
+    dot.type = "button";
+    dot.className = "dot";
+    dot.setAttribute("aria-label", `Ir a la diapositiva ${index + 1}: ${slide.dataset.title || slide.id}`);
+    dot.addEventListener("click", () => goTo(index));
+    dots.appendChild(dot);
+  });
+
+  const dotButtons = [...dots.querySelectorAll(".dot")];
+
+  function goTo(index, updateHash = true) {
+    current = Math.max(0, Math.min(slides.length - 1, index));
+    slides.forEach((slide, i) => {
+      slide.classList.toggle("is-active", i === current);
+      slide.setAttribute("aria-hidden", i === current ? "false" : "true");
+    });
+    dotButtons.forEach((dot, i) => {
+      dot.classList.toggle("is-active", i === current);
+      dot.setAttribute("aria-current", i === current ? "true" : "false");
+    });
+    counter.textContent = `${String(current + 1).padStart(2, "0")} / ${String(slides.length).padStart(2, "0")}`;
+    title.textContent = slides[current].dataset.title || "";
+    progress.style.width = `${((current + 1) / slides.length) * 100}%`;
+    status.textContent = `Diapositiva ${current + 1} de ${slides.length}: ${slides[current].dataset.title || ""}`;
+    prevButton.disabled = current === 0;
+    nextButton.disabled = current === slides.length - 1;
+    slides[current].scrollTop = 0;
+    if (updateHash) history.replaceState(null, "", `#${slides[current].id}`);
+  }
+
+  function next() { if (current < slides.length - 1) goTo(current + 1); }
+  function prev() { if (current > 0) goTo(current - 1); }
+
+  document.querySelectorAll("[data-next]").forEach((button) =>
+    button.addEventListener("click", next));
+  document.querySelectorAll("[data-goto]").forEach((button) =>
+    button.addEventListener("click", () => goTo(Number(button.dataset.goto))));
+
+  prevButton.addEventListener("click", prev);
+  nextButton.addEventListener("click", next);
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    if (target instanceof HTMLElement && (target.matches("input, textarea, select") || target.isContentEditable)) return;
+    const interactive = target instanceof HTMLElement && target.matches("button, a");
+    if (event.key === " " && interactive) return;
+    if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(event.key)) {
+      event.preventDefault();
+      next();
+    } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(event.key)) {
+      event.preventDefault();
+      prev();
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      goTo(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      goTo(slides.length - 1);
+    }
+  });
+
+  let touchStart = null;
+  document.addEventListener("touchstart", (event) => {
+    if (event.touches.length !== 1) return;
+    touchStart = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+  }, { passive: true });
+  document.addEventListener("touchend", (event) => {
+    if (!touchStart) return;
+    const dx = event.changedTouches[0].clientX - touchStart.x;
+    const dy = event.changedTouches[0].clientY - touchStart.y;
+    if (Math.abs(dx) > 54 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      if (dx < 0) next(); else prev();
+    }
+    touchStart = null;
+  }, { passive: true });
+
+  window.addEventListener("hashchange", () => {
+    const index = slides.findIndex((slide) => `#${slide.id}` === window.location.hash);
+    if (index >= 0 && index !== current) goTo(index, false);
+  });
+
+  presentButton.addEventListener("click", async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (error) {
+      presentButton.textContent = "Pantalla completa no disponible";
+      setTimeout(() => { presentButton.textContent = "Presentar"; }, 1800);
+    }
+  });
+
+  document.addEventListener("fullscreenchange", () => {
+    presentButton.textContent = document.fullscreenElement ? "Salir" : "Presentar";
+  });
+
+  const initial = slides.findIndex((slide) => `#${slide.id}` === window.location.hash);
+  goTo(initial >= 0 ? initial : 0, false);
+})();
+</script>
+</body>
+</html>
