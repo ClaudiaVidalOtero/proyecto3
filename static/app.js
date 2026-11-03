@@ -721,6 +721,26 @@ async function deleteHistoryItem(item, button) {
     $("#resultError").classList.add("visible");
   }
 }
+async function clearHistory() {
+  if (!window.confirm("¿Quieres borrar todo el historial? Esta acción no se puede deshacer.")) return;
+  const button = $("#clearHistory");
+  button.disabled = true;
+  try {
+    await request("/api/history", {method:"DELETE"});
+    state.historyItem = null;
+    state.historyFilename = null;
+    const resultsCard = $("#resultsCard");
+    if (resultsCard.open) resultsCard.close();
+    $("#deleteHistoryButton").hidden = true;
+    $("#resultFooter").hidden = true;
+    renderHistorySegmentation();
+    await loadHistory();
+  } catch (error) {
+    showError(`No se pudo borrar el historial: ${error.message}`);
+  } finally {
+    button.disabled = false;
+  }
+}
 function populateOptions(config) {
   window.atelierConfig = config;
   $("#colors").innerHTML = config.colors.map((color) => `<option value="${color}">`).join("");
@@ -1578,7 +1598,7 @@ async function cancelGeneration() {
 $("#refreshImages").addEventListener("click", loadImages);
 $("#prevImages").addEventListener("click", () => navigateGallery(-1));
 $("#nextImages").addEventListener("click", () => navigateGallery(1));
-$("#refreshHistory").addEventListener("click", loadHistory);
+$("#clearHistory").addEventListener("click", clearHistory);
 $("#uploadButton").addEventListener("click", () => $("#fileInput").click());
 $("#fileInput").addEventListener("change", (event) => uploadImage(event.target.files[0]));
 $("#detectGarments").addEventListener("click", detectGarments);

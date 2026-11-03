@@ -396,6 +396,26 @@ async def delete_history_image(filename: str):
     return {"deleted": filename}
 
 
+@app.delete("/api/history")
+async def clear_history():
+    output_dir = history_directory().resolve()
+    deleted = 0
+    try:
+        if output_dir.is_dir():
+            for path in output_dir.glob(f"{C.PIX2PIX_OUTPUT_PREFIX}*.png"):
+                if not path.is_file():
+                    continue
+                path.unlink()
+                deleted += 1
+        assets_root = history_assets_directory().resolve()
+        if assets_root.is_dir() and assets_root.parent == output_dir:
+            shutil.rmtree(assets_root)
+    except OSError as exc:
+        logger.exception("No se pudo borrar el historial")
+        raise HTTPException(status_code=500, detail="No se pudo borrar el historial.") from exc
+    return {"deleted": deleted}
+
+
 @app.get("/api/images")
 async def images(request: Request):
     dataset = await run_in_threadpool(get_dataset, request.app.state)
