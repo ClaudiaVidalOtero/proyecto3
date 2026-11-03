@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f7f4">
+  <title>Atelier — color para vestir</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <div class="brand">
+        <div class="brand-mark">a</div>
+        <div><div class="brand-name">atelier</div><div class="brand-sub">color studio</div></div>
+      </div>
+      <section class="history-nav" aria-label="Prendas editadas">
+        <div class="history-nav-head">
+          <span class="history-nav-title">Prendas editadas</span>
+          <button class="history-refresh" id="refreshHistory" type="button" aria-label="Actualizar historial">↻</button>
+        </div>
+        <div class="history-list" id="historyList" aria-label="Historial de diseños">
+          <div class="empty-text">Cargando historial…</div>
+        </div>
+      </section>
+    </aside>
+    <main id="editor">
+      <div class="settings">
+            <button class="dev-mode-indicator" id="devModeIndicator" type="button"
+                    title="Desactivar modo desarrollador" aria-label="Desactivar modo desarrollador">Modo desarrollador</button>
+            <button class="settings-button" id="settingsButton" type="button" title="Configuración" aria-label="Configuración"
+                    aria-haspopup="true" aria-expanded="false" aria-controls="settingsMenu">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </button>
+            <div class="settings-menu" id="settingsMenu" hidden>
+              <div class="settings-title">Configuración</div>
+              <div class="settings-title">Tema</div>
+              <div class="settings-themes" role="group" aria-label="Tema de la interfaz">
+                <label class="settings-theme">
+                  <input type="radio" name="theme" id="themeLight" value="light">
+                  <span>Claro</span>
+                </label>
+                <label class="settings-theme">
+                  <input type="radio" name="theme" id="themeDark" value="dark">
+                  <span>Oscuro</span>
+                </label>
+              </div>
+              <label class="settings-option">
+                <input type="checkbox" id="devModeToggle">
+                <span>
+                  <b>Modo desarrollador</b>
+                  <small>Muestra la confianza de detección de las prendas y los pasos intermedios del resultado (máscara y edición del modelo).</small>
+                </span>
+              </label>
+            </div>
+      </div>
+      <header class="hero">
+        <div>
+          <h1><span class="hero-plum">Un nuevo tono.</span> <span class="hero-green">La misma esencia.</span></h1>
+        </div>
+      </header>
+      <div class="layout">
+        <div class="stack">
+          <section class="card">
+            <div class="card-head">
+              <div><h2>Elige tu imagen</h2></div>
+            </div>
+            <div class="picker">
+              <div class="gallery" id="imageGallery" aria-label="Imágenes del catálogo"></div>
+              <div class="picker-main">
+                <div class="preview" id="sourcePreview">
+                  <div class="preview-empty"><span class="upload-symbol">↥</span><span>Selecciona una imagen para empezar</span></div>
+                  <img id="sourceImage" alt="Imagen seleccionada">
+                  <canvas id="segmentationOverlay" aria-label="Máscaras de prendas detectadas"></canvas>
+                </div>
+                <div class="segmentation-status" id="segmentationStatus" aria-live="polite"></div>
+                <div class="garment-options" id="garmentOptions" role="group" aria-label="Prendas detectadas"></div>
+                <div class="source-toolbar">
+                  <div class="source-actions">
+                    <button class="button small garment-choice selected detect-button" id="detectGarments" type="button">
+                      <span class="detect-button-content">
+                        <span class="detect-spinner" aria-hidden="true">↻</span>
+                        <span class="detect-label">Detectar prendas</span>
+                      </span>
+                      <span class="detect-progress" role="progressbar" aria-label="Detección de prendas en curso"
+                            aria-valuetext="Detección en curso"></span>
+                    </button>
+                    <button class="button small" id="uploadButton" type="button">＋ Subir foto</button>
+                  </div>
+                  <div class="gallery-switch" role="group" aria-label="Navegar por las imágenes de ejemplo">
+                    <button class="button small gallery-nav" id="prevImages" type="button" aria-label="Imágenes anteriores" title="Imágenes anteriores" disabled>←</button>
+                    <button class="button small" id="refreshImages" type="button">↻ Otras imágenes</button>
+                    <button class="button small gallery-nav" id="nextImages" type="button" aria-label="Imágenes siguientes" title="Imágenes siguientes" disabled>→</button>
+                  </div>
+                  <input class="hidden" id="fileInput" type="file" accept="image/jpeg,image/png,image/webp,image/bmp">
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+        <div class="stack right">
+          <section class="card blank" id="styleCard">
+            <div class="card-head" hidden>
+              <div><h2> Modifica las prendas seleccionadas</h2></div>
+            </div>
+            <div class="style-empty" id="styleEmpty">
+              <p>Elige una imagen y pulsa <b>Detectar prendas</b> para configurar el color y la textura de cada una.</p>
+            </div>
+            <div id="defaultStyle" hidden>
+            <div class="field">
+              <label class="field-label" for="color">Color</label>
+              <p class="hint">Elige un color o selecciona «Ninguno» para conservar el original.</p>
+              <input class="input" id="color" list="colors" value="black" maxlength="80" placeholder="Escribe un color en inglés">
+              <datalist id="colors"></datalist>
+              <div class="swatches" id="swatches" aria-label="Colores sugeridos"></div>
+            </div>
+            <div class="field">
+              <label class="field-label field-label-lg" for="material">Material o textura</label>
+              <p class="hint">Elige o escribe un material. Atelier intentará reproducir su grano, costuras y patrón sobre la prenda, manteniendo el color elegido.</p>
+              <div class="material-line">
+                <input class="input" id="material" value="none" maxlength="80" autocomplete="off" placeholder="Ej. denim, silk, leather">
+              </div>
+              <div class="material-options" id="materialOptions" role="group" aria-label="Materiales sugeridos"></div>
+            </div>
+            </div>
+            <div class="garment-style-editor" id="garmentStyleEditor" aria-live="polite">
+              <div class="garment-tabs" id="garmentTabs" role="tablist" aria-label="Configurar cada prenda"></div>
+              <div id="garmentEditorPanes"></div>
+              <p class="hint" id="garmentEditorHint"></p>
+            </div>
+            <div class="generate-actions" hidden>
+              <button class="generate" id="generateButton" type="button" aria-live="polite">✦ &nbsp; Crear mi diseño</button>
+              <div class="generate-split" id="generateSplit" hidden>
+                <button class="generate generate-secondary" id="queueAnotherButton" type="button">＋ &nbsp; Añadir otra a la cola</button>
+                <button class="generate generate-busy" id="generatingButton" type="button" disabled aria-live="polite">
+                  <span class="queue-spinner" aria-hidden="true">↻</span>
+                  <span id="generatingLabel">Generando…</span>
+                </button>
+              </div>
+            </div>
+            <button class="generate-cancel" id="cancelGeneration" type="button" hidden>Cancelar la generación en curso</button>
+            <p class="queue-status" id="queueStatus" role="status" aria-live="polite" hidden>
+              <span class="queue-spinner" id="queueSpinner" aria-hidden="true" hidden>↻</span>
+              <span id="queueStatusText"></span>
+            </p>
+            <div class="error" id="errorMessage" role="alert"></div>
+          </section>
+          <dialog class="result-dialog" id="resultsCard" aria-labelledby="resultHeading">
+            <div class="results-head">
+              <div class="results-title"><div><h2 id="resultHeading">Tu resultado</h2><div class="result-meta" id="resultMeta"></div></div></div>
+              <div class="result-actions">
+                <input class="result-filename" id="resultFilename" aria-label="Nombre del archivo PNG" maxlength="100" value="atelier" title="Nombre del archivo PNG">
+                <a class="button small result-download" id="downloadButton" download>↓ Descargar</a>
+                <button class="button small" id="closeResults" type="button">Cerrar</button>
+              </div>
+            </div>
+            <div class="result-showcase">
+              <figure class="result-image featured"><img id="resultFinal" alt="Resultado final"><figcaption>Resultado final</figcaption></figure>
+              <div class="result-alternates">
+                <figure class="result-image"><img id="resultOriginal" alt="Imagen original"><figcaption>Original</figcaption></figure>
+                <figure class="result-image dev-only"><img id="resultMask" alt="Máscara segmentada"><figcaption>Máscara</figcaption></figure>
+                <figure class="result-image dev-only"><img id="resultEdited" alt="Edición del modelo"><figcaption>Edición del modelo</figcaption></figure>
+              </div>
+            </div>
+            <section class="history-segmentation dev-only" id="historySegmentation" hidden>
+              <h3>Máscaras de segmentación</h3>
+              <div class="history-segmentation-images" id="historySegmentationImages"></div>
+              <p class="history-segmentation-empty" id="historySegmentationEmpty" hidden></p>
+            </section>
+            <div class="result-footer" id="resultFooter" hidden>
+              <button class="button small result-delete" id="deleteHistoryButton" type="button" hidden>Eliminar diseño</button>
+            </div>
+            <div class="result-error" id="resultError" role="alert"></div>
+          </dialog>
+          <dialog class="result-dialog confirm-dialog" id="reloadWarning" aria-labelledby="reloadWarningTitle">
+            <div class="confirm-body">
+              <h2 id="reloadWarningTitle">¿Salir de la generación?</h2>
+              <p>Si recargas la página ahora, perderás la generación actual. Elige si quieres volver o salir.</p>
+            </div>
+            <div class="confirm-actions">
+              <button class="button small" id="stayOnPage" type="button">Volver</button>
+              <button class="button small confirm-leave" id="leavePage" type="button">Salir</button>
+            </div>
+          </dialog>
+        </div>
+      </div>
+      <footer>Atelier · Recolorado de prendas con inteligencia artificial</footer>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
