@@ -169,7 +169,7 @@ HTML = r"""<!doctype html>
     .brand-sub { margin-top: 1px; color: var(--lime); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
     .history-nav { display: flex; flex: 1; flex-direction: column; min-height: 0; margin-top: 28px; }
     .history-nav-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 9px; }
-    .history-nav-title { padding-left: 10px; color: #5c1f59; font-size: 10px; font-weight: 700;
+    .history-nav-title { padding-left: 10px; color: var(--plum-dark); font-size: 10px; font-weight: 700;
       letter-spacing: 1.1px; text-transform: uppercase; }
     .history-refresh { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid var(--line);
       border-radius: 8px; background: var(--surface-raised); color: var(--text-subtle); font-size: 12px; }
@@ -229,7 +229,7 @@ HTML = r"""<!doctype html>
     body:not(.dev-mode) .result-alternates { grid-template-rows: minmax(0, 1fr); }
     .hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 25px; margin-bottom: 12px; padding-right: 48px; }
     .eyebrow { margin-bottom: 10px; color: var(--green); font-size: 10px; font-weight: 750; letter-spacing: 1.8px; text-transform: uppercase; }
-    .hero-plum { color: #5c1f59; }
+    .hero-plum { color: var(--plum-dark); }
     .hero-green { color: var(--accent); }
     h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(34px, 3.5vw, 44px); font-weight: 500; letter-spacing: -1.8px; }
     .layout { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(360px, 1fr);
