@@ -201,7 +201,7 @@ function createGarmentEditor(index, item, config) {
   hsvTriangle.setAttribute("aria-hidden", "true");
   const hsvTitle = document.createElement("span");
   hsvTitle.className = "hsv-inline-title";
-  hsvTitle.textContent = "Color HSV";
+  hsvTitle.textContent = "Recoloreado";
   const hsvMiniChip = document.createElement("span");   // color actual, visible solo con el panel plegado
   hsvMiniChip.className = "hsv-mini-chip";
   hsvMiniChip.setAttribute("aria-hidden", "true");
