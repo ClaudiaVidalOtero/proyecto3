@@ -326,6 +326,7 @@ textarea.input { resize: vertical; min-height: 74px; line-height: 1.5; }
 .color-hsv-view { display: flex; flex-direction: column; gap: 13px; margin-top: 10px; padding: 13px;
   border: 1px solid var(--lavender); border-radius: 12px; background: var(--plum-surface); }
 .color-hsv-view[hidden], .color-swatches-view[hidden] { display: none; }
+.color-hsv-reset { margin-top: 10px; }
 .hsv-inline-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .hsv-inline-title { color: var(--plum-mid); font-size: 12px; font-weight: 700; }
 .hsv-inline-color { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }

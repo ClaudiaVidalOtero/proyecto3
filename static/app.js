@@ -307,7 +307,7 @@ function createGarmentEditor(index, item, config) {
 
   const hsvReset = document.createElement("button");
   hsvReset.type = "button";
-  hsvReset.className = "button small";
+  hsvReset.className = "button small color-hsv-reset";
   hsvReset.textContent = "Volver al color original";
   hsvReset.addEventListener("click", () => {
     const original = originalGarmentColor(index);
@@ -318,10 +318,10 @@ function createGarmentEditor(index, item, config) {
   });
   const hsvHint = document.createElement("p");
   hsvHint.className = "hint";
-  hsvBody.append(hueWrap, satWrap, valWrap, chipRow, hsvReset, hsvHint);
+  hsvBody.append(hueWrap, satWrap, valWrap, chipRow, hsvHint);
   hsvView.append(hsvHead, hsvBody);
 
-  colorField.append(colorLabel, swatches, hexRow, modeHint, modelColorHint, hsvView);
+  colorField.append(colorLabel, swatches, hexRow, modeHint, modelColorHint, hsvView, hsvReset);
   pane.append(colorField);
 
   function updateHsvUi() {
