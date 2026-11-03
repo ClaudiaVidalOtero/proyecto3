@@ -54,7 +54,7 @@ aside { position: sticky; top: 0; height: 100vh; height: 100dvh; padding: 27px 2
 .history-nav-title { padding-left: 10px; color: var(--plum-dark); font-size: 10px; font-weight: 700;
   letter-spacing: 1.1px; text-transform: uppercase; }
 .history-clear { display: inline-flex; align-items: center; justify-content: center; padding: 5px 9px;
-  border: 1px solid var(--line); border-radius: 8px; background: var(--surface-raised); color: var(--text-subtle);
+  border: 1px solid var(--plum); border-radius: 8px; background: var(--surface-raised); color: var(--text-subtle);
   font-size: 10px; font-weight: 650; }
 .history-clear:hover { border-color: var(--plum-mid); background: var(--plum-surface); color: var(--plum-dark); }
 .history-clear:disabled { opacity: .55; cursor: wait; }
