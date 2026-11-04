@@ -202,7 +202,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    width: min(1180px, 100%);
+    width: min(1440px, 100%);
     min-height: calc(100svh - var(--bar) - 100px);
     margin: 0 auto;
   }
@@ -502,6 +502,8 @@
     margin: 14px 0 12px;
   }
 
+  .solution-strip.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
   .solution-step {
     display: flex;
     align-items: center;
@@ -729,6 +731,114 @@
   }
   .benefit span { color: var(--muted); font-size: 11px; line-height: 1.45; }
 
+  .benefit-slide .slide-head { margin-bottom: 14px; }
+  .benefit-detail {
+    display: grid;
+    grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+    gap: clamp(24px, 4vw, 52px);
+    align-items: center;
+    margin-top: 6px;
+  }
+  .benefit-copy p {
+    max-width: 48ch;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .benefit-points {
+    display: grid;
+    gap: 10px;
+    margin: 20px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .benefit-points li {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+  .benefit-points b {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--lime-soft);
+    color: var(--green-ink);
+    font-size: 11px;
+  }
+  .benefit-points strong { color: var(--ink); font-weight: 700; }
+  .benefit-note {
+    max-width: 46ch;
+    margin: 20px 0 0;
+    padding: 12px 14px;
+    border-left: 3px solid var(--lime);
+    border-radius: 0 10px 10px 0;
+    background: var(--lime-soft);
+    color: var(--green-ink);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .benefit-figure {
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--white);
+    box-shadow: var(--shadow-soft);
+  }
+  .benefit-figure .benefit-image {
+    display: grid;
+    place-items: center;
+    height: clamp(320px, 48vh, 560px);
+    padding: 12px;
+    background: var(--paper-2);
+  }
+  .benefit-figure img {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 10px;
+    object-fit: contain;
+  }
+  .benefit-figure figcaption {
+    padding: 10px 14px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .benefit-two-up {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px;
+    background: #232a22;
+  }
+  .benefit-two-up figure {
+    margin: 0;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #2c342b;
+  }
+  .benefit-two-up img {
+    width: 100%;
+    height: clamp(300px, 44vh, 520px);
+    padding: 8px;
+    object-fit: contain;
+  }
+  .benefit-two-up figcaption {
+    padding: 7px 8px;
+    border-top: 1px solid rgba(255, 255, 255, .12);
+    color: rgba(255, 255, 255, .7);
+    font-size: 9px;
+    text-align: center;
+  }
+
   .compare {
     display: flex;
     flex-direction: column;
@@ -788,7 +898,7 @@
   .shot-img {
     display: grid;
     place-items: center;
-    height: 180px;
+    height: clamp(220px, 30vh, 340px);
     padding: 9px;
     background:
       linear-gradient(45deg, rgba(0, 0, 0, .024) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, .024) 75%),
@@ -822,6 +932,18 @@
     color: var(--muted);
     font-size: 10px;
     line-height: 1.35;
+  }
+
+  .image-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px;
+    background: #232a22;
+  }
+  .quality-figure .image-pair .image-box {
+    border-radius: 10px;
+    background: #2c342b;
   }
 
   .quality-layout {
@@ -884,6 +1006,12 @@
     color: var(--muted);
     font-size: 10px;
   }
+
+  .quality-figure.flow-figure {
+    width: min(1280px, 100%);
+    margin: 10px auto 0;
+  }
+  .quality-figure.flow-figure .image-box { height: clamp(320px, 45vh, 560px); }
 
   .stat-strip {
     display: grid;
@@ -1093,6 +1221,44 @@
     gap: 9px;
     margin-bottom: 18px;
   }
+  .project-points {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 18px;
+    max-width: 560px;
+    margin: 16px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .project-points li {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 9px;
+    align-items: start;
+    color: var(--muted);
+    font-size: 11.5px;
+    line-height: 1.4;
+  }
+  .project-points b {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    background: var(--plum-soft);
+    color: var(--plum-ink);
+    font-family: var(--serif);
+    font-size: 10px;
+    font-weight: 400;
+  }
+  .project-points strong { color: var(--ink); font-weight: 700; }
+  .project-note {
+    margin: 16px 0 0;
+    color: var(--green-ink);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .02em;
+  }
   .cover-tags {
     display: flex;
     flex-wrap: wrap;
@@ -1103,6 +1269,45 @@
     color: var(--muted);
     font-size: 10px;
     letter-spacing: .06em;
+  }
+
+  .cover-simple {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: min(560px, calc(100svh - var(--bar) - 130px));
+    padding: clamp(28px, 5vw, 64px);
+    border: 1px solid var(--line);
+    border-radius: 30px;
+    background:
+      radial-gradient(700px 360px at 88% 12%, rgba(200, 175, 228, .38), transparent 66%),
+      radial-gradient(560px 320px at 8% 100%, rgba(137, 195, 75, .2), transparent 66%),
+      var(--white);
+    box-shadow: var(--shadow);
+  }
+  .cover-simple h1 {
+    max-width: 10ch;
+    margin: 0 0 16px;
+    font-size: clamp(64px, 10vw, 132px);
+    line-height: .86;
+    letter-spacing: -.07em;
+  }
+  .cover-simple h1 em { color: var(--plum-ink); }
+  .cover-simple-lead {
+    max-width: 40ch;
+    margin: 0 0 20px;
+    color: var(--muted);
+    font-size: clamp(17px, 2vw, 22px);
+    line-height: 1.4;
+  }
+  .cover-simple-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+  .cover-simple-foot {
+    margin: clamp(20px, 4vw, 40px) 0 0;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
   }
 
   .cover-visual {
@@ -1124,7 +1329,7 @@
   .cover-device {
     position: relative;
     z-index: 1;
-    max-width: 320px;
+    max-width: 380px;
     margin-inline: auto;
     padding: 11px;
     border: 1px solid rgba(255, 255, 255, .72);
@@ -1159,7 +1364,7 @@
   .cover-image {
     position: relative;
     overflow: hidden;
-    aspect-ratio: 4 / 4.05;
+    aspect-ratio: 1 / 1;
     border-radius: 15px;
     background: var(--paper-2);
   }
@@ -1229,6 +1434,102 @@
   .float-tag.one { top: 36px; right: -8px; transform: rotate(2deg); }
   .float-tag.two { bottom: 34px; left: -8px; transform: rotate(-2deg); }
 
+  .closing-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+    gap: clamp(20px, 3vw, 40px);
+    align-items: end;
+    margin-bottom: 18px;
+  }
+  .closing-head-copy { display: flex; flex-direction: column; align-items: flex-start; }
+  .closing-head-copy p {
+    max-width: 54ch;
+    margin: 0 0 14px;
+    color: rgba(255, 255, 255, .7);
+    font-size: 14.5px;
+    line-height: 1.55;
+  }
+
+  .showcase-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .showcase-card {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .16);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, .06);
+  }
+  .showcase-media {
+    display: grid;
+    place-items: center;
+    height: clamp(240px, 32vh, 360px);
+    padding: 10px;
+    background: rgba(255, 255, 255, .04);
+  }
+  .showcase-media img {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 8px;
+    object-fit: contain;
+  }
+  .compare-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    height: clamp(240px, 32vh, 360px);
+    padding: 8px;
+    background: rgba(255, 255, 255, .04);
+  }
+  .compare-image {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    place-items: center;
+    gap: 4px;
+    min-height: 0;
+    margin: 0;
+  }
+  .compare-image img {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 6px;
+    object-fit: contain;
+  }
+  .compare-image span {
+    color: rgba(255, 255, 255, .62);
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .showcase-card figcaption {
+    padding: 10px 14px;
+    border-top: 1px solid rgba(255, 255, 255, .12);
+  }
+  .showcase-card figcaption strong {
+    display: block;
+    margin-bottom: 2px;
+    color: #fff;
+    font-family: var(--serif);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.2;
+  }
+  .showcase-card figcaption span {
+    display: block;
+    color: rgba(255, 255, 255, .62);
+    font-size: 10px;
+    line-height: 1.35;
+  }
+
   .closing-panel {
     padding: clamp(26px, 4vw, 44px);
     border-radius: 26px;
@@ -1245,13 +1546,6 @@
     max-width: 16ch;
     color: #fff;
     font-size: clamp(34px, 4.2vw, 58px);
-  }
-  .closing-panel p {
-    max-width: 54ch;
-    margin: 14px 0 20px;
-    color: rgba(255, 255, 255, .7);
-    font-size: 14.5px;
-    line-height: 1.55;
   }
   .closing-actions { display: flex; flex-wrap: wrap; gap: 9px; }
   .closing-panel .btn-primary { background: var(--lime); color: #17200c; }
@@ -1281,8 +1575,19 @@
     font-size: 12px;
   }
 
+  @media (min-height: 760px) {
+    .benefit-figure .benefit-image { height: clamp(380px, 50vh, 600px); }
+    .benefit-two-up img { height: clamp(340px, 48vh, 580px); }
+  }
+
+  @media (min-height: 900px) {
+    .benefit-figure .benefit-image { height: clamp(440px, 52vh, 640px); }
+    .benefit-two-up img { height: clamp(380px, 50vh, 620px); }
+  }
+
   @media (max-width: 980px) {
     .cover-grid { grid-template-columns: minmax(0, 1fr) minmax(250px, .7fr); gap: 30px; }
+    .benefit-detail { grid-template-columns: 1fr; }
     .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .result-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .slide-head { grid-template-columns: 1fr; gap: 16px; }
@@ -1291,6 +1596,9 @@
     .quality-layout { grid-template-columns: 1fr; }
     .quality-figure .image-box { height: 240px; }
     .quality-figure { max-width: 460px; }
+    .quality-figure.flow-figure { max-width: none; }
+    .quality-figure.flow-figure .image-box { height: clamp(300px, 42vh, 460px); }
+    .closing-head { grid-template-columns: 1fr; gap: 16px; }
   }
 
   @media (max-width: 860px) {
@@ -1303,8 +1611,10 @@
     .cover-grid { grid-template-columns: 1fr; gap: 34px; }
     .cover-visual { width: min(360px, 100%); margin-inline: auto; }
     .cover-hint { display: none; }
+    .showcase-grid { grid-template-columns: 1fr; }
     .split-2, .benefit-layout, .two-panels { grid-template-columns: 1fr; }
     .cols-3, .cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .solution-strip.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .process-row { grid-template-columns: 1fr; }
     .route-row { grid-template-columns: 1fr; }
     .spec-grid { grid-template-columns: 1fr; }
@@ -1322,7 +1632,17 @@
     h2 { font-size: clamp(29px, 8.2vw, 42px); }
     .cover-lead { font-size: 15px; }
     .cover-actions .btn { flex: 1 1 auto; }
+    .project-points { grid-template-columns: 1fr; }
+    .benefit-figure .benefit-image { height: 280px; }
+    .benefit-two-up { grid-template-columns: 1fr; }
+    .benefit-two-up img { height: 260px; }
+    .cover-simple { min-height: 0; padding: 24px; border-radius: 22px; }
+    .cover-simple h1 { font-size: clamp(52px, 15vw, 86px); }
+    .cover-simple-foot { margin-top: 26px; }
+    .showcase-grid { grid-template-columns: 1fr; }
+    .showcase-media, .compare-pair { height: 280px; }
     .cols-2, .cols-3, .cols-4, .audience, .benefit-grid, .steps-row, .solution-strip, .result-grid { grid-template-columns: 1fr; }
+    .solution-strip.four { grid-template-columns: 1fr; }
     .solution-step { padding: 12px 14px; }
     .use-step b { margin-bottom: 16px; }
     .pain-card { min-height: 0; }
@@ -1330,9 +1650,11 @@
     .statement span { align-self: flex-start; }
     .quality-figure { max-width: none; }
     .quality-figure .image-box { height: 220px; }
+    .quality-figure.flow-figure .image-box { height: 280px; }
     .feature-grid { grid-template-columns: 1fr; }
     .shot-img { height: 220px; }
     .result-grid { gap: 10px; }
+    .image-pair { grid-template-columns: 1fr; }
     .deck-nav { width: min(calc(100% - 28px), 340px); justify-content: space-between; }
     .nav-count { min-width: 50px; }
   }
@@ -1390,21 +1712,75 @@
 
 <main>
   <section class="slide is-active" id="portada" data-title="Portada" aria-label="Portada">
+    <div class="slide-inner">
+      <div class="cover-simple">
+        <p class="kicker">01 · Presentación</p>
+        <h1>Atelier<em>.</em></h1>
+        <p class="cover-simple-lead">Probador digital de color y material para prendas.</p>
+        <div class="cover-simple-actions">
+          <button class="btn btn-primary" type="button" data-next>Comenzar →</button>
+        </div>
+        <p class="cover-simple-foot">Una foto. Todas las variantes.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="problema" data-title="El problema" aria-label="El problema">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <div>
+          <p class="kicker">02 · El problema</p>
+          <h2>Probar una idea no debería costar una prenda.</h2>
+        </div>
+        <p class="lead">En moda, el tiempo se va antes de decidir: muestras, sesiones, retoques y aprobaciones. Cada variante de color o material obliga a repetir el mismo circuito.</p>
+      </div>
+
+      <div class="card-grid cols-4">
+        <article class="card pain-card">
+          <span class="ghost-num" aria-hidden="true">01</span>
+          <span class="card-tag">Muestras</span>
+          <h3>Tejidos y prototipos</h3>
+          <p>Pedir muestras, coser prototipos y esperar al proveedor: días o semanas por cada variante.</p>
+        </article>
+        <article class="card pain-card">
+          <span class="ghost-num" aria-hidden="true">02</span>
+          <span class="card-tag">Fotografía</span>
+          <h3>Sesiones repetidas</h3>
+          <p>Cada color o material exige otra sesión: estudio, modelo, estilismo y desplazamiento.</p>
+        </article>
+        <article class="card pain-card">
+          <span class="ghost-num" aria-hidden="true">03</span>
+          <span class="card-tag">Retoque</span>
+          <h3>Edición manual</h3>
+          <p>Recortar, reconstruir tejido y corregir pliegues: minutos por imagen que se multiplican en el catálogo.</p>
+        </article>
+        <article class="card pain-card">
+          <span class="ghost-num" aria-hidden="true">04</span>
+          <span class="card-tag">Aprobación</span>
+          <h3>Idas y vueltas</h3>
+          <p>Diseño, producto y proveedor revisan muestras físicas antes de tomar una decisión.</p>
+        </article>
+      </div>
+
+      <div class="statement">
+        <p>El cuello de botella no es la idea: es el tiempo de verla.</p>
+        <span>Muestras, sesiones y retoques antes de decidir</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="proyecto" data-title="El proyecto" aria-label="El proyecto">
     <div class="slide-inner cover-grid">
       <div>
-        <p class="kicker">Atelier · Probador digital de moda</p>
-        <h1>Un nuevo tono.<br><em>La misma esencia.</em></h1>
-        <p class="cover-lead">Prueba colores y materiales en tu catálogo sin fabricar una sola muestra. Una foto, todas las variantes.</p>
-        <div class="cover-actions">
-          <button class="btn btn-primary" type="button" data-next>Empezar recorrido →</button>
-          <a class="btn btn-ghost" href="http://127.0.0.1:8000" target="_blank" rel="noopener">Abrir la app</a>
-        </div>
-        <div class="cover-tags">
-          <span class="chip">Sin muestras físicas</span>
-          <span class="chip">Resultados en local</span>
-          <span class="chip">Catálogo listo para vender</span>
-        </div>
-        <p class="cover-hint">Usa ← → o desliza para navegar</p>
+        <p class="kicker">03 · Nuestro proyecto</p>
+        <h1>Color sin muestras.<br><em>La misma esencia.</em></h1>
+        <p class="cover-lead">Atelier detecta cada prenda en una foto y prueba color o material sin fabricar muestras. Tú decides qué cambia; la prenda real no se toca.</p>
+        <ul class="project-points">
+          <li><b>01</b><span><strong>Detecta</strong> cada prenda en la foto.</span></li>
+          <li><b>02</b><span><strong>Recolorea</strong> color o material.</span></li>
+          <li><b>03</b><span><strong>Conserva</strong> pliegues, luz y escena.</span></li>
+          <li><b>04</b><span><strong>Descarga</strong> el PNG para catálogo.</span></li>
+        </ul>
       </div>
 
       <aside class="cover-visual" aria-label="Vista previa de Atelier">
@@ -1415,8 +1791,8 @@
             <span>probador</span>
           </div>
           <div class="cover-image">
-            <img src="outputs/pix2pix/recoloreado_dress_blue_denim_9b8314a4.png" alt="Vestido recoloreado en denim azul con Atelier" fetchpriority="high">
-            <span class="cover-label">Vestido · denim azul</span>
+            <img src="outputs/pix2pix/recoloreado_HSV_tono_170_sat_142_brillo_255_81c1c559.png" alt="Camisa recoloreada en tono 170 con Atelier" fetchpriority="high">
+            <span class="cover-label">Tono 170 · resultado</span>
           </div>
           <div class="cover-device-foot">
             <div class="cover-swatches" aria-hidden="true">
@@ -1435,523 +1811,152 @@
     </div>
   </section>
 
-  <section class="slide" id="problema" data-title="El problema" aria-label="El problema">
+  <section class="slide" id="flujo" data-title="Flujo de la prenda" aria-label="Flujo de la prenda">
     <div class="slide-inner">
       <div class="slide-head">
         <div>
-          <p class="kicker">01 · El problema</p>
-          <h2>Probar una idea no debería costar una prenda.</h2>
+          <p class="kicker">04 · Flujo de la prenda</p>
+          <h2>De la foto al catálogo.</h2>
         </div>
-        <p class="lead">Cambiar el color o el material de una prenda es una decisión visual. Hoy se prueba comprando muestras, fabricando prototipos o editando la foto a mano. Tres caminos lentos, caros y difíciles de repetir.</p>
+        <p class="lead">Atelier detecta cada prenda, la aísla y permite editarla por separado, sin salir del equipo.</p>
       </div>
 
-      <div class="card-grid cols-3">
-        <article class="card pain-card">
-          <span class="ghost-num" aria-hidden="true">01</span>
-          <span class="card-tag">Coste</span>
-          <h3>Probar es caro</h3>
-          <p>Cada combinación de color o tejido exige muestras físicas, pruebas de taller o compras a ciegas. La idea se enfría antes de verla.</p>
-        </article>
-        <article class="card pain-card">
-          <span class="ghost-num" aria-hidden="true">02</span>
-          <span class="card-tag">Tiempo</span>
-          <h3>Editar a mano no escala</h3>
-          <p>Recortar la prenda, reconstruir el tejido y conservar pliegues en un editor gráfico lleva minutos por imagen. Multiplicarlo por un catálogo es inviable.</p>
-        </article>
-        <article class="card pain-card">
-          <span class="ghost-num" aria-hidden="true">03</span>
-          <span class="card-tag">Riesgo</span>
-          <h3>Decidir sin verlo</h3>
-          <p>Elegir un color sobre una muestra pequeña no es lo mismo que verlo en la prenda, con su luz, su caída y su volumen.</p>
-        </article>
-      </div>
-
-      <div class="statement">
-        <p>El catálogo no puede esperar a la fábrica.</p>
-        <span>La decisión visual va primero</span>
-      </div>
-    </div>
-  </section>
-
-  <section class="slide" id="oportunidad" data-title="La oportunidad" aria-label="La oportunidad">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <div>
-          <p class="kicker">02 · La oportunidad</p>
-          <h2>Del prototipo físico al probador digital.</h2>
-        </div>
-        <p class="lead">Las marcas ya no necesitan producir para imaginar. Necesitan una forma rápida de ver la prenda terminada, comparar variantes y decidir con seguridad antes de fabricar.</p>
-      </div>
-
-      <div class="split-2">
-        <article class="manifesto">
-          <span class="label">Una nueva forma de decidir</span>
-          <h3>Menos pruebas. Más criterio.</h3>
-          <p>Atelier está pensado para equipos que trabajan con catálogo: diseño, producto, e-commerce, contenido y fotografía.</p>
-        </article>
-
-        <div class="audience">
-          <article class="card">
-            <h3>Marcas emergentes</h3>
-            <p>Valida la paleta de la colección antes de comprometer producción.</p>
-          </article>
-          <article class="card">
-            <h3>E-commerce</h3>
-            <p>Publica variantes de color sin repetir la sesión de fotos.</p>
-          </article>
-          <article class="card">
-            <h3>Estudios de diseño</h3>
-            <p>Presenta propuestas visuales a clientes y equipos en minutos.</p>
-          </article>
-          <article class="card">
-            <h3>Foto de producto</h3>
-            <p>Amplía el catálogo con nuevos estilos sobre una base ya fotografiada.</p>
-          </article>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="slide" id="solucion" data-title="La solución" aria-label="La solución">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <div>
-          <p class="kicker">03 · La solución</p>
-          <h2>Una foto. Un probador de color y material.</h2>
-        </div>
-        <p class="lead">Sin Photoshop. Sin muestras. Sin tocar el fondo. Atelier detecta cada prenda y te deja probar sobre ella, conservando la luz y los pliegues de la foto original.</p>
-      </div>
-
-      <div class="solution-strip">
+      <div class="solution-strip four">
         <div class="solution-step">
           <b>1</b>
-          <div><strong>Sube una foto</strong><span>del catálogo o una propia</span></div>
+          <div><strong>Sube la foto</strong><span>una prenda o varias</span></div>
         </div>
         <div class="solution-step">
           <b>2</b>
-          <div><strong>Elige la prenda</strong><span>una o varias a la vez</span></div>
+          <div><strong>Detecta cada prenda</strong><span>una o varias en la foto</span></div>
         </div>
         <div class="solution-step">
           <b>3</b>
-          <div><strong>Prueba y descarga</strong><span>color, material y variantes</span></div>
+          <div><strong>Edita</strong><span>color o material</span></div>
+        </div>
+        <div class="solution-step">
+          <b>4</b>
+          <div><strong>Descarga</strong><span>PNG para catálogo</span></div>
         </div>
       </div>
 
-      <figure class="demo-figure">
-        <div class="image-box">
-          <img src="outputs/recolor/0b0a12e8640472681f93e31d44f68e5d_h120_compare.png" alt="Comparativa de una prenda recoloreada: original, máscara y resultado final" loading="lazy">
+      <figure class="quality-figure flow-figure">
+        <div class="image-pair">
+          <div class="image-box">
+            <img src="outputs/pix2pix/original_ejemplo1_486d2f39.png" alt="Foto original del ejemplo 1 antes de recolorear" loading="lazy">
+          </div>
+          <div class="image-box">
+            <img src="outputs/pix2pix/recoloreado_ejemplo1_486d2f39.png" alt="Resultado del ejemplo 1 recoloreado con Atelier" loading="lazy">
+          </div>
         </div>
-        <figcaption><strong>Original, máscara y resultado.</strong><span>El color cambia. La prenda, sus pliegues y la escena siguen siendo los mismos.</span></figcaption>
+        <figcaption>Ejemplo 1 · Original (izquierda) y resultado (derecha): la prenda cambia de color sin fabricar muestras.</figcaption>
       </figure>
     </div>
   </section>
 
-  <section class="slide" id="como-se-usa" data-title="Cómo se usa" aria-label="Cómo se usa">
+  <section class="slide benefit-slide" id="pliegues" data-title="Ventajas · Pliegues" aria-label="Ventajas: pliegues">
     <div class="slide-inner">
       <div class="slide-head">
         <div>
-          <p class="kicker">04 · Cómo se usa</p>
-          <h2>De la foto al diseño en cinco pasos.</h2>
+          <p class="kicker">05 · Ventajas</p>
+          <h2>El color cambia. La tela no.</h2>
         </div>
-        <p class="lead">Todo ocurre en una sola pantalla. No hay que preparar capas ni saber edición: la app te guía desde la foto hasta el archivo final.</p>
+        <p class="lead">Atelier recolorea la prenda, no la reconstruye: el volumen, las costuras y la caída siguen siendo los de la foto original.</p>
       </div>
 
-      <div class="steps-row">
-        <article class="use-step">
-          <b>1</b>
-          <h3>Carga</h3>
-          <p>Elige una imagen del catálogo o sube la tuya.</p>
-        </article>
-        <article class="use-step">
-          <b>2</b>
-          <h3>Detecta</h3>
-          <p>Pulsa «Detectar prendas» y revisa lo que encuentra.</p>
-        </article>
-        <article class="use-step">
-          <b>3</b>
-          <h3>Selecciona</h3>
-          <p>Activa solo las prendas que quieres cambiar.</p>
-        </article>
-        <article class="use-step">
-          <b>4</b>
-          <h3>Ajusta</h3>
-          <p>Color, HEX, HSV o material, prenda a prenda.</p>
-        </article>
-        <article class="use-step">
-          <b>5</b>
-          <h3>Genera</h3>
-          <p>Pulsa «Crear mi diseño», compara y descarga.</p>
-        </article>
-      </div>
-
-      <div class="callout-row">
-        <span>Cada prenda guarda su propia configuración</span>
-        <span>Historial de hasta 100 diseños</span>
-        <span>Descarga en PNG</span>
-        <span>Todo en local</span>
-      </div>
-    </div>
-  </section>
-
-  <section class="slide" id="que-puedes-cambiar" data-title="Qué puedes cambiar" aria-label="Qué puedes cambiar">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <div>
-          <p class="kicker">05 · Qué puedes cambiar</p>
-          <h2>El control, prenda a prenda.</h2>
-        </div>
-        <p class="lead">Una misma foto puede convertirse en varias propuestas. Cambia solo lo que necesitas y deja el resto intacto.</p>
-      </div>
-
-      <div class="feature-grid">
-        <article class="feature-card">
-          <div class="mini" aria-hidden="true">
-            <span class="mini-swatch" style="background:#732670"></span>
-            <span class="mini-swatch" style="background:#89c34b"></span>
-            <span class="mini-swatch" style="background:#c8afe4"></span>
-            <span class="mini-swatch" style="background:#b83b3b"></span>
-            <span class="mini-hex">#732670</span>
-          </div>
-          <h3>Color exacto</h3>
-          <p>Paleta, código HEX y ajuste fino de tono, saturación y brillo con HSV.</p>
-        </article>
-
-        <article class="feature-card">
-          <div class="mini" aria-hidden="true">
-            <span class="mini-pill">denim</span>
-            <span class="mini-pill">leather</span>
-            <span class="mini-pill">silk</span>
-            <span class="mini-pill">velvet</span>
-            <span class="mini-pill">wool</span>
-          </div>
-          <h3>Materiales</h3>
-          <p>Prueba acabados como denim, cuero, seda, terciopelo o lana sobre la prenda.</p>
-        </article>
-
-        <article class="feature-card">
-          <div class="mini" aria-hidden="true">
-            <span class="mini-tab active">Vestido</span>
-            <span class="mini-tab">Chaqueta</span>
-            <span class="mini-tab">Camisa</span>
-          </div>
-          <h3>Varias prendas</h3>
-          <p>Configura cada prenda por separado dentro de la misma fotografía.</p>
-        </article>
-
-        <article class="feature-card">
-          <div class="mini" aria-hidden="true">
-            <span class="mini-dot">P</span>
-            <span class="mini-dot">B</span>
-            <span class="mini-pill">bolsillo</span>
-            <span class="mini-pill">botón</span>
-          </div>
-          <h3>Detalles</h3>
-          <p>Añade bolsillos o botones y colócalos sobre la zona de la prenda que elijas.</p>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <section class="slide" id="casos-de-uso" data-title="Casos de uso" aria-label="Casos de uso">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <div>
-          <p class="kicker">06 · Casos de uso</p>
-          <h2>Una herramienta para cada etapa del catálogo.</h2>
-        </div>
-        <p class="lead">Atelier no sustituye la producción: acelera las decisiones que ocurren antes. Cuanto más visual es el proceso, más útil es probar sobre la prenda real.</p>
-      </div>
-
-      <div class="card-grid cols-4">
-        <article class="card">
-          <span class="card-tag">Vender</span>
-          <h3>E-commerce</h3>
-          <p>Publica variantes de color y material sin repetir la sesión de fotos ni pedir nuevas muestras.</p>
-        </article>
-        <article class="card">
-          <span class="card-tag">Diseñar</span>
-          <h3>Colección</h3>
-          <p>Valida paletas y acabados antes de comprometer tejido, taller o producción.</p>
-        </article>
-        <article class="card">
-          <span class="card-tag">Comunicar</span>
-          <h3>Contenido</h3>
-          <p>Genera variantes visuales para campañas, redes y presentaciones de producto.</p>
-        </article>
-        <article class="card">
-          <span class="card-tag">Cuidar</span>
-          <h3>Sostenibilidad</h3>
-          <p>Reduce muestras físicas y residuos en la fase en la que todavía se puede cambiar de idea.</p>
-        </article>
-      </div>
-
-      <div class="callout-row" style="margin-top:18px">
-        <span>Marcas emergentes</span>
-        <span>Estudios de diseño</span>
-        <span>Equipos de e-commerce</span>
-        <span>Fotografía de producto</span>
-        <span>Estilismo</span>
-      </div>
-    </div>
-  </section>
-
-  <section class="slide" id="beneficios" data-title="Beneficios" aria-label="Beneficios">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <div>
-          <p class="kicker">07 · Por qué Atelier</p>
-          <h2>Menos fricción. Más decisiones.</h2>
-        </div>
-        <p class="lead">El valor no está en generar una imagen bonita: está en poder comparar, elegir y avanzar sin depender de una muestra física.</p>
-      </div>
-
-      <div class="benefit-layout">
-        <div class="benefit-grid">
-          <article class="benefit">
-            <strong>Minutos, no semanas</strong>
-            <span>Prueba variantes mientras la idea sigue fresca.</span>
-          </article>
-          <article class="benefit">
-            <strong>Menos coste</strong>
-            <span>Reduce muestras, pruebas y sesiones extra.</span>
-          </article>
-          <article class="benefit">
-            <strong>Más catálogo</strong>
-            <span>Un mismo producto, muchos estilos posibles.</span>
-          </article>
-          <article class="benefit">
-            <strong>Privacidad local</strong>
-            <span>Las fotos se procesan en tu equipo, no en la nube.</span>
-          </article>
-        </div>
-
-        <article class="compare">
-          <span class="label">El cambio de flujo</span>
-          <div class="compare-row">
-            <small>Antes</small>
-            <span>brief → muestra → sesión → corrección → producción</span>
-          </div>
-          <div class="compare-row now">
-            <small>Con Atelier</small>
-            <span>foto → probar → decidir → producir</span>
-          </div>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <section class="slide" id="resultados" data-title="Resultados" aria-label="Resultados">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <div>
-          <p class="kicker">08 · Resultados</p>
-          <h2>La prenda cambia. La escena no.</h2>
-        </div>
-        <p class="lead">Cambios de color, materiales y comparativas reales generadas con Atelier. El fondo, la piel y el resto de la fotografía se mantienen.</p>
-      </div>
-
-      <div class="result-grid">
-        <figure class="shot">
-          <div class="shot-img">
-            <img src="outputs/recolor/0b0a12e8640472681f93e31d44f68e5d_h120_compare.png" alt="Comparativa de recoloreado HSV: original, máscara y resultado" loading="lazy">
-          </div>
-          <figcaption><strong>Color exacto</strong><span>Pliegues y sombras conservados.</span></figcaption>
-        </figure>
-        <figure class="shot">
-          <div class="shot-img">
-            <img src="outputs/pix2pix/recoloreado_black_leather.png" alt="Prenda transformada a cuero negro con Atelier" loading="lazy">
-          </div>
-          <figcaption><strong>Cuero negro</strong><span>Material generado sobre la prenda.</span></figcaption>
-        </figure>
-        <figure class="shot">
-          <div class="shot-img">
-            <img src="outputs/pix2pix/recoloreado_blue_denim_7b3b0acf.png" alt="Prenda transformada a denim azul con Atelier" loading="lazy">
-          </div>
-          <figcaption><strong>Denim azul</strong><span>Color y material en una sola prueba.</span></figcaption>
-        </figure>
-        <figure class="shot">
-          <div class="shot-img">
-            <img src="outputs/recolored/0cc70556e13abb3219c14ac881ee511b_purple_comparativa.png" alt="Comparativa original y resultado de una prenda recoloreada en violeta" loading="lazy">
-          </div>
-          <figcaption><strong>Antes y después</strong><span>Comparativa directa del resultado.</span></figcaption>
-        </figure>
-      </div>
-    </div>
-  </section>
-
-  <section class="slide" id="calidad" data-title="Calidad" aria-label="Calidad">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <div>
-          <p class="kicker">09 · Calidad</p>
-          <h2>Resultados que respetan la prenda.</h2>
-        </div>
-        <p class="lead">La edición se limita a la prenda detectada. El resto de la imagen no se toca, y la luz original se usa para que el cambio parezca real.</p>
-      </div>
-
-      <div class="quality-layout">
-        <div class="quality-left">
-          <div class="quality-list">
-            <div class="quality-item">
-              <b>01</b>
-              <div>
-                <h3>Solo la prenda</h3>
-                <p>La máscara aísla la prenda y respeta la piel, el fondo y las demás prendas de la foto.</p>
-              </div>
-            </div>
-            <div class="quality-item">
-              <b>02</b>
-              <div>
-                <h3>Pliegues y sombras</h3>
-                <p>El color se integra con la luminancia original para conservar volumen, costuras y caída.</p>
-              </div>
-            </div>
-            <div class="quality-item">
-              <b>03</b>
-              <div>
-                <h3>Varias prendas</h3>
-                <p>Cada prenda se detecta y se configura por separado, incluso dentro de la misma imagen.</p>
-              </div>
-            </div>
-          </div>
-          <div class="stat-strip compact">
-            <div><strong>46</strong><span>categorías de prenda</span></div>
-            <div><strong>420+</strong><span>pruebas guardadas</span></div>
-            <div><strong>100</strong><span>diseños en el historial</span></div>
-            <div><strong>Local</strong><span>sin subir las fotos</span></div>
-          </div>
-        </div>
-
-        <figure class="quality-figure">
-          <div class="image-box">
-            <img src="outputs/segmentation/sam/0e7104825dd0092bbd62d8c2245c21b5_overlay.png" alt="Máscaras de segmentación coloreadas sobre una fotografía con varias prendas" loading="lazy">
-          </div>
-          <figcaption>Cada color es una prenda detectada y editable por separado.</figcaption>
-        </figure>
-      </div>
-    </div>
-  </section>
-
-  <section class="slide" id="como-funciona" data-title="Cómo funciona" aria-label="Cómo funciona">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <div>
-          <p class="kicker">10 · Cómo funciona</p>
-          <h2>Simple por fuera. Preciso por dentro.</h2>
-        </div>
-        <p class="lead">No necesitas saber de modelos para usarlo. Pero esto es lo que ocurre cuando pulsas «Crear mi diseño».</p>
-      </div>
-
-      <div class="process-row">
-        <article class="process-card">
-          <span class="num">01</span>
-          <h3>Detecta</h3>
-          <p>Localiza cada prenda en la foto y afina su contorno para separarla del resto.</p>
-        </article>
-        <article class="process-card">
-          <span class="num">02</span>
-          <h3>Edita</h3>
-          <p>Aplica un color directo o genera un material nuevo solo sobre la prenda elegida.</p>
-        </article>
-        <article class="process-card">
-          <span class="num">03</span>
-          <h3>Recompone</h3>
-          <p>Devuelve la prenda a la foto conservando pliegues, sombras y tamaño original.</p>
-        </article>
-      </div>
-
-      <div class="route-row">
-        <article class="route hsv">
-          <div>
-            <h3>Cambio de color</h3>
-            <p>Rápido, fiel y sin GPU. Ideal para paletas y colores exactos.</p>
-          </div>
-          <span class="tag">directo</span>
-        </article>
-        <article class="route gen">
-          <div>
-            <h3>Cambio de material</h3>
-            <p>IA generativa para cuero, denim, seda y acabados complejos.</p>
-          </div>
-          <span class="tag">GPU recomendada</span>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <section class="slide" id="ficha-tecnica" data-title="Ficha técnica" aria-label="Ficha técnica">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <div>
-          <p class="kicker">11 · Ficha técnica</p>
-          <h2>La base que hace posible el probador.</h2>
-        </div>
-        <p class="lead">Atelier es un prototipo funcional, local y auditable. Combina segmentación, edición generativa y composición de imagen.</p>
-      </div>
-
-      <div class="spec-grid">
-        <article class="spec">
-          <span class="spec-label">Visión</span>
-          <p><strong>Mask R-CNN ResNet50-FPN v2 + SAM 2.1.</strong> 46 categorías de prenda más fondo. Segmentación medida en validación: mAP 36,5 % · AP50 45,3 %.</p>
-        </article>
-        <article class="spec">
-          <span class="spec-label">Generación</span>
-          <p><strong>InstructPix2Pix</strong> para materiales y colores complejos. Composición alfa con conservación de luminancia para integrar el resultado.</p>
-        </article>
-        <article class="spec">
-          <span class="spec-label">Aplicación</span>
-          <p><strong>FastAPI + HTML, CSS y JavaScript.</strong> Cola de generación, historial local, comparativas y descarga en PNG.</p>
-        </article>
-        <article class="spec">
-          <span class="spec-label">Datos y entrenamiento</span>
-          <p><strong>Fashionpedia en formato COCO.</strong> 10 épocas con aumento de datos y precisión mixta. Ejecución local; GPU recomendada para material.</p>
-        </article>
-      </div>
-
-      <p class="note-line">La ruta de color funciona sin GPU. La ruta generativa es más lenta en CPU y está pensada para equipos con GPU.</p>
-    </div>
-  </section>
-
-  <section class="slide" id="limites" data-title="Límites y buenas prácticas" aria-label="Límites y buenas prácticas">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <div>
-          <p class="kicker">12 · Uso responsable</p>
-          <h2>Lo que conviene saber antes de publicar.</h2>
-        </div>
-        <p class="lead">La IA propone; tú decides. Para un catálogo profesional, revisa siempre el resultado y compara con la prenda real.</p>
-      </div>
-
-      <div class="two-panels">
-        <article class="panel">
-          <h3>Límites</h3>
-          <ul class="list">
-            <li><strong>Oclusiones:</strong> brazos, bolsos o pliegues pueden ocultar parte de la prenda.</li>
-            <li><strong>Categorías poco frecuentes:</strong> la detección puede fallar en prendas raras o ángulos inusuales.</li>
-            <li><strong>Material generativo:</strong> a veces inventa costuras o detalles que no estaban.</li>
-            <li><strong>Resolución de trabajo:</strong> la edición generativa parte de 512 px y luego se recompone.</li>
-            <li><strong>Detalles aproximados:</strong> la posición de bolsillos y botones es una estimación visual.</li>
+      <div class="benefit-detail">
+        <div class="benefit-copy">
+          <p>El color se integra con la luminancia de la prenda. Los pliegues no se borran ni se inventan: se conservan con sus sombras y su textura.</p>
+          <ul class="benefit-points">
+            <li><b>01</b><span><strong>Luminancia original:</strong> el color se funde con las sombras de cada pliegue.</span></li>
+            <li><b>02</b><span><strong>Sin retoque manual:</strong> no hay que recortar ni reconstruir la tela.</span></li>
+            <li><b>03</b><span><strong>Forma intacta:</strong> la prenda mantiene su caída y sus costuras.</span></li>
           </ul>
-        </article>
-        <article class="panel">
-          <h3>Buenas prácticas</h3>
-          <ul class="list green">
-            <li><strong>Foto clara y frontal:</strong> buena luz, prenda visible y poco ruido alrededor.</li>
-            <li><strong>Una decisión por prueba:</strong> compara color y material por separado si buscas precisión.</li>
-            <li><strong>Revisa los bordes:</strong> amplía la zona del cuello, mangas y cierres antes de descargar.</li>
-            <li><strong>Usa el color directo</strong> cuando necesites un HEX exacto de marca.</li>
-            <li><strong>Valida el material</strong> con el equipo de producto antes de publicarlo.</li>
-          </ul>
-        </article>
+        </div>
+
+        <figure class="benefit-figure">
+          <div class="benefit-image">
+            <img src="outputs/pix2pix/recoloreado_HSV_tono_170_sat_142_brillo_255_81c1c559.png" alt="Camisa recoloreada en tono 170 conservando pliegues y costuras" loading="lazy">
+          </div>
+          <figcaption>Pliegues, sombras y costuras conservados en el resultado.</figcaption>
+        </figure>
       </div>
     </div>
   </section>
 
-  <section class="slide" id="roadmap" data-title="Próximos pasos" aria-label="Próximos pasos">
+  <section class="slide benefit-slide" id="luz" data-title="Ventajas · Luz" aria-label="Ventajas: luz">
     <div class="slide-inner">
       <div class="slide-head">
         <div>
-          <p class="kicker">13 · Próximos pasos</p>
+          <p class="kicker">06 · Ventajas</p>
+          <h2>La luz real sigue mandando.</h2>
+        </div>
+        <p class="lead">No se reilumina la escena ni se inventa un estudio: el color se integra con la luz, las sombras y los reflejos de la foto.</p>
+      </div>
+
+      <div class="benefit-detail">
+        <div class="benefit-copy">
+          <p>El resultado conserva la dirección de la luz y la temperatura de la escena. La prenda se ve afectada por el mismo entorno que en la foto original.</p>
+          <ul class="benefit-points">
+            <li><b>01</b><span><strong>Sombras coherentes:</strong> el nuevo color respeta la dirección de la luz.</span></li>
+            <li><b>02</b><span><strong>Reflejos y textura:</strong> el material se lee igual que en la foto original.</span></li>
+            <li><b>03</b><span><strong>Escena intacta:</strong> fondo, modelo y entorno no se alteran.</span></li>
+          </ul>
+          <p class="benefit-note">El color se adapta a la foto. La foto no se adapta al color.</p>
+        </div>
+
+        <figure class="benefit-figure">
+          <div class="benefit-image">
+            <img src="outputs/pix2pix/recoloreado_HSV_tono_291_sat_75_brillo_255_81445f83.png" alt="Sweater recoloreado en tono 291 conservando la luz y las sombras originales" loading="lazy">
+          </div>
+          <figcaption>Luz, sombras y reflejos de la foto original, sin reiluminar.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide benefit-slide" id="prendas" data-title="Ventajas · Antes y después" aria-label="Ventajas: antes y después">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <div>
+          <p class="kicker">07 · Ventajas</p>
+          <h2>La prenda real, en otro color.</h2>
+        </div>
+        <p class="lead">El resultado parte de la foto original: cambia el color de la prenda y conserva su forma, su caída y el resto de la escena.</p>
+      </div>
+
+      <div class="benefit-detail">
+        <div class="benefit-copy">
+          <p>Cada ejemplo muestra la foto original y el resultado de Atelier. No hay montaje: la prenda, el fondo y la luz siguen siendo los de la imagen de partida.</p>
+          <ul class="benefit-points">
+            <li><b>01</b><span><strong>Original y resultado:</strong> comparación directa sobre la misma foto.</span></li>
+            <li><b>02</b><span><strong>Forma y caída:</strong> la prenda no se reconstruye ni se recorta.</span></li>
+            <li><b>03</b><span><strong>Escena intacta:</strong> fondo, modelo y encuadre no cambian.</span></li>
+          </ul>
+          <p class="benefit-note">El color cambia. La foto sigue siendo la misma.</p>
+        </div>
+
+        <figure class="benefit-figure">
+          <div class="benefit-two-up">
+            <figure>
+              <img src="outputs/pix2pix/original_ejemplo2_4666ccaf.png" alt="Foto original del ejemplo 2 antes de recolorear" loading="lazy">
+              <figcaption>Original</figcaption>
+            </figure>
+            <figure>
+              <img src="outputs/pix2pix/recoloreado_ejemplo2_4666ccaf.png" alt="Resultado del ejemplo 2 recoloreado con Atelier" loading="lazy">
+              <figcaption>Resultado</figcaption>
+            </figure>
+          </div>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="futuro" data-title="Trabajo futuro" aria-label="Trabajo futuro">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <div>
+          <p class="kicker">08 · Trabajo futuro</p>
           <h2>De probador a plataforma de catálogo.</h2>
         </div>
         <p class="lead">Atelier ya resuelve la prueba individual. El siguiente salto es convertirla en una herramienta de trabajo para equipos y catálogos completos.</p>
@@ -1991,19 +1996,70 @@
     </div>
   </section>
 
-  <section class="slide" id="cierre" data-title="Cierre" aria-label="Cierre">
+  <section class="slide" id="prueba" data-title="Prueba Atelier" aria-label="Prueba Atelier">
     <div class="slide-inner">
       <div class="closing-panel">
-        <p class="kicker">Atelier · Proyecto 3</p>
-        <h2>Tu próximo catálogo empieza con una foto.</h2>
-        <p>Prueba Atelier con una prenda real: detecta, cambia el color o el material y decide en minutos. Sin muestras, sin editar a mano y sin sacar tus fotos del equipo.</p>
-        <div class="closing-actions">
-          <a class="btn btn-primary" href="http://127.0.0.1:8000" target="_blank" rel="noopener">Abrir la app</a>
-          <button class="btn btn-ghost" type="button" data-goto="0">Volver al inicio</button>
+        <div class="closing-head">
+          <div>
+            <p class="kicker">09 · Prueba Atelier</p>
+            <h2>Tu próximo catálogo empieza con una foto.</h2>
+          </div>
+          <div class="closing-head-copy">
+            <p>Abre Atelier en local, sube una prenda real y prueba color o material. En minutos verás la variante sin fabricar muestras ni salir del equipo.</p>
+            <div class="closing-actions">
+              <a class="btn btn-primary" href="http://127.0.0.1:8000" target="_blank" rel="noopener">Abrir la app</a>
+              <button class="btn btn-ghost" type="button" data-goto="0">Volver al inicio</button>
+            </div>
+          </div>
         </div>
+
+        <div class="showcase-grid" aria-label="Resultados de ejemplo">
+          <figure class="showcase-card">
+            <div class="compare-pair">
+              <figure class="compare-image">
+                <img src="outputs/pix2pix/original_ejemplo1_486d2f39.png" alt="Foto original del ejemplo 1 antes de recolorear" loading="lazy">
+                <span>Original</span>
+              </figure>
+              <figure class="compare-image">
+                <img src="outputs/pix2pix/recoloreado_ejemplo1_486d2f39.png" alt="Resultado del ejemplo 1 recoloreado con Atelier" loading="lazy">
+                <span>Resultado</span>
+              </figure>
+            </div>
+            <figcaption><strong>Ejemplo 1</strong><span>La misma foto, con la prenda en un nuevo color.</span></figcaption>
+          </figure>
+
+          <figure class="showcase-card">
+            <div class="compare-pair">
+              <figure class="compare-image">
+                <img src="outputs/pix2pix/original_ejemplo2_4666ccaf.png" alt="Foto original del ejemplo 2 antes de recolorear" loading="lazy">
+                <span>Original</span>
+              </figure>
+              <figure class="compare-image">
+                <img src="outputs/pix2pix/recoloreado_ejemplo2_4666ccaf.png" alt="Resultado del ejemplo 2 recoloreado con Atelier" loading="lazy">
+                <span>Resultado</span>
+              </figure>
+            </div>
+            <figcaption><strong>Ejemplo 2</strong><span>Color nuevo sin perder forma, luz ni escena.</span></figcaption>
+          </figure>
+
+          <figure class="showcase-card">
+            <div class="showcase-media">
+              <img src="outputs/pix2pix/recoloreado_HSV_tono_170_sat_142_brillo_255_81c1c559.png" alt="Camisa recoloreada con tono 170, saturación 142 y brillo 255" loading="lazy">
+            </div>
+            <figcaption><strong>Tono 170 · Saturación 142 · Brillo 255</strong><span>Camisa / blusa con el color elegido.</span></figcaption>
+          </figure>
+
+          <figure class="showcase-card">
+            <div class="showcase-media">
+              <img src="outputs/pix2pix/recoloreado_HSV_tono_291_sat_75_brillo_255_81445f83.png" alt="Sweater recoloreado con tono 291, saturación 75 y brillo 255" loading="lazy">
+            </div>
+            <figcaption><strong>Tono 291 · Saturación 75 · Brillo 255</strong><span>Sweater con el color elegido.</span></figcaption>
+          </figure>
+        </div>
+
         <div class="closing-foot">
-          <span>Un nuevo tono. La misma esencia.</span>
-          <span>Visión artificial + IA generativa + composición de imagen</span>
+          <span>1 · Sube una foto · 2 · Elige la prenda · 3 · Prueba y descarga</span>
+          <span>http://127.0.0.1:8000</span>
         </div>
       </div>
     </div>
@@ -2013,7 +2069,7 @@
 <nav class="deck-nav" aria-label="Navegación de diapositivas">
   <button class="nav-btn" id="prevButton" type="button" aria-label="Diapositiva anterior">←</button>
   <div class="dots" id="dots" aria-label="Ir a una diapositiva"></div>
-  <span class="nav-count" id="slideCounter">01 / 15</span>
+  <span class="nav-count" id="slideCounter">01 / 9</span>
   <button class="nav-btn" id="nextButton" type="button" aria-label="Diapositiva siguiente">→</button>
 </nav>
 
