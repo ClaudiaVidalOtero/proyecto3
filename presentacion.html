@@ -856,6 +856,10 @@
     font-size: 14px;
     line-height: 1.55;
   }
+  .merge-copy > p.benefit-note {
+    margin-top: 24px;
+    margin-bottom: 0;
+  }
   .merge-copy .benefit-points { margin-top: 0; }
   .merge-grid .benefit-figure {
     display: flex;
@@ -1924,7 +1928,7 @@
           <p class="kicker">04 · Flujo y ventajas</p>
           <h2>De la foto al catálogo.</h2>
         </div>
-        <p class="lead">Atelier detecta cada prenda, la edita por separado y conserva pliegues, luz y textura. El color cambia; la tela no.</p>
+        <p class="lead">Atelier detecta cada prenda, la edita por separado y conserva pliegues, luz, sombras y textura. El color cambia; la tela no.</p>
       </div>
 
       <div class="merge-grid">
@@ -1948,51 +1952,21 @@
             </div>
           </div>
 
-          <p>El color se integra con la iluminación de la prenda. Los pliegues no se borran ni se inventan: se conservan con sus sombras y su textura.</p>
+          <p>El color se integra con la iluminación de la prenda y conserva sus pliegues, sombras y textura. La escena no se reilumina.</p>
           <ul class="benefit-points">
-            <li><b>01</b><span><strong>Iluminación original:</strong> el color se funde con las sombras de cada pliegue.</span></li>
-            <li><b>02</b><span><strong>Sin retoque manual:</strong> no hay que recortar ni reconstruir la tela.</span></li>
-            <li><b>03</b><span><strong>Forma intacta:</strong> la prenda mantiene su caída y sus costuras.</span></li>
+            <li><b>01</b><span><strong>Iluminación y sombras:</strong> el color respeta la luz de cada pliegue.</span></li>
+            <li><b>02</b><span><strong>Reflejos y textura:</strong> el material se lee como en la foto original.</span></li>
+            <li><b>03</b><span><strong>Forma intacta:</strong> la prenda conserva su caída y sus costuras.</span></li>
+            <li><b>04</b><span><strong>Escena intacta:</strong> fondo, modelo y entorno no cambian.</span></li>
           </ul>
           <p class="benefit-note">El color se adapta a la foto. La foto no se adapta al color.</p>
         </div>
 
         <figure class="benefit-figure">
           <div class="benefit-image">
-            <img src="outputs/pix2pix/recoloreado_ejemplo_5_39042c0b.png" alt="Camisa recoloreada con Atelier conservando pliegues y costuras" loading="lazy">
+            <img src="outputs/pix2pix/recoloreado_ejemplo_7_7b4d2a06.png" alt="Prenda recoloreada con Atelier conservando pliegues y costuras" loading="lazy">
           </div>
-          <figcaption>Pliegues, sombras y costuras conservados en el resultado.</figcaption>
-        </figure>
-      </div>
-    </div>
-  </section>
-
-  <section class="slide benefit-slide" id="luz" data-title="Ventajas · Luz" aria-label="Ventajas: luz">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <div>
-          <p class="kicker">05 · Ventajas</p>
-          <h2>La luz real sigue mandando.</h2>
-        </div>
-        <p class="lead">No se reilumina la escena ni se inventa un estudio: el color se integra con la luz, las sombras y los reflejos de la foto.</p>
-      </div>
-
-      <div class="benefit-detail">
-        <div class="benefit-copy">
-          <p>El resultado conserva la dirección de la luz y la temperatura de la escena. La prenda se ve afectada por el mismo entorno que en la foto original.</p>
-          <ul class="benefit-points">
-            <li><b>01</b><span><strong>Sombras coherentes:</strong> el nuevo color respeta la dirección de la luz.</span></li>
-            <li><b>02</b><span><strong>Reflejos y textura:</strong> el material se lee igual que en la foto original.</span></li>
-            <li><b>03</b><span><strong>Escena intacta:</strong> fondo, modelo y entorno no se alteran.</span></li>
-          </ul>
-          <p class="benefit-note">El color se adapta a la foto. La foto no se adapta al color.</p>
-        </div>
-
-        <figure class="benefit-figure">
-          <div class="benefit-image">
-            <img src="outputs/pix2pix/recoloreado_HSV_tono_291_sat_75_brillo_255_81445f83.png" alt="Sweater recoloreado en tono 291 conservando la luz y las sombras originales" loading="lazy">
-          </div>
-          <figcaption>Luz, sombras y reflejos de la foto original, sin reiluminar.</figcaption>
+          <figcaption>Pliegues, sombras, costuras y luz original conservados en el resultado.</figcaption>
         </figure>
       </div>
     </div>
@@ -2002,7 +1976,7 @@
     <div class="slide-inner">
       <div class="slide-head">
         <div>
-          <p class="kicker">06 · Ventajas</p>
+          <p class="kicker">05 · Ventajas</p>
           <h2>La prenda real, en otro color.</h2>
         </div>
         <p class="lead">El resultado parte de la foto original: cambia el color de la prenda y conserva su forma, su caída y el resto de la escena.</p>
@@ -2039,7 +2013,7 @@
     <div class="slide-inner">
       <div class="slide-head">
         <div>
-          <p class="kicker">07 · Impacto</p>
+          <p class="kicker">06 · Impacto</p>
           <h2>Del probador al negocio.</h2>
         </div>
         <p class="lead">La interfaz no solo cambia colores: impacta directamente en las métricas comerciales y abre nuevas aplicaciones para la compañía.</p>
@@ -2073,7 +2047,7 @@
       <div class="closing-panel">
         <div class="closing-head">
           <div>
-            <p class="kicker">08 · Prueba Atelier</p>
+            <p class="kicker">07 · Prueba Atelier</p>
             <h2>Tu próximo catálogo empieza con una foto.</h2>
           </div>
           <div class="closing-head-copy">
@@ -2113,7 +2087,7 @@
 <nav class="deck-nav" aria-label="Navegación de diapositivas">
   <button class="nav-btn" id="prevButton" type="button" aria-label="Diapositiva anterior">←</button>
   <div class="dots" id="dots" aria-label="Ir a una diapositiva"></div>
-  <span class="nav-count" id="slideCounter">01 / 8</span>
+  <span class="nav-count" id="slideCounter">01 / 7</span>
   <button class="nav-btn" id="nextButton" type="button" aria-label="Diapositiva siguiente">→</button>
 </nav>
 
