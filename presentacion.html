@@ -551,16 +551,15 @@
   }
   .demo-figure .image-box {
     display: grid;
+    grid-template-rows: minmax(0, 1fr);
     place-items: center;
     height: 130px;
     padding: 8px;
     background: var(--paper-2);
   }
   .demo-figure img {
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: 100%;
     border-radius: 8px;
     object-fit: contain;
   }
@@ -793,16 +792,15 @@
   }
   .benefit-figure .benefit-image {
     display: grid;
+    grid-template-rows: minmax(0, 1fr);
     place-items: center;
     height: clamp(320px, 48vh, 560px);
     padding: 12px;
     background: var(--paper-2);
   }
   .benefit-figure img {
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: 100%;
     border-radius: 10px;
     object-fit: contain;
   }
@@ -837,6 +835,36 @@
     color: rgba(255, 255, 255, .7);
     font-size: 9px;
     text-align: center;
+  }
+
+  .merge-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+    gap: clamp(20px, 3vw, 36px);
+    align-items: stretch;
+    margin-top: 14px;
+  }
+  .merge-copy { display: flex; flex-direction: column; }
+  .merge-copy .solution-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0 0 16px;
+  }
+  .merge-copy > p {
+    max-width: 48ch;
+    margin: 0 0 12px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .merge-copy .benefit-points { margin-top: 0; }
+  .merge-grid .benefit-figure {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .benefit-slide .merge-grid .benefit-image {
+    flex: 1 1 auto;
+    height: clamp(330px, 48vh, 560px);
   }
 
   .compare {
@@ -897,6 +925,7 @@
   }
   .shot-img {
     display: grid;
+    grid-template-rows: minmax(0, 1fr);
     place-items: center;
     height: clamp(220px, 30vh, 340px);
     padding: 9px;
@@ -908,10 +937,8 @@
     background-size: 18px 18px;
   }
   .shot-img img {
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: 100%;
     border-radius: 6px;
     object-fit: contain;
   }
@@ -988,17 +1015,17 @@
   }
   .quality-figure .image-box {
     display: grid;
+    grid-template-rows: minmax(0, 1fr);
     place-items: center;
     height: 210px;
     padding: 10px;
     background: var(--paper-2);
   }
   .quality-figure img {
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: 100%;
     border-radius: 8px;
+    object-fit: contain;
   }
   .quality-figure figcaption {
     padding: 10px 14px;
@@ -1011,7 +1038,7 @@
     width: min(1280px, 100%);
     margin: 10px auto 0;
   }
-  .quality-figure.flow-figure .image-box { height: clamp(320px, 45vh, 560px); }
+  .quality-figure.flow-figure .image-box { height: clamp(340px, 46vh, 600px); }
 
   .stat-strip {
     display: grid;
@@ -1310,6 +1337,69 @@
     text-transform: uppercase;
   }
 
+  .cover-simple-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(250px, .72fr);
+    gap: clamp(24px, 4vw, 56px);
+    align-items: center;
+  }
+
+  .cover-simple-figure {
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: var(--paper-2);
+    box-shadow: var(--shadow-soft);
+  }
+  .cover-simple-image {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    place-items: center;
+    height: clamp(300px, 52vh, 560px);
+    padding: 12px;
+  }
+  .cover-simple-figure img {
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    object-fit: contain;
+  }
+  .cover-simple-figure figcaption {
+    padding: 10px 14px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 10px;
+    text-align: center;
+  }
+  .cover-compare {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px;
+    background: var(--paper-2);
+  }
+  .cover-compare-item {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-width: 0;
+  }
+  .cover-compare-item .cover-simple-image {
+    height: clamp(270px, 43vh, 450px);
+    padding: 6px;
+    border-radius: 12px;
+    background: var(--white);
+  }
+  .cover-compare-item span {
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
   .cover-visual {
     position: relative;
     padding: 16px 0 16px 16px;
@@ -1466,16 +1556,15 @@
   }
   .showcase-media {
     display: grid;
+    grid-template-rows: minmax(0, 1fr);
     place-items: center;
     height: clamp(240px, 32vh, 360px);
     padding: 10px;
     background: rgba(255, 255, 255, .04);
   }
   .showcase-media img {
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: 100%;
     border-radius: 8px;
     object-fit: contain;
   }
@@ -1496,10 +1585,8 @@
     margin: 0;
   }
   .compare-image img {
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: 100%;
     border-radius: 6px;
     object-fit: contain;
   }
@@ -1576,18 +1663,19 @@
   }
 
   @media (min-height: 760px) {
-    .benefit-figure .benefit-image { height: clamp(380px, 50vh, 600px); }
+    .benefit-figure .benefit-image { height: clamp(400px, 58vh, 640px); }
     .benefit-two-up img { height: clamp(340px, 48vh, 580px); }
   }
 
   @media (min-height: 900px) {
-    .benefit-figure .benefit-image { height: clamp(440px, 52vh, 640px); }
+    .benefit-figure .benefit-image { height: clamp(460px, 60vh, 700px); }
     .benefit-two-up img { height: clamp(380px, 50vh, 620px); }
   }
 
   @media (max-width: 980px) {
     .cover-grid { grid-template-columns: minmax(0, 1fr) minmax(250px, .7fr); gap: 30px; }
     .benefit-detail { grid-template-columns: 1fr; }
+    .merge-grid { grid-template-columns: 1fr; }
     .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .result-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .slide-head { grid-template-columns: 1fr; gap: 16px; }
@@ -1609,6 +1697,8 @@
     .brand { font-size: 21px; }
     .brand-mark { width: 28px; height: 28px; border-radius: 8px; font-size: 18px; }
     .cover-grid { grid-template-columns: 1fr; gap: 34px; }
+    .cover-simple-grid { grid-template-columns: 1fr; gap: 26px; }
+    .cover-simple-image { height: clamp(240px, 40vh, 380px); }
     .cover-visual { width: min(360px, 100%); margin-inline: auto; }
     .cover-hint { display: none; }
     .showcase-grid { grid-template-columns: 1fr; }
@@ -1714,13 +1804,33 @@
   <section class="slide is-active" id="portada" data-title="Portada" aria-label="Portada">
     <div class="slide-inner">
       <div class="cover-simple">
-        <p class="kicker">01 · Presentación</p>
-        <h1>Atelier<em>.</em></h1>
-        <p class="cover-simple-lead">Probador digital de color y material para prendas.</p>
-        <div class="cover-simple-actions">
-          <button class="btn btn-primary" type="button" data-next>Comenzar →</button>
+        <div class="cover-simple-grid">
+          <div>
+            <p class="kicker">01 · Presentación</p>
+            <h1>Atelier<em>.</em></h1>
+            <p class="cover-simple-lead">Probador digital de color y material para prendas.</p>
+            <div class="cover-simple-actions">
+              <button class="btn btn-primary" type="button" data-next>Comenzar →</button>
+            </div>
+            <p class="cover-simple-foot">Una foto. Todas las variantes.</p>
+          </div>
+          <figure class="cover-simple-figure">
+            <div class="cover-compare">
+              <div class="cover-compare-item">
+                <div class="cover-simple-image">
+                  <img src="outputs/pix2pix/original_ejemplo1_486d2f39.png" alt="Prenda antes de recolorear">
+                </div>
+                <span>Antes</span>
+              </div>
+              <div class="cover-compare-item">
+                <div class="cover-simple-image">
+                  <img src="outputs/pix2pix/recoloreado_ejemplo1_486d2f39.png" alt="Prenda después de recolorear con Atelier">
+                </div>
+                <span>Después</span>
+              </div>
+            </div>
+          </figure>
         </div>
-        <p class="cover-simple-foot">Una foto. Todas las variantes.</p>
       </div>
     </div>
   </section>
@@ -1775,12 +1885,8 @@
         <p class="kicker">03 · Nuestro proyecto</p>
         <h1>Cambio de color sin coste.<br></h1>
         <p class="cover-lead">Atelier detecta cada prenda en una foto y prueba color o material sin fabricar muestras. Tú decides qué cambia; la prenda real no se toca.</p>
-        <ul class="project-points">
-          <li><b>01</b><span><strong>Detecta</strong> cada prenda en la foto.</span></li>
-          <li><b>02</b><span><strong>Recolorea</strong> color o material.</span></li>
-          <li><b>03</b><span><strong>Conserva</strong> pliegues, luz y escena.</span></li>
-          <li><b>04</b><span><strong>Descarga</strong> el PNG para catálogo.</span></li>
-        </ul>
+        <p class="cover-lead">La herramienta trabaja directamente sobre la imagen que ya tienes: aísla la silueta de la prenda y aplica el nuevo color o material respetando las sombras, los pliegues y la textura del tejido. No hace falta modelo, estudio ni muestra física para ver cómo queda la variante en el catálogo.</p>
+        <p class="project-note">Una sola foto basta para probar decenas de variantes antes de producir.</p>
       </div>
 
       <aside class="cover-visual" aria-label="Vista previa de Atelier">
@@ -1811,72 +1917,49 @@
     </div>
   </section>
 
-  <section class="slide" id="flujo" data-title="Flujo de la prenda" aria-label="Flujo de la prenda">
+  <section class="slide benefit-slide" id="flujo" data-title="Flujo y ventajas" aria-label="Flujo y ventajas">
     <div class="slide-inner">
       <div class="slide-head">
         <div>
-          <p class="kicker">04 · Flujo de la prenda</p>
+          <p class="kicker">04 · Flujo y ventajas</p>
           <h2>De la foto al catálogo.</h2>
         </div>
-        <p class="lead">Atelier detecta cada prenda, la aísla y permite editarla por separado, sin salir del equipo.</p>
+        <p class="lead">Atelier detecta cada prenda, la edita por separado y conserva pliegues, luz y textura. El color cambia; la tela no.</p>
       </div>
 
-      <div class="solution-strip four">
-        <div class="solution-step">
-          <b>1</b>
-          <div><strong>Sube la foto</strong><span>una prenda o varias</span></div>
-        </div>
-        <div class="solution-step">
-          <b>2</b>
-          <div><strong>Detecta cada prenda</strong><span>una o varias en la foto</span></div>
-        </div>
-        <div class="solution-step">
-          <b>3</b>
-          <div><strong>Edita</strong><span>color o material</span></div>
-        </div>
-        <div class="solution-step">
-          <b>4</b>
-          <div><strong>Descarga</strong><span>PNG para catálogo</span></div>
-        </div>
-      </div>
-
-      <figure class="quality-figure flow-figure">
-        <div class="image-pair">
-          <div class="image-box">
-            <img src="outputs/pix2pix/original_ejemplo1_486d2f39.png" alt="Foto original del ejemplo 1 antes de recolorear" loading="lazy">
+      <div class="merge-grid">
+        <div class="merge-copy">
+          <div class="solution-strip four">
+            <div class="solution-step">
+              <b>1</b>
+              <div><strong>Sube la foto</strong><span>una prenda o varias</span></div>
+            </div>
+            <div class="solution-step">
+              <b>2</b>
+              <div><strong>Detecta cada prenda</strong><span>una o varias en la foto</span></div>
+            </div>
+            <div class="solution-step">
+              <b>3</b>
+              <div><strong>Edita</strong><span>color o material</span></div>
+            </div>
+            <div class="solution-step">
+              <b>4</b>
+              <div><strong>Descarga</strong><span>PNG para catálogo</span></div>
+            </div>
           </div>
-          <div class="image-box">
-            <img src="outputs/pix2pix/recoloreado_ejemplo1_486d2f39.png" alt="Resultado del ejemplo 1 recoloreado con Atelier" loading="lazy">
-          </div>
-        </div>
-        <figcaption>Ejemplo 1 · Original (izquierda) y resultado (derecha): la prenda cambia de color sin fabricar muestras.</figcaption>
-      </figure>
-    </div>
-  </section>
 
-  <section class="slide benefit-slide" id="pliegues" data-title="Ventajas · Pliegues" aria-label="Ventajas: pliegues">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <div>
-          <p class="kicker">05 · Ventajas</p>
-          <h2>El color cambia. La tela no.</h2>
-        </div>
-        <p class="lead">Atelier recolorea la prenda, no la reconstruye: el volumen, las costuras y la caída siguen siendo los de la foto original.</p>
-      </div>
-
-      <div class="benefit-detail">
-        <div class="benefit-copy">
-          <p>El color se integra con la luminancia de la prenda. Los pliegues no se borran ni se inventan: se conservan con sus sombras y su textura.</p>
+          <p>El color se integra con la iluminación de la prenda. Los pliegues no se borran ni se inventan: se conservan con sus sombras y su textura.</p>
           <ul class="benefit-points">
-            <li><b>01</b><span><strong>Luminancia original:</strong> el color se funde con las sombras de cada pliegue.</span></li>
+            <li><b>01</b><span><strong>Iluminación original:</strong> el color se funde con las sombras de cada pliegue.</span></li>
             <li><b>02</b><span><strong>Sin retoque manual:</strong> no hay que recortar ni reconstruir la tela.</span></li>
             <li><b>03</b><span><strong>Forma intacta:</strong> la prenda mantiene su caída y sus costuras.</span></li>
           </ul>
+          <p class="benefit-note">El color se adapta a la foto. La foto no se adapta al color.</p>
         </div>
 
         <figure class="benefit-figure">
           <div class="benefit-image">
-            <img src="outputs/pix2pix/recoloreado_HSV_tono_170_sat_142_brillo_255_81c1c559.png" alt="Camisa recoloreada en tono 170 conservando pliegues y costuras" loading="lazy">
+            <img src="outputs/pix2pix/recoloreado_ejemplo_5_39042c0b.png" alt="Camisa recoloreada con Atelier conservando pliegues y costuras" loading="lazy">
           </div>
           <figcaption>Pliegues, sombras y costuras conservados en el resultado.</figcaption>
         </figure>
@@ -1888,7 +1971,7 @@
     <div class="slide-inner">
       <div class="slide-head">
         <div>
-          <p class="kicker">06 · Ventajas</p>
+          <p class="kicker">05 · Ventajas</p>
           <h2>La luz real sigue mandando.</h2>
         </div>
         <p class="lead">No se reilumina la escena ni se inventa un estudio: el color se integra con la luz, las sombras y los reflejos de la foto.</p>
@@ -1919,7 +2002,7 @@
     <div class="slide-inner">
       <div class="slide-head">
         <div>
-          <p class="kicker">07 · Ventajas</p>
+          <p class="kicker">06 · Ventajas</p>
           <h2>La prenda real, en otro color.</h2>
         </div>
         <p class="lead">El resultado parte de la foto original: cambia el color de la prenda y conserva su forma, su caída y el resto de la escena.</p>
@@ -1952,47 +2035,36 @@
     </div>
   </section>
 
-  <section class="slide" id="futuro" data-title="Trabajo futuro" aria-label="Trabajo futuro">
+  <section class="slide" id="futuro" data-title="Impacto en el negocio" aria-label="Impacto en el negocio">
     <div class="slide-inner">
       <div class="slide-head">
         <div>
-          <p class="kicker">08 · Trabajo futuro</p>
-          <h2>De probador a plataforma de catálogo.</h2>
+          <p class="kicker">07 · Impacto</p>
+          <h2>Del probador al negocio.</h2>
         </div>
-        <p class="lead">Atelier ya resuelve la prueba individual. El siguiente salto es convertirla en una herramienta de trabajo para equipos y catálogos completos.</p>
+        <p class="lead">La interfaz no solo cambia colores: impacta directamente en las métricas comerciales y abre nuevas aplicaciones para la compañía.</p>
       </div>
 
-      <div class="roadmap">
-        <article class="card now">
-          <span class="stage">Ahora</span>
-          <h3>Probador local</h3>
-          <ul>
-            <li>Color y material por prenda.</li>
-            <li>Varias prendas en una foto.</li>
-            <li>Historial, comparativas y descarga.</li>
+      <div class="two-panels">
+        <article class="panel">
+          <span class="card-tag">1. Métricas de negocio</span>
+          <h3>Métricas de negocio impactadas directamente por la implementación de la interfaz</h3>
+          <ul class="list green">
+            <li><strong>Aumento de ventas online:</strong> Mayor tiempo de interacción y engagement en las páginas de producto.</li>
+            <li><strong>Reducción de devoluciones:</strong> Clientes con expectativas de color mucho más alineadas a la realidad.</li>
+            <li><strong>Eficiencia operativa:</strong> Reducción drástica en presupuestos destinados a fotografía digital masiva.</li>
           </ul>
         </article>
-        <article class="card next">
-          <span class="stage">Siguiente</span>
-          <h3>Escala de equipo</h3>
-          <ul>
-            <li>Procesamiento por lotes.</li>
-            <li>Perfiles de marca y paletas guardadas.</li>
-            <li>Más materiales y categorías.</li>
-          </ul>
-        </article>
-        <article class="card later">
-          <span class="stage">Después</span>
-          <h3>Integración</h3>
-          <ul>
-            <li>Conexión con e-commerce y PIM.</li>
-            <li>Try-on y previsualización sobre modelo.</li>
-            <li>Cuentas y trabajo multiusuario.</li>
+        <article class="panel">
+          <span class="card-tag">2. Aplicaciones reales en el negocio</span>
+          <h3>Cómo se integra esta solución en la estrategia comercial de la compañía</h3>
+          <ul class="list">
+            <li><strong>E-commerce de moda:</strong> Cambio de color interactivo directamente en la ficha de producto para enganchar al usuario.</li>
+            <li><strong>Customización directa al consumidor:</strong> Experiencias inmersivas donde el cliente visualiza su prenda ideal al momento.</li>
+            <li><strong>Optimización de stock:</strong> Validación previa de la demanda digital antes de invertir en grandes tiradas de fabricación física.</li>
           </ul>
         </article>
       </div>
-
-      <p class="roadmap-note">El objetivo: que probar una colección sea tan rápido como cambiar una foto.</p>
     </div>
   </section>
 
@@ -2001,11 +2073,11 @@
       <div class="closing-panel">
         <div class="closing-head">
           <div>
-            <p class="kicker">09 · Prueba Atelier</p>
+            <p class="kicker">08 · Prueba Atelier</p>
             <h2>Tu próximo catálogo empieza con una foto.</h2>
           </div>
           <div class="closing-head-copy">
-            <p>Abre Atelier en local, sube una prenda real y prueba color o material. En minutos verás la variante sin fabricar muestras ni salir del equipo.</p>
+            <p>Abre Atelier en local, sube una prenda real y prueba color o material. En minutos verás la variante sin fabricar muestras.</p>
             <div class="closing-actions">
               <a class="btn btn-primary" href="http://127.0.0.1:8000" target="_blank" rel="noopener">Abrir la app</a>
               <button class="btn btn-ghost" type="button" data-goto="0">Volver al inicio</button>
@@ -2015,45 +2087,17 @@
 
         <div class="showcase-grid" aria-label="Resultados de ejemplo">
           <figure class="showcase-card">
-            <div class="compare-pair">
-              <figure class="compare-image">
-                <img src="outputs/pix2pix/original_ejemplo1_486d2f39.png" alt="Foto original del ejemplo 1 antes de recolorear" loading="lazy">
-                <span>Original</span>
-              </figure>
-              <figure class="compare-image">
-                <img src="outputs/pix2pix/recoloreado_ejemplo1_486d2f39.png" alt="Resultado del ejemplo 1 recoloreado con Atelier" loading="lazy">
-                <span>Resultado</span>
-              </figure>
+            <div class="showcase-media">
+              <img src="outputs/pix2pix/recoloreado_ejemplo_3_0a4d2b12.png" alt="Prenda recoloreada con Atelier" loading="lazy">
             </div>
-            <figcaption><strong>Ejemplo 1</strong><span>La misma foto, con la prenda en un nuevo color.</span></figcaption>
-          </figure>
-
-          <figure class="showcase-card">
-            <div class="compare-pair">
-              <figure class="compare-image">
-                <img src="outputs/pix2pix/original_ejemplo2_4666ccaf.png" alt="Foto original del ejemplo 2 antes de recolorear" loading="lazy">
-                <span>Original</span>
-              </figure>
-              <figure class="compare-image">
-                <img src="outputs/pix2pix/recoloreado_ejemplo2_4666ccaf.png" alt="Resultado del ejemplo 2 recoloreado con Atelier" loading="lazy">
-                <span>Resultado</span>
-              </figure>
-            </div>
-            <figcaption><strong>Ejemplo 2</strong><span>Color nuevo sin perder forma, luz ni escena.</span></figcaption>
+            <figcaption><span>Color nuevo sobre la prenda real, sin fabricar muestras.</span></figcaption>
           </figure>
 
           <figure class="showcase-card">
             <div class="showcase-media">
-              <img src="outputs/pix2pix/recoloreado_HSV_tono_170_sat_142_brillo_255_81c1c559.png" alt="Camisa recoloreada con tono 170, saturación 142 y brillo 255" loading="lazy">
+              <img src="outputs/pix2pix/recoloreado_ejemplo4_1c2889c9.png" alt="Prenda recoloreada con Atelier" loading="lazy">
             </div>
-            <figcaption><strong>Tono 170 · Saturación 142 · Brillo 255</strong><span>Camisa / blusa con el color elegido.</span></figcaption>
-          </figure>
-
-          <figure class="showcase-card">
-            <div class="showcase-media">
-              <img src="outputs/pix2pix/recoloreado_HSV_tono_291_sat_75_brillo_255_81445f83.png" alt="Sweater recoloreado con tono 291, saturación 75 y brillo 255" loading="lazy">
-            </div>
-            <figcaption><strong>Tono 291 · Saturación 75 · Brillo 255</strong><span>Sweater con el color elegido.</span></figcaption>
+            <figcaption><span>Resultado completo: forma, luz y escena intactas.</span></figcaption>
           </figure>
         </div>
 
@@ -2069,7 +2113,7 @@
 <nav class="deck-nav" aria-label="Navegación de diapositivas">
   <button class="nav-btn" id="prevButton" type="button" aria-label="Diapositiva anterior">←</button>
   <div class="dots" id="dots" aria-label="Ir a una diapositiva"></div>
-  <span class="nav-count" id="slideCounter">01 / 9</span>
+  <span class="nav-count" id="slideCounter">01 / 8</span>
   <button class="nav-btn" id="nextButton" type="button" aria-label="Diapositiva siguiente">→</button>
 </nav>
 
